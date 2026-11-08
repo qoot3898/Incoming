@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
-import { Box, Button, Stack } from '@mui/material';
+import { Button, Stack } from '@mui/material';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link as RouterLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { payrollApi, payrollKeys } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
-import { FilterBar } from '@/components/tables/FilterBar';
-import { SearchField } from '@/components/tables/SearchField';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { FilterPanel } from '@/components/tables/FilterPanel';
+import { clearFilters, isFiltered, type FilterDef } from '@/components/tables/filters';
 import { ServerDataGrid } from '@/components/tables/ServerDataGrid';
-import { SelectField } from '@/components/forms/SelectField';
 import { ActionFormButton } from '@/components/forms/ActionFormButton';
 import { col } from '@/components/tables/columns';
 import { useListState } from '@/hooks/useListState';
@@ -29,7 +29,12 @@ export default function PayrollNoticesPage() {
   const enumOptions = useEnumOptions();
   const list = useListState({ Status: '', Kind: '', Search: '' });
   const params = list.params as unknown as Q<'ListPayrollNotices'>;
-  const query = useQuery({ queryKey: [...payrollKeys.all, 'list', params], queryFn: () => payrollApi.list(params), placeholderData: keepPreviousData });
+  const query = useQuery({ queryKey: payrollKeys.list(params), queryFn: ({ signal }) => payrollApi.list(params, signal), placeholderData: keepPreviousData });
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'Search', kind: 'search', label: t('common.search') },
+    { key: 'Status', kind: 'select', label: t('fields.status'), options: enumOptions('PayrollNoticeStatus', ENUMS.PayrollNoticeStatus) },
+    { key: 'Kind', kind: 'select', label: t('payroll.kind'), options: enumOptions('PayrollNoticeKind', ENUMS.PayrollNoticeKind) },
+  ];
   const invalidate = [payrollKeys.all, tasksKeys.all, workersKeys.all, ['onboarding'], ['leaves'], ['penalties'], ['terminations']];
   const deliver = useApiMutation((v: S<'RecordNoticeDeliveryRequest'> & { id: number }) => payrollApi.recordDelivery(v.id, v), { invalidate, rethrow: true });
   const confirm = useApiMutation((id: number) => payrollApi.confirm(id), { invalidate, success: t('payroll.confirmed') });
@@ -79,17 +84,16 @@ export default function PayrollNoticesPage() {
   );
 
   return (
-    <Box>
-      <PageHeader title={t('nav.items.payroll')} subtitle={t('payroll.subtitle')} />
-      <FilterBar onReset={list.reset}>
-        <SearchField label={t('common.search')} value={list.filters.Search} onCommit={(v) => list.setFilter('Search', v)} />
-        <SelectField label={t('fields.status')} value={list.filters.Status} options={enumOptions('PayrollNoticeStatus', ENUMS.PayrollNoticeStatus)} onChange={(v) => list.setFilter('Status', v)} />
-        <SelectField label={t('payroll.kind')} value={list.filters.Kind} options={enumOptions('PayrollNoticeKind', ENUMS.PayrollNoticeKind)} onChange={(v) => list.setFilter('Kind', v)} />
-      </FilterBar>
+    <PageContainer>
+      <PageHeader title={t('nav.items.payroll')} />
+      <FilterPanel list={list} filters={filters} />
       <ServerDataGrid<Row>
         data={query.data}
         loading={query.isFetching}
         error={query.error}
+        onRetry={query.refetch}
+        filtered={isFiltered(list, filters)}
+        onClearFilters={() => clearFilters(list, filters)}
         getRowId={(r) => r.noticeId}
         page={list.page}
         pageSize={list.pageSize}
@@ -97,6 +101,6 @@ export default function PayrollNoticesPage() {
         onPageSizeChange={list.setPageSize}
         columns={columns}
       />
-    </Box>
+    </PageContainer>
   );
 }

@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
-import { Box, Button, Stack } from '@mui/material';
+import { Button, Stack } from '@mui/material';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { attendanceApi, attendanceKeys } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
-import { FilterBar } from '@/components/tables/FilterBar';
-import { SearchField } from '@/components/tables/SearchField';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { FilterPanel } from '@/components/tables/FilterPanel';
+import { clearFilters, isFiltered, type FilterDef } from '@/components/tables/filters';
 import { ServerDataGrid } from '@/components/tables/ServerDataGrid';
-import { SelectField } from '@/components/forms/SelectField';
 import { ActionFormButton } from '@/components/forms/ActionFormButton';
 import { col } from '@/components/tables/columns';
 import { ToneChip } from '@/components/common/StatusChip';
@@ -30,7 +30,13 @@ export default function AbsenceIncidentsPage() {
   const list = useListState({ Search: '', Status: 'Open', TrackId: '', WorkSiteId: '' });
   const opts = useScopeOptions(list.filters.TrackId);
   const params = list.params as unknown as Q<'ListAbsenceIncidents'>;
-  const query = useQuery({ queryKey: [...attendanceKeys.all, 'incidents', params], queryFn: () => attendanceApi.incidents(params), placeholderData: keepPreviousData });
+  const query = useQuery({ queryKey: attendanceKeys.incidents(params), queryFn: ({ signal }) => attendanceApi.incidents(params, signal), placeholderData: keepPreviousData });
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'Search', kind: 'search', label: t('common.search') },
+    { key: 'Status', kind: 'select', label: t('fields.status'), emptyLabel: false, options: enumOptions('AbsenceIncidentListStatus', ENUMS.AbsenceIncidentListStatus) },
+    { key: 'TrackId', kind: 'select', label: t('fields.track'), options: opts.tracks, clears: ['WorkSiteId'] },
+    { key: 'WorkSiteId', kind: 'select', label: t('fields.workSite'), options: opts.sites },
+  ];
   const excuse = useApiMutation((v: S<'ExcuseAbsenceIncidentRequest'> & { id: number }) => attendanceApi.excuse(v.id, v), {
     invalidate: [attendanceKeys.all, tasksKeys.all],
     rethrow: true,
@@ -80,7 +86,7 @@ export default function AbsenceIncidentsPage() {
               </Button>
             )}
             {p.row.status === 'Open' && !p.row.terminationId && p.row.atThreshold && (
-              <Button size="small" color="error" onClick={() => navigate(`/terminations/new?employeeId=${p.row.employeeId}&incidentId=${p.row.id}`)}>
+              <Button size="small" color="error" onClick={() => navigate(`/terminations/new?employeeId=${p.row.employeeId}&employeeNumber=${p.row.employeeNumber}&incidentId=${p.row.id}`)}>
                 {t('incidents.toTermination')}
               </Button>
             )}
@@ -102,18 +108,16 @@ export default function AbsenceIncidentsPage() {
   );
 
   return (
-    <Box>
-      <PageHeader title={t('nav.items.incidents')} subtitle={t('incidents.subtitle')} />
-      <FilterBar onReset={list.reset}>
-        <SearchField label={t('common.search')} value={list.filters.Search} onCommit={(v) => list.setFilter('Search', v)} />
-        <SelectField label={t('fields.status')} value={list.filters.Status} emptyLabel={false} options={enumOptions('AbsenceIncidentListStatus', ENUMS.AbsenceIncidentListStatus)} onChange={(v) => list.setFilter('Status', v)} />
-        <SelectField label={t('fields.track')} value={list.filters.TrackId} options={opts.tracks} onChange={(v) => list.setFilters({ ...list.filters, TrackId: v, WorkSiteId: '' })} />
-        <SelectField label={t('fields.workSite')} value={list.filters.WorkSiteId} options={opts.sites} onChange={(v) => list.setFilter('WorkSiteId', v)} />
-      </FilterBar>
+    <PageContainer>
+      <PageHeader title={t('nav.items.incidents')} />
+      <FilterPanel list={list} filters={filters} />
       <ServerDataGrid<Row>
         data={query.data}
         loading={query.isFetching}
         error={query.error}
+        onRetry={query.refetch}
+        filtered={isFiltered(list, filters)}
+        onClearFilters={() => clearFilters(list, filters)}
         getRowId={(r) => r.id}
         page={list.page}
         pageSize={list.pageSize}
@@ -121,6 +125,6 @@ export default function AbsenceIncidentsPage() {
         onPageSizeChange={list.setPageSize}
         columns={columns}
       />
-    </Box>
+    </PageContainer>
   );
 }

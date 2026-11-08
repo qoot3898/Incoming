@@ -1,10 +1,14 @@
 import { api } from '@/services/api/client';
 import type { Paged, Q, S } from '@/types/api';
 
-export const transfersKeys = { all: ['transfers'] as const, detail: (id: number) => ['transfers', 'detail', id] as const };
+export const transfersKeys = {
+  all: ['transfers'] as const,
+  list: (p: object) => ['transfers', 'list', p] as const,
+  detail: (id: number) => ['transfers', 'detail', id] as const,
+};
 
 export const transfersApi = {
-  list: (q: Q<'ListTransfers'>) => api.get<Paged<S<'TransferListItem'>>>('/transfers', q),
+  list: (q: Q<'ListTransfers'>, signal?: AbortSignal) => api.get<Paged<S<'TransferListItem'>>>('/transfers', q, { signal }),
   get: (id: number) => api.get<S<'TransferDetails'>>(`/transfers/${id}`),
   options: (employeeId: number, transferId?: number) => api.get<S<'TransferOptions'>>(`/workers/${employeeId}/transfer-options`, { transferId }),
   submit: (body: S<'TransferRequestInput'>) => api.post<S<'IdResponse'>>('/transfers', body),

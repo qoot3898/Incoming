@@ -4,13 +4,15 @@ import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const proxyTarget = env.VITE_DEV_PROXY_TARGET || 'http://qoottemporarylabor.runasp.net';
+  // HTTPS on purpose: the API redirects http → https. Through the proxy that redirect reaches the
+  // browser, which then calls the API cross-origin and fails the CORS preflight.
+  const proxyTarget = env.VITE_DEV_PROXY_TARGET || 'https://qoottemporarylabor.runasp.net';
   return {
     plugins: [react()],
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
     server: {
       port: 5173,
-      proxy: { '/api': { target: proxyTarget, changeOrigin: true } },
+      proxy: { '/api': { target: proxyTarget, changeOrigin: true, secure: true } },
     },
     build: {
       chunkSizeWarningLimit: 900,

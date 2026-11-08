@@ -1,9 +1,10 @@
-import { Box, Paper } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { transfersApi, transfersKeys } from './api';
 import { TransferForm } from './TransferForm';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { FormCard } from '@/components/forms/FormLayout';
 import { usePrefilledWorker } from '@/components/forms/usePrefilledWorker';
 import { useApiMutation } from '@/hooks/useApiMutation';
 
@@ -18,11 +19,18 @@ export default function TransferCreatePage() {
     onSuccess: (r) => navigate(`/transfers/${r.id}`),
   });
   return (
-    <Box>
-      <PageHeader title={t('transfers.new')} subtitle={t('transfers.newHint')} breadcrumbs={[{ label: t('nav.items.transfers'), to: '/transfers' }]} />
-      <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, maxWidth: 820 }}>
-        <TransferForm worker={worker} onWorkerChange={setWorker} submitLabel={t('transfers.submit')} onSubmit={(b) => submit.mutateAsync(b)} onCancel={() => navigate(-1)} />
-      </Paper>
-    </Box>
+    <PageContainer width="form">
+      <PageHeader title={t('transfers.new')} breadcrumbs={[{ label: t('nav.items.transfers'), to: '/transfers' }]} />
+      <FormCard>
+        <TransferForm
+          worker={worker}
+          onWorkerChange={setWorker}
+          submitLabel={t('transfers.submit')}
+          onSubmit={(b) => submit.mutateAsync(b)}
+          onCancel={() => navigate('/transfers')}
+          guardUnsaved
+        />
+      </FormCard>
+    </PageContainer>
   );
 }

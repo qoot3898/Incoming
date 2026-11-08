@@ -1,74 +1,78 @@
-import { Alert, Box, Button, Paper, Stack, TextField, Typography } from '@mui/material';
+import { useMemo } from 'react';
+import { Alert, Stack, Typography } from '@mui/material';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
 import { useAuth } from '@/app/providers/authContext';
 import { authApi } from './api';
-import { toApiError } from '@/services/api/errors';
 import { useSnackbar } from '@/app/providers/snackbarContext';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { FormTextField } from '@/components/forms/fields';
+import { FormActions, FormCard, FormErrorAlert, FormSection } from '@/components/forms/FormLayout';
+import { useFormServerError } from '@/components/forms/useFormServerError';
+
+const DEFAULTS = { currentPassword: '', newPassword: '', confirmPassword: '' };
+const FIELDS = Object.keys(DEFAULTS);
 
 export default function ChangePasswordPage() {
   const { t } = useTranslation();
   const { user, reload } = useAuth();
   const { notify } = useSnackbar();
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
-  const schema = z
-    .object({
-      currentPassword: z.string().min(1, t('validation.required')),
-      newPassword: z.string().min(1, t('validation.required')),
-      confirmPassword: z.string().min(1, t('validation.required')),
-    })
-    .refine((v) => v.newPassword === v.confirmPassword, { path: ['confirmPassword'], message: t('validation.passwordMismatch') });
+  const schema = useMemo(
+    () =>
+      z
+        .object({
+          currentPassword: z.string().min(1, t('validation.required')),
+          newPassword: z.string().min(1, t('validation.required')),
+          confirmPassword: z.string().min(1, t('validation.required')),
+        })
+        .refine((v) => v.newPassword === v.confirmPassword, { path: ['confirmPassword'], message: t('validation.passwordMismatch') }),
+    [t],
+  );
   type Values = z.infer<typeof schema>;
-  const { register, handleSubmit, formState, setError: setFieldError } = useForm<Values>({ resolver: zodResolver(schema) });
+  const { control, handleSubmit, formState, setError } = useForm<Values>({ resolver: zodResolver(schema), defaultValues: DEFAULTS });
+  const { serverError, handleServerError, clearServerError } = useFormServerError((field, message) => setError(field as keyof Values, { type: 'server', message }), FIELDS);
 
   const onSubmit = handleSubmit(async (v) => {
-    setError(null);
+    clearServerError();
     try {
       await authApi.changePassword(v);
       await reload();
       notify(t('auth.passwordChanged'));
       navigate('/', { replace: true });
     } catch (e) {
-      const err = await toApiError(e, t('errors.generic'));
-      Object.entries(err.fieldErrors).forEach(([k, m]) => {
-        if (k === 'currentPassword' || k === 'newPassword' || k === 'confirmPassword') setFieldError(k, { message: m.join(' ') });
-      });
-      setError(err.detail || err.title);
+      await handleServerError(e);
     }
   });
 
   return (
-    <Box>
+    <PageContainer width="narrow">
       <PageHeader title={t('auth.changePassword')} />
-      <Paper variant="outlined" sx={{ p: 3, maxWidth: 520 }}>
-        {user?.mustChangePassword && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            {t('auth.mustChangePassword')}
-          </Alert>
-        )}
+      <FormCard>
         <form onSubmit={onSubmit} noValidate>
-          <Stack spacing={2}>
-            {error && <Alert severity="error">{error}</Alert>}
-            <TextField type="password" label={t('auth.currentPassword')} autoComplete="current-password" {...register('currentPassword')} error={!!formState.errors.currentPassword} helperText={formState.errors.currentPassword?.message} />
-            <TextField type="password" label={t('auth.newPassword')} autoComplete="new-password" {...register('newPassword')} error={!!formState.errors.newPassword} helperText={formState.errors.newPassword?.message} />
-            <TextField type="password" label={t('auth.confirmPassword')} autoComplete="new-password" {...register('confirmPassword')} error={!!formState.errors.confirmPassword} helperText={formState.errors.confirmPassword?.message} />
+          <Stack spacing={2.5}>
+            {user?.mustChangePassword && <Alert severity="warning">{t('auth.mustChangePassword')}</Alert>}
+            <FormErrorAlert value={serverError} />
+            <FormSection columns={1}>
+              <FormTextField control={control} name="currentPassword" type="password" label={t('auth.currentPassword')} autoComplete="current-password" required />
+              <FormTextField control={control} name="newPassword" type="password" label={t('auth.newPassword')} autoComplete="new-password" required />
+              <FormTextField control={control} name="confirmPassword" type="password" label={t('auth.confirmPassword')} autoComplete="new-password" required />
+            </FormSection>
             <Typography variant="caption" color="text.secondary">
               {t('auth.passwordPolicyHint')}
             </Typography>
-            <Box>
-              <Button type="submit" variant="contained" disabled={formState.isSubmitting}>
-                {t('common.save')}
-              </Button>
-            </Box>
+            <FormActions
+              submitLabel={t('common.save')}
+              submitting={formState.isSubmitting}
+              onCancel={user?.mustChangePassword ? undefined : () => navigate('/')}
+            />
           </Stack>
         </form>
-      </Paper>
-    </Box>
+      </FormCard>
+    </PageContainer>
   );
 }

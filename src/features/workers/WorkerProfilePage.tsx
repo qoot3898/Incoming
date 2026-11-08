@@ -22,15 +22,19 @@ import { useEnumLabel, useEnumOptions } from '@/hooks/useEnumLabel';
 import { useApiMutation } from '@/hooks/useApiMutation';
 import { ENUMS } from '@/constants/enums';
 import { formatDate, formatMoney, formatBytes, formatDateTime } from '@/utils/format';
+import { useTabParam } from '@/hooks/useTabParam';
 import type { S } from '@/types/api';
+import type { UploadVars } from '@/services/api/client';
 
 type Worker = S<'LaborWorkerDetails'>;
+
+const PROFILE_TABS = ['overview', 'timeline', 'leaves', 'attachments'] as const;
 
 export default function WorkerProfilePage() {
   const { t } = useTranslation();
   const employeeId = Number(useParams().employeeId);
   const query = useQuery({ queryKey: workersKeys.detail(employeeId), queryFn: () => workersApi.get(employeeId) });
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useTabParam(PROFILE_TABS, 'overview');
 
   return (
     <QueryBoundary query={query}>
@@ -49,16 +53,15 @@ export default function WorkerProfilePage() {
             }
             actions={<WorkerActions worker={w} />}
           />
-          <Tabs value={tab} onChange={(_, v: number) => setTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }} variant="scrollable" allowScrollButtonsMobile>
-            <Tab label={t('workers.tabs.overview')} />
-            <Tab label={t('workers.tabs.timeline')} />
-            <Tab label={t('workers.tabs.leaves')} />
-            <Tab label={t('workers.tabs.attachments')} />
+          <Tabs value={tab} onChange={(_, v: (typeof PROFILE_TABS)[number]) => setTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }} variant="scrollable" allowScrollButtonsMobile>
+            {PROFILE_TABS.map((key) => (
+              <Tab key={key} value={key} label={t(`workers.tabs.${key}`)} />
+            ))}
           </Tabs>
-          {tab === 0 && <Overview w={w} />}
-          {tab === 1 && <Timeline w={w} />}
-          {tab === 2 && <WorkerLeaves employeeId={employeeId} />}
-          {tab === 3 && <Attachments employeeId={employeeId} />}
+          {tab === 'overview' && <Overview w={w} />}
+          {tab === 'timeline' && <Timeline w={w} />}
+          {tab === 'leaves' && <WorkerLeaves employeeId={employeeId} />}
+          {tab === 'attachments' && <Attachments employeeId={employeeId} />}
         </Box>
       )}
     </QueryBoundary>
@@ -304,8 +307,8 @@ function Timeline({ w }: { w: Worker }) {
   return (
     <Card>
       <List disablePadding>
-        {events.map((e, i) => (
-          <ListItem key={i} divider secondaryAction={e.attachmentId ? <AttachmentButton attachmentId={e.attachmentId} icon /> : undefined}>
+        {events.map((e) => (
+          <ListItem key={`${e.date}|${e.kind ?? ''}|${e.title ?? ''}|${e.attachmentId ?? ''}`} divider secondaryAction={e.attachmentId ? <AttachmentButton attachmentId={e.attachmentId} icon /> : undefined}>
             <Box sx={{ width: 110, flexShrink: 0, color: 'text.secondary', fontSize: '0.8rem' }}>{formatDate(e.date)}</Box>
             <ListItemText
               primary={e.href && e.href.startsWith('/') ? <RouterLink to={e.href}>{e.title}</RouterLink> : e.title}
@@ -383,7 +386,8 @@ function Attachments({ employeeId }: { employeeId: number }) {
   const { t } = useTranslation();
   const enumOptions = useEnumOptions();
   const q = useQuery({ queryKey: workersKeys.attachments(employeeId), queryFn: () => workersApi.attachments(employeeId) });
-  const attach = useApiMutation((v: { kind: string; recordReference: string | null; scan: File | null }) => workersApi.attachForm(employeeId, v), {
+  type AttachValues = { kind: string; recordReference: string | null; scan: File | null };
+  const attach = useApiMutation(({ values, transfer }: UploadVars<AttachValues>) => workersApi.attachForm(employeeId, values, transfer), {
     invalidate: [workersKeys.all],
     rethrow: true,
   });
@@ -401,7 +405,7 @@ function Attachments({ employeeId }: { employeeId: number }) {
             { name: 'recordReference', kind: 'text', label: t('attachments.recordReference'), maxLength: 100 },
             { name: 'scan', kind: 'file', label: t('attachments.file'), required: true },
           ]}
-          onSubmit={(v) => attach.mutateAsync(v)}
+          onSubmit={(values, transfer) => attach.mutateAsync({ values, transfer })}
         />
       </Box>
       {q.error ? (

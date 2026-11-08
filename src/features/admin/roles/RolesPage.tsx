@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { adminKeys, rolesApi } from '../api';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { ErrorState } from '@/components/common/States';
 import { ToneChip } from '@/components/common/StatusChip';
 import { LocalDataGrid } from '@/components/tables/ServerDataGrid';
@@ -45,10 +46,9 @@ export default function RolesPage() {
   );
 
   return (
-    <Box>
+    <PageContainer>
       <PageHeader
         title={t('nav.items.roles')}
-        subtitle={t('roles.subtitle')}
         actions={
           <ActionFormButton<S<'CreateRoleRequest'>>
             label={t('roles.new')}
@@ -75,6 +75,6 @@ export default function RolesPage() {
           columns={columns}
         />
       )}
-    </Box>
+    </PageContainer>
   );
 }

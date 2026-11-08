@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Box, Button, Chip, Stack, TextField } from '@mui/material';
+import { Button, Chip, Stack } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
@@ -7,10 +7,10 @@ import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { penaltiesApi, penaltiesKeys } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
-import { FilterBar } from '@/components/tables/FilterBar';
-import { SearchField } from '@/components/tables/SearchField';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { FilterPanel } from '@/components/tables/FilterPanel';
+import { clearFilters, isFiltered, type FilterDef } from '@/components/tables/filters';
 import { ServerDataGrid } from '@/components/tables/ServerDataGrid';
-import { SelectField } from '@/components/forms/SelectField';
 import { col } from '@/components/tables/columns';
 import { useListState } from '@/hooks/useListState';
 import { useEnumLabel, useEnumOptions } from '@/hooks/useEnumLabel';
@@ -28,7 +28,16 @@ export default function PenaltiesListPage() {
   const opts = useScopeOptions();
   const list = useListState({ Status: '', Violation: '', Decision: '', WorkSiteId: '', From: '', To: '', Search: '' });
   const params = list.params as unknown as Q<'ListPenalties'>;
-  const query = useQuery({ queryKey: [...penaltiesKeys.all, 'list', params], queryFn: () => penaltiesApi.list(params), placeholderData: keepPreviousData });
+  const query = useQuery({ queryKey: penaltiesKeys.list(params), queryFn: ({ signal }) => penaltiesApi.list(params, signal), placeholderData: keepPreviousData });
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'Search', kind: 'search', label: t('common.search') },
+    { key: 'Status', kind: 'select', label: t('fields.status'), options: enumOptions('PenaltyStatus', ENUMS.PenaltyStatus) },
+    { key: 'Violation', kind: 'select', label: t('penalties.violation'), options: enumOptions('PenaltyViolation', ENUMS.PenaltyViolation) },
+    { key: 'Decision', kind: 'select', label: t('penalties.decision'), options: enumOptions('PenaltyDecision', ENUMS.PenaltyDecision) },
+    { key: 'WorkSiteId', kind: 'select', label: t('fields.workSite'), options: opts.sites },
+    { key: 'From', kind: 'date', label: t('common.from') },
+    { key: 'To', kind: 'date', label: t('common.to') },
+  ];
   const d = query.data;
 
   const columns = useMemo<GridColDef<Row>[]>(
@@ -47,10 +56,9 @@ export default function PenaltiesListPage() {
   );
 
   return (
-    <Box>
+    <PageContainer>
       <PageHeader
         title={t('nav.items.penalties')}
-        subtitle={t('penalties.subtitle')}
         actions={
           <Button component={RouterLink} to="/penalties/new" variant="contained" startIcon={<AddIcon />}>
             {t('penalties.new')}
@@ -75,19 +83,14 @@ export default function PenaltiesListPage() {
           ))}
         </Stack>
       )}
-      <FilterBar onReset={list.reset}>
-        <SearchField label={t('common.search')} value={list.filters.Search} onCommit={(v) => list.setFilter('Search', v)} />
-        <SelectField label={t('fields.status')} value={list.filters.Status} options={enumOptions('PenaltyStatus', ENUMS.PenaltyStatus)} onChange={(v) => list.setFilter('Status', v)} />
-        <SelectField label={t('penalties.violation')} value={list.filters.Violation} options={enumOptions('PenaltyViolation', ENUMS.PenaltyViolation)} onChange={(v) => list.setFilter('Violation', v)} />
-        <SelectField label={t('penalties.decision')} value={list.filters.Decision} options={enumOptions('PenaltyDecision', ENUMS.PenaltyDecision)} onChange={(v) => list.setFilter('Decision', v)} />
-        <SelectField label={t('fields.workSite')} value={list.filters.WorkSiteId} options={opts.sites} onChange={(v) => list.setFilter('WorkSiteId', v)} />
-        <TextField type="date" label={t('common.from')} value={list.filters.From} onChange={(e) => list.setFilter('From', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <TextField type="date" label={t('common.to')} value={list.filters.To} onChange={(e) => list.setFilter('To', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-      </FilterBar>
+      <FilterPanel list={list} filters={filters} />
       <ServerDataGrid<Row>
         data={d?.page}
         loading={query.isFetching}
         error={query.error}
+        onRetry={query.refetch}
+        filtered={isFiltered(list, filters)}
+        onClearFilters={() => clearFilters(list, filters)}
         getRowId={(r) => r.penaltyId}
         page={list.page}
         pageSize={list.pageSize}
@@ -96,6 +99,6 @@ export default function PenaltiesListPage() {
         onRowClick={(r) => navigate(`/penalties/${r.penaltyId}`)}
         columns={columns}
       />
-    </Box>
+    </PageContainer>
   );
 }

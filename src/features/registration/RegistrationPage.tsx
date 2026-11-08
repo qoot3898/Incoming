@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { registrationApi, registrationKeys } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { ErrorState, LoadingState, EmptyState } from '@/components/common/States';
 import { SectionCard } from '@/components/common/SectionCard';
 import { LocalDataGrid } from '@/components/tables/ServerDataGrid';
@@ -181,8 +182,8 @@ export default function RegistrationPage() {
   const choice = (list: S<'RegistrationChoice'>[]) => list.map((c) => ({ value: c.id, label: c.name ?? String(c.number) }));
 
   return (
-    <Box>
-      <PageHeader title={t('nav.items.registration')} subtitle={t('registration.subtitle')} />
+    <PageContainer>
+      <PageHeader title={t('nav.items.registration')} />
       {result && (
         <Alert severity="success" sx={{ mb: 2 }}>
           <Typography variant="subtitle2" gutterBottom>
@@ -200,7 +201,6 @@ export default function RegistrationPage() {
       {!rows ? (
         <SectionCard
           title={t('registration.queue')}
-          subheader={t('registration.queueHint')}
           action={
             <Button variant="contained" startIcon={<HowToRegOutlinedIcon />} disabled={selection.length === 0} onClick={start}>
               {t('registration.registerSelected', { count: selection.length })}
@@ -230,7 +230,7 @@ export default function RegistrationPage() {
           )}
         </SectionCard>
       ) : (
-        <SectionCard title={t('registration.formTitle', { count: rows.length })} subheader={t('registration.formHint')} noPadding>
+        <SectionCard title={t('registration.formTitle', { count: rows.length })} noPadding>
           <Box sx={{ p: 2 }}>
             {serverError && (
               <Alert severity={duplicateWarning ? 'warning' : 'error'} sx={{ mb: 2 }}>
@@ -309,6 +309,6 @@ export default function RegistrationPage() {
           </Paper>
         </SectionCard>
       )}
-    </Box>
+    </PageContainer>
   );
 }

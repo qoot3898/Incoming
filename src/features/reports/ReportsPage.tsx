@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { reportsApi } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { ErrorState, EmptyState } from '@/components/common/States';
 import { SelectField } from '@/components/forms/SelectField';
 import { useEnumLabel, useEnumOptions } from '@/hooks/useEnumLabel';
@@ -184,8 +185,8 @@ export default function ReportsPage() {
   };
 
   return (
-    <Box>
-      <PageHeader title={t('nav.items.reports')} subtitle={t('reports.subtitle')} />
+    <PageContainer>
+      <PageHeader title={t('nav.items.reports')} />
       {options.error && <ErrorState error={options.error} />}
       {o?.scopeEmpty && <Alert severity="warning" sx={{ mb: 2 }}>{t('common.scopeEmpty')}</Alert>}
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
@@ -248,6 +249,6 @@ export default function ReportsPage() {
           <EmptyState title={t('reports.pickAndRun')} description={t('reports.pickAndRunHint')} />
         </Paper>
       )}
-    </Box>
+    </PageContainer>
   );
 }

@@ -27,7 +27,7 @@ export function WorkerPicker({ value, onChange, label, required, error, status, 
   const text = useDebounced(input.trim());
   const query = useQuery({
     queryKey: ['workers', 'picker', text, status],
-    queryFn: () => workersApi.search({ Text: text, Status: status, Page: 1, PageSize: 20 }),
+    queryFn: ({ signal }) => workersApi.search({ Text: text, Status: status, Page: 1, PageSize: 20 }, signal),
     enabled: text.length >= 1,
     staleTime: 60_000,
   });

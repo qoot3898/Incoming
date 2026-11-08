@@ -151,8 +151,8 @@ export default function LeaveDetailsPage() {
                       ]}
                     />
                     <List dense>
-                      {l.passport.movements.map((m, i) => (
-                        <ListItem key={i} divider>
+                      {l.passport.movements.map((m) => (
+                        <ListItem key={`${m.kind}|${m.date}|${m.handedBy ?? ''}|${m.receivedBy ?? ''}`} divider>
                           <ListItemText primary={`${label('PassportMovementKind', m.kind)} · ${formatDate(m.date)}`} secondary={[m.handedBy, m.receivedBy, m.notes].filter(Boolean).join(' · ')} />
                         </ListItem>
                       ))}

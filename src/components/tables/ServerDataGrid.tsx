@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next';
 import type { Paged } from '@/types/api';
 import { ErrorState } from '@/components/common/States';
 import { useEmptyOverlay, useGridLocaleText } from './gridHooks';
+import { PAGE_SIZES } from '@/hooks/useListState';
 
-const PAGE_SIZES_SERVER = [10, 25, 50, 100];
+const PAGE_SIZES_SERVER = [...PAGE_SIZES];
 const PAGE_SIZES_LOCAL = [25, 50, 100];
 const LOCAL_INITIAL_STATE = { pagination: { paginationModel: { pageSize: 25 } } };
 const clickableRow = () => 'clickable';
@@ -19,12 +20,17 @@ interface Props<T extends GridValidRowModel> {
   getRowId: GridRowIdGetter<T>;
   page: number;
   pageSize: number;
-  onPageChange: (page: number) => void;
+  onPageChange: (page: number, options?: { replace?: boolean }) => void;
   onPageSizeChange: (size: number) => void;
   onRowClick?: (row: T) => void;
   emptyText?: string;
   checkboxSelection?: boolean;
   onSelectionChange?: (ids: (string | number)[]) => void;
+  /** Retry action shown with the error message. */
+  onRetry?: () => void;
+  /** Filters are applied: the empty state says "no matching results" and offers to clear them. */
+  filtered?: boolean;
+  onClearFilters?: () => void;
 }
 
 /** DataGrid in server pagination mode bound to a backend `PagedResult<T>` (1-based pages). */
@@ -42,11 +48,19 @@ export function ServerDataGrid<T extends GridValidRowModel>({
   emptyText,
   checkboxSelection,
   onSelectionChange,
+  onRetry,
+  filtered,
+  onClearFilters,
 }: Props<T>) {
   const { t } = useTranslation();
   const localeText = useGridLocaleText();
-  const slots = useEmptyOverlay(emptyText ?? t('common.empty'));
-  if (error) return <ErrorState error={error} />;
+  const slots = useEmptyOverlay(emptyText ?? t('common.empty'), { filtered, onClearFilters });
+  // A shared/bookmarked URL can point past the last page; the grid then moves to the last page
+  // by itself. That correction must replace the URL entry, or Back would land on the bad page
+  // again and be corrected forward again (a Back-button trap).
+  const outOfRange = !!data && page > Math.max(1, Math.ceil(data.total / pageSize));
+
+  if (error) return <ErrorState error={error} onRetry={onRetry} />;
   return (
     <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
       <DataGrid<T>
@@ -62,7 +76,7 @@ export function ServerDataGrid<T extends GridValidRowModel>({
         paginationModel={{ page: page - 1, pageSize }}
         onPaginationModelChange={(m) => {
           if (m.pageSize !== pageSize) onPageSizeChange(m.pageSize);
-          else onPageChange(m.page + 1);
+          else onPageChange(m.page + 1, outOfRange ? { replace: true } : undefined);
         }}
         checkboxSelection={checkboxSelection}
         onRowSelectionModelChange={(ids) => onSelectionChange?.(ids as (string | number)[])}

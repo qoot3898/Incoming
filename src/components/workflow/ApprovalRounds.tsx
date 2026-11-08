@@ -50,7 +50,7 @@ export function ApprovalRounds({ rounds }: { rounds: ApprovalRound[] }) {
           )}
           <Stack component="ol" spacing={0} sx={{ listStyle: 'none', m: 0, p: 0 }}>
             {r.steps.map((s, i) => (
-              <Box component="li" key={i} sx={{ display: 'flex', gap: 1.5, position: 'relative', pb: i === r.steps.length - 1 ? 0 : 2 }}>
+              <Box component="li" key={`${s.sequence ?? ''}|${s.party ?? ''}|${s.label ?? ''}|${s.decidedAt ?? ''}`} sx={{ display: 'flex', gap: 1.5, position: 'relative', pb: i === r.steps.length - 1 ? 0 : 2 }}>
                 <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <Box sx={{ lineHeight: 0, zIndex: 1, bgcolor: 'background.paper' }}>{ICONS[s.decision] ?? ICONS.Pending}</Box>
                   {i < r.steps.length - 1 && <Box sx={{ flex: 1, width: '2px', bgcolor: 'divider', mt: 0.5 }} />}

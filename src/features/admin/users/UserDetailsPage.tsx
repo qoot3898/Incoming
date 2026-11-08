@@ -112,7 +112,6 @@ export default function UserDetailsPage() {
               <Grid size={{ xs: 12, md: 6 }}>
                 <SectionCard
                   title={t('users.roles')}
-                  subheader={t('users.rolesHint')}
                   action={
                     <Button size="small" variant="contained" disabled={!dirty || setRoles.isPending} onClick={() => setRoles.mutate(current, { onSuccess: () => setSelectedRoles(null) })}>
                       {t('common.save')}

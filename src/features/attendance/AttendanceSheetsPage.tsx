@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Box, Button, MenuItem, TextField, Typography } from '@mui/material';
+import { Button, Typography } from '@mui/material';
 import { StatusChip } from '@/components/common/StatusChip';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -7,9 +7,10 @@ import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { attendanceApi, attendanceKeys } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
-import { FilterBar } from '@/components/tables/FilterBar';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { FilterPanel } from '@/components/tables/FilterPanel';
+import { clearFilters, isFiltered, type FilterDef } from '@/components/tables/filters';
 import { ServerDataGrid } from '@/components/tables/ServerDataGrid';
-import { SelectField } from '@/components/forms/SelectField';
 import { FormDialog } from '@/components/forms/FormDialog';
 import { col } from '@/components/tables/columns';
 import { useListState } from '@/hooks/useListState';
@@ -21,6 +22,7 @@ import { dateTimeFormat } from '@/utils/format';
 import type { Q, S } from '@/types/api';
 
 const MONTH_OPTS: Intl.DateTimeFormatOptions = { month: 'long' };
+const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 type Row = S<'AttendanceSheetListItem'>;
 
@@ -32,10 +34,17 @@ export default function AttendanceSheetsPage() {
   const list = useListState({ Year: now.getFullYear(), Month: now.getMonth() + 1, TrackId: '', WorkSiteId: '', Status: 'All' });
   const opts = useScopeOptions(list.filters.TrackId);
   const params = list.params as unknown as Q<'ListAttendanceSheets'>;
-  const query = useQuery({ queryKey: [...attendanceKeys.all, 'sheets', params], queryFn: () => attendanceApi.sheets(params), placeholderData: keepPreviousData });
+  const query = useQuery({ queryKey: attendanceKeys.sheets(params), queryFn: ({ signal }) => attendanceApi.sheets(params, signal), placeholderData: keepPreviousData });
   const [toOpen, setToOpen] = useState<Row | null>(null);
   const open = useApiMutation(attendanceApi.open, { invalidate: [attendanceKeys.all], rethrow: true, success: t('attendance.opened'), onSuccess: (r) => navigate(`/attendance/sheets/${r.id}`) });
   const monthName = (m: number) => dateTimeFormat(MONTH_OPTS, i18n.language === 'ar' ? 'ar-LY' : 'en-GB').format(new Date(2000, m - 1, 1));
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'Year', kind: 'search', inputType: 'number', label: t('attendance.year') },
+    { key: 'Month', kind: 'select', label: t('attendance.month'), emptyLabel: false, options: MONTHS.map((m) => ({ value: m, label: monthName(m) })) },
+    { key: 'Status', kind: 'select', label: t('fields.status'), emptyLabel: false, options: enumOptions('AttendanceSheetListStatus', ENUMS.AttendanceSheetListStatus) },
+    { key: 'TrackId', kind: 'select', label: t('fields.track'), options: opts.tracks, clears: ['WorkSiteId'] },
+    { key: 'WorkSiteId', kind: 'select', label: t('fields.workSite'), options: opts.sites },
+  ];
 
   const columns = useMemo<GridColDef<Row>[]>(
     () => [
@@ -87,25 +96,16 @@ export default function AttendanceSheetsPage() {
   );
 
   return (
-    <Box>
-      <PageHeader title={t('nav.items.attendance')} subtitle={t('attendance.subtitle')} />
-      <FilterBar onReset={list.reset}>
-        <TextField type="number" label={t('attendance.year')} value={list.filters.Year} onChange={(e) => list.setFilter('Year', Number(e.target.value))} />
-        <TextField select label={t('attendance.month')} value={list.filters.Month} onChange={(e) => list.setFilter('Month', Number(e.target.value))}>
-          {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-            <MenuItem key={m} value={m}>
-              {monthName(m)}
-            </MenuItem>
-          ))}
-        </TextField>
-        <SelectField label={t('fields.status')} value={list.filters.Status} emptyLabel={false} options={enumOptions('AttendanceSheetListStatus', ENUMS.AttendanceSheetListStatus)} onChange={(v) => list.setFilter('Status', v)} />
-        <SelectField label={t('fields.track')} value={list.filters.TrackId} options={opts.tracks} onChange={(v) => list.setFilters({ ...list.filters, TrackId: v, WorkSiteId: '' })} />
-        <SelectField label={t('fields.workSite')} value={list.filters.WorkSiteId} options={opts.sites} onChange={(v) => list.setFilter('WorkSiteId', v)} />
-      </FilterBar>
+    <PageContainer>
+      <PageHeader title={t('nav.items.attendance')} />
+      <FilterPanel list={list} filters={filters} />
       <ServerDataGrid<Row>
         data={query.data}
         loading={query.isFetching}
         error={query.error}
+        onRetry={query.refetch}
+        filtered={isFiltered(list, filters)}
+        onClearFilters={() => clearFilters(list, filters)}
         getRowId={(r) => `${r.trackId}-${r.workSiteId}`}
         page={list.page}
         pageSize={list.pageSize}
@@ -127,6 +127,6 @@ export default function AttendanceSheetsPage() {
           }
         />
       )}
-    </Box>
+    </PageContainer>
   );
 }

@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Box, Button, Chip, FormControlLabel, Grid2 as Grid, IconButton, List, ListItem, ListItemButton, ListItemText, Stack, Switch, Tab, Tabs, TextField, Tooltip, Typography } from '@mui/material';
+import { Button, Chip, Grid2 as Grid, IconButton, List, ListItem, ListItemButton, ListItemText, Stack, Tab, Tabs, Tooltip, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { adminKeys, laborSettingsApi } from '../api';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { ErrorState, EmptyState, LoadingState } from '@/components/common/States';
 import { SectionCard } from '@/components/common/SectionCard';
 import { ToneChip } from '@/components/common/StatusChip';
@@ -16,21 +17,26 @@ import { ActionFormButton } from '@/components/forms/ActionFormButton';
 import { LocalDataGrid } from '@/components/tables/ServerDataGrid';
 import { useApiMutation } from '@/hooks/useApiMutation';
 import { useEnumLabel } from '@/hooks/useEnumLabel';
-import { useDebounced } from '@/hooks/useDebounced';
+import { useListState } from '@/hooks/useListState';
+import { useTabParam } from '@/hooks/useTabParam';
+import { FilterPanel } from '@/components/tables/FilterPanel';
+import type { FilterDef } from '@/components/tables/filters';
 import type { S } from '@/types/api';
+
+const LABOR_TABS = ['tracks', 'scopes'] as const;
 
 export default function LaborSettingsPage() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useTabParam(LABOR_TABS, 'tracks');
   return (
-    <Box>
-      <PageHeader title={t('nav.items.laborSettings')} subtitle={t('laborSettings.subtitle')} />
-      <Tabs value={tab} onChange={(_, v: number) => setTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Tab label={t('laborSettings.tracks')} />
-        <Tab label={t('laborSettings.userScopes')} />
+    <PageContainer>
+      <PageHeader title={t('nav.items.laborSettings')} />
+      <Tabs value={tab} onChange={(_, v: (typeof LABOR_TABS)[number]) => setTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
+        <Tab value="tracks" label={t('laborSettings.tracks')} />
+        <Tab value="scopes" label={t('laborSettings.userScopes')} />
       </Tabs>
-      {tab === 0 ? <TracksTab /> : <ScopesTab />}
-    </Box>
+      {tab === 'tracks' ? <TracksTab /> : <ScopesTab />}
+    </PageContainer>
   );
 }
 
@@ -57,7 +63,6 @@ function TracksTab() {
       <Grid size={{ xs: 12, md: 5 }}>
         <SectionCard
           title={t('laborSettings.tracks')}
-          subheader={t('laborSettings.tracksHint')}
           action={
             <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>
               {t('laborSettings.addTrack')}
@@ -191,11 +196,18 @@ function TrackSites({ track, workSites }: { track: Track; workSites: S<'Director
 function ScopesTab() {
   const { t } = useTranslation();
   const label = useEnumLabel();
-  const [search, setSearch] = useState('');
-  const [includeInactive, setIncludeInactive] = useState(false);
-  const q = useDebounced(search);
-  const key = [...adminKeys.labor, 'scopes', q, includeInactive];
-  const scopes = useQuery({ queryKey: key, queryFn: () => laborSettingsApi.userScopes({ search: q || undefined, includeInactive }) });
+  // Search and "include inactive" live in the URL like every other list (debounced by SearchField).
+  const list = useListState({ search: '', includeInactive: false });
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'search', kind: 'search', label: t('common.search') },
+    { key: 'includeInactive', kind: 'switch', label: t('laborSettings.includeInactive') },
+  ];
+  const params = { search: list.filters.search || undefined, includeInactive: list.filters.includeInactive };
+  const scopes = useQuery({
+    queryKey: [...adminKeys.labor, 'scopes', params],
+    queryFn: ({ signal }) => laborSettingsApi.userScopes(params, signal),
+    placeholderData: keepPreviousData,
+  });
   const tracks = useQuery({ queryKey: [...adminKeys.labor, 'tracks'], queryFn: laborSettingsApi.tracks });
   const options = useQuery({ queryKey: [...adminKeys.labor, 'options'], queryFn: laborSettingsApi.options, staleTime: 300_000 });
   const invalidate = [adminKeys.labor, ['shared']];
@@ -206,13 +218,7 @@ function ScopesTab() {
 
   return (
     <Stack spacing={2}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
-        <TextField label={t('common.search')} value={search} onChange={(e) => setSearch(e.target.value)} sx={{ maxWidth: 320 }} />
-        <FormControlLabel control={<Switch checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} />} label={t('laborSettings.includeInactive')} />
-      </Stack>
-      <Typography variant="body2" color="text.secondary">
-        {t('laborSettings.scopesHint')}
-      </Typography>
+      <FilterPanel list={list} filters={filters} />
       {scopes.error ? (
         <ErrorState error={scopes.error} />
       ) : (

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Box, Button, Tab, Tabs, TextField, FormControlLabel, Switch } from '@mui/material';
+import { Button, Tab, Tabs } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
@@ -7,10 +7,10 @@ import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { leavesApi, leavesKeys } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
-import { FilterBar } from '@/components/tables/FilterBar';
-import { SearchField } from '@/components/tables/SearchField';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { FilterPanel } from '@/components/tables/FilterPanel';
+import { clearFilters, isFiltered, type FilterDef } from '@/components/tables/filters';
 import { ServerDataGrid } from '@/components/tables/ServerDataGrid';
-import { SelectField } from '@/components/forms/SelectField';
 import { col } from '@/components/tables/columns';
 import { ToneChip } from '@/components/common/StatusChip';
 import { useListState } from '@/hooks/useListState';
@@ -30,7 +30,16 @@ export default function LeavesListPage() {
   const list = useListState({ Tab: 'All', Search: '', Type: '', TrackId: '', WorkSiteId: '', From: '', To: '', LateReturn: false as boolean });
   const opts = useScopeOptions(list.filters.TrackId);
   const params = { ...list.params, LateReturn: list.filters.LateReturn || undefined } as unknown as Q<'ListLeaves'>;
-  const query = useQuery({ queryKey: [...leavesKeys.all, 'list', params], queryFn: () => leavesApi.list(params), placeholderData: keepPreviousData });
+  const query = useQuery({ queryKey: leavesKeys.list(params), queryFn: ({ signal }) => leavesApi.list(params, signal), placeholderData: keepPreviousData });
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'Search', kind: 'search', label: t('common.search') },
+    { key: 'Type', kind: 'select', label: t('leaves.type'), options: enumOptions('LeaveType', ENUMS.LeaveType) },
+    { key: 'TrackId', kind: 'select', label: t('fields.track'), options: opts.tracks, clears: ['WorkSiteId'] },
+    { key: 'WorkSiteId', kind: 'select', label: t('fields.workSite'), options: opts.sites },
+    { key: 'From', kind: 'date', label: t('common.from') },
+    { key: 'To', kind: 'date', label: t('common.to') },
+    { key: 'LateReturn', kind: 'switch', label: t('leaves.lateReturnOnly') },
+  ];
   const counts = (query.data?.counts ?? {}) as Record<string, number>;
 
   const columns = useMemo<GridColDef<Row>[]>(
@@ -55,10 +64,9 @@ export default function LeavesListPage() {
   );
 
   return (
-    <Box>
+    <PageContainer>
       <PageHeader
         title={t('nav.items.leaves')}
-        subtitle={t('leaves.subtitle')}
         actions={
           <Button component={RouterLink} to="/leaves/new" variant="contained" startIcon={<AddIcon />}>
             {t('leaves.new')}
@@ -70,19 +78,14 @@ export default function LeavesListPage() {
           <Tab key={tab} value={tab} label={`${label('LeaveTab', tab)}${counts[tab] !== undefined ? ` (${counts[tab]})` : ''}`} />
         ))}
       </Tabs>
-      <FilterBar onReset={list.reset}>
-        <SearchField label={t('common.search')} value={list.filters.Search} onCommit={(v) => list.setFilter('Search', v)} />
-        <SelectField label={t('leaves.type')} value={list.filters.Type} options={enumOptions('LeaveType', ENUMS.LeaveType)} onChange={(v) => list.setFilter('Type', v)} />
-        <SelectField label={t('fields.track')} value={list.filters.TrackId} options={opts.tracks} onChange={(v) => list.setFilters({ ...list.filters, TrackId: v, WorkSiteId: '' })} />
-        <SelectField label={t('fields.workSite')} value={list.filters.WorkSiteId} options={opts.sites} onChange={(v) => list.setFilter('WorkSiteId', v)} />
-        <TextField type="date" label={t('common.from')} value={list.filters.From} onChange={(e) => list.setFilter('From', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <TextField type="date" label={t('common.to')} value={list.filters.To} onChange={(e) => list.setFilter('To', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <FormControlLabel control={<Switch checked={list.filters.LateReturn} onChange={(e) => list.setFilter('LateReturn', e.target.checked)} />} label={t('leaves.lateReturnOnly')} />
-      </FilterBar>
+      <FilterPanel list={list} filters={filters} />
       <ServerDataGrid<Row>
         data={query.data?.page}
         loading={query.isFetching}
         error={query.error}
+        onRetry={query.refetch}
+        filtered={isFiltered(list, filters)}
+        onClearFilters={() => clearFilters(list, filters)}
         getRowId={(r) => r.id}
         page={list.page}
         pageSize={list.pageSize}
@@ -91,6 +94,6 @@ export default function LeavesListPage() {
         onRowClick={(r) => navigate(`/leaves/${r.id}`)}
         columns={columns}
       />
-    </Box>
+    </PageContainer>
   );
 }

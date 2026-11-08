@@ -53,7 +53,6 @@
     "submit": "Submit sheet",
     "submitHint": "The supervisor submits the sheet to the section and then payroll (FR-30).",
     "submittedOn": "Submitted on",
-    "subtitle": "Monthly attendance sheet per site (TL-F06): entry, submission, review and receipt.",
     "supervisor": "Supervisor",
     "totals": {
       "absent": "A",
@@ -75,7 +74,6 @@
     "ip": "IP address",
     "occurredAt": "Time",
     "outcome": "Outcome",
-    "subtitle": "Immutable audit log of create, update, approve and reject actions (FR-62).",
     "summary": "Summary"
   },
   "auth": {
@@ -92,10 +90,8 @@
     "passwordPolicyHint": "The server password policy applies.",
     "sessionExpired": "Your session has expired. Please sign in again.",
     "signIn": "Sign in",
-    "signInSubtitle": "Enter your account details to continue.",
     "signInTitle": "Sign in",
     "signingIn": "Signing in…",
-    "tagline": "The full temporary worker life-cycle in one system — from staffing request, candidates and registration to onboarding, attendance and leave, through to termination and replacement.",
     "togglePassword": "Show or hide password",
     "userName": "User name"
   },
@@ -114,7 +110,6 @@
     "path": "Path",
     "serverHistory": "Server history",
     "source": "History source",
-    "subtitle": "Daily backups and tested restore (NFR-08).",
     "user": "User"
   },
   "candidates": {
@@ -140,8 +135,7 @@
     "recordInterview": "Record interview",
     "recruitedBy": "Recruited by",
     "rejectList": "Reject the list",
-    "saveDecision": "Save decision ({{approved}} approved, {{excluded}} excluded)",
-    "subtitle": "Candidates on staffing requests, interviews and GM decisions (FR-05..09)."
+    "saveDecision": "Save decision ({{approved}} approved, {{excluded}} excluded)"
   },
   "common": {
     "all": "All",
@@ -190,7 +184,8 @@
     "statusReason": "Status reason",
     "to": "To",
     "worker": "Worker",
-    "yes": "Yes"
+    "yes": "Yes",
+    "clear": "Clear"
   },
   "directories": {
     "active": "Active",
@@ -206,7 +201,6 @@
     "number": "Number",
     "slug": "List code",
     "slugsNotConfigured": "List codes are not configured in the frontend yet; enter the code defined by the server.",
-    "subtitle": "Lists configurable without code changes (FR-61).",
     "usage": "Usage",
     "lists": {
       "managements": "Managements",
@@ -696,7 +690,6 @@
     "items": "Evaluation items",
     "lastEvaluation": "Last evaluation",
     "new": "New evaluation",
-    "newHint": "Worker evaluation TL-F09: rate every item, overall result and recommendation.",
     "notReviewed": "Awaiting review",
     "openReference": "Open referred record",
     "outcome": "Result & recommendation",
@@ -711,8 +704,11 @@
     "reviewHint": "File, refer to a penalty, or to termination as no longer needed (FR-45).",
     "sectionReview": "Labor section review",
     "submit": "Save evaluation",
-    "subtitle": "Evaluation after the configured period and its review (FR-43..45).",
-    "workerData": "Worker data"
+    "workerData": "Worker data",
+    "sections": {
+      "criteria": "Evaluation criteria",
+      "outcome": "Outcome"
+    }
   },
   "fields": {
     "birthDate": "Birth date",
@@ -737,6 +733,45 @@
     "track": "Track",
     "workSite": "Work site"
   },
+  "files": {
+    "acceptHint": "{{types}} · up to {{max}} MB",
+    "cancelUpload": "Cancel upload",
+    "choose": "Choose file",
+    "current": "Current file",
+    "dropHere": "Drag a file here, or",
+    "empty": "The file is empty",
+    "missing": "This file is no longer available. Refresh the page and try again.",
+    "new": "New",
+    "pdfOrImage": "PDF or image",
+    "preview": "Preview",
+    "processing": "Upload complete, processing…",
+    "remove": "Remove file",
+    "replace": "Replace file",
+    "replacesCurrent": "Replaces current file",
+    "singleOnly": "Choose one file only",
+    "tooLarge": "File is larger than {{max}} MB",
+    "uploadCancelled": "Upload cancelled. Your entries are kept — you can submit again.",
+    "uploading": "Uploading… {{percent}}%",
+    "wrongType": "This file type is not accepted"
+  },
+  "filters": {
+    "active": "Active filters",
+    "activeCount": "Active filters ({{count}}):",
+    "clearAll": "Clear all",
+    "noResultsHint": "No records match the current search and filters.",
+    "title": "Filters"
+  },
+  "forms": {
+    "chooseTrackFirst": "Choose a track first",
+    "chooseWorkerFirst": "Choose a worker first",
+    "leavePage": "Leave page",
+    "sections": {
+      "details": "Details",
+      "worker": "Worker"
+    },
+    "unsavedMessage": "You have unsaved changes on this form. Leave the page and discard them?",
+    "unsavedTitle": "Discard unsaved changes?"
+  },
   "header": {
     "account": "Account",
     "notifications": "Notifications",
@@ -753,7 +788,6 @@
     "reportedBy": "Reported by",
     "resolution": "Resolution",
     "resolutionRef": "Reference & resolution",
-    "subtitle": "\"Absent without permission\" incidents, matching and referral (FR-27..29).",
     "threshold": "Threshold reached",
     "toPenalty": "Refer to penalty",
     "toTermination": "Dismissal request",
@@ -769,7 +803,6 @@
     "deviceReport": "Received {{received}}, imported {{imported}}, duplicates {{duplicates}}, rejected {{rejected}}",
     "dryRun": "Validate only (dry run)",
     "error": "Error",
-    "eventsHint": "Payroll-affecting events for the external system (Odoo), with references preventing duplicates (FR-66).",
     "externalReference": "External reference",
     "import": "Import",
     "invalidRows": "Invalid rows: {{count}}",
@@ -786,7 +819,6 @@
     "reportFailure": "Report failure",
     "row": "Row",
     "state": "State",
-    "subtitle": "Initial Odoo interface, interface log, fingerprint import and worker migration (FR-66..68).",
     "tabs": {
       "device": "Fingerprint import",
       "events": "Events",
@@ -794,8 +826,7 @@
       "migration": "Migration",
       "workers": "Worker data"
     },
-    "validate": "Validate",
-    "workersHint": "Core worker data in integration format; the employee number is the reference key."
+    "validate": "Validate"
   },
   "laborSettings": {
     "activeWorkers": "Active workers",
@@ -813,13 +844,10 @@
     "removeSiteConfirm": "\"{{site}}\" will be removed from \"{{track}}\". Continue?",
     "scopeOneOf": "Choose a track or a site (only one)",
     "scopes": "Scopes",
-    "scopesHint": "Scope defines the tracks and sites whose data the user can see and act on.",
     "siteCount": "Sites: {{count}}",
     "siteHasWorkers": "The site has active workers",
-    "subtitle": "Tracks (catering, cleaning & gardening…) and their sites, and user scopes.",
     "trackSites": "Sites of {{name}}",
     "tracks": "Tracks",
-    "tracksHint": "Each track belongs to an operations management",
     "userScopes": "User scopes",
     "workerCount": "Workers: {{count}}"
   },
@@ -835,7 +863,6 @@
     "inclusiveHint": "Days include both ends",
     "lateReturnOnly": "Late returns only",
     "new": "New leave",
-    "newHint": "The section enters the leave request on the worker's behalf (TL-F05).",
     "noBalances": "No leave balances; only the leave history is shown.",
     "overdueDays": "{{count}} day(s) late",
     "previousLeaves": "Previous leaves",
@@ -850,7 +877,6 @@
     "submit": "Submit request",
     "submitted": "Leave request submitted",
     "submittedBy": "Submitted by",
-    "subtitle": "Leave requests, approvals, passport and return (FR-31..35).",
     "takenCount": "Leaves taken",
     "takenDays": "Leave days",
     "takenSummary": "{{count}} leave(s), {{days}} day(s)",
@@ -895,7 +921,11 @@
       "onboarding": "Onboarding",
       "recruitment": "Recruitment",
       "reporting": "Reporting"
-    }
+    },
+    "collapse": "Collapse sidebar",
+    "collapseGroup": "Collapse {{name}}",
+    "expand": "Expand sidebar",
+    "expandGroup": "Expand {{name}}"
   },
   "onboarding": {
     "accessLogged": "This access is recorded in the audit log.",
@@ -953,12 +983,10 @@
     "startDate": "Start date",
     "startRecord": "Start report & record",
     "status": "Onboarding status",
-    "subtitle": "Track onboarding within a week: documents, passport, survey, salary and start approval (FR-14..24).",
     "survey": "Security survey",
     "surveyApplicability": "Set applicability",
     "surveyApplies": "Applies (technical worker)",
     "surveyOutcome": "Outcome",
-    "surveyRestricted": "Result and attachment are restricted to the \"survey review\" permission (AC-18)",
     "surveyStage": "Stage",
     "surveyUnreadable": "You are not allowed to read the result details.",
     "technicalWorkerNo": "No — not applicable",
@@ -979,9 +1007,7 @@
     "notice": "Payroll notice",
     "notices": "Payroll notices",
     "onboardingNotice": "Payroll start notice",
-    "onboardingNoticeHint": "Status becomes \"Active\" only after payroll confirms (AC-23).",
-    "recordDelivery": "Record delivery",
-    "subtitle": "Start, leave, penalty and termination notices delivered by the supervisor and confirmed by payroll."
+    "recordDelivery": "Record delivery"
   },
   "penalties": {
     "acknowledge": "Record acknowledgement",
@@ -1007,7 +1033,6 @@
     "hrActionNumber": "HR action no.",
     "managerDecision": "Section manager decision",
     "new": "Propose penalty",
-    "newHint": "The section proposes a penalty with violation details (TL-F07 A–B).",
     "noDecision": "No decision yet",
     "notAcknowledged": "Not acknowledged yet",
     "propose": "Submit proposal",
@@ -1016,7 +1041,6 @@
     "reportReference": "Report reference",
     "signedScan": "Signed notice (scan)",
     "source": "Source",
-    "subtitle": "Warnings and deductions: decision, acknowledgement and application (FR-36..38).",
     "violation": "Violation",
     "violationDates": "Violation dates",
     "violationDetails": "Violation details",
@@ -1052,7 +1076,6 @@
     "queueEmpty": "No workers awaiting distribution",
     "registeredOn": "Registered on",
     "siteFixed": "The site cannot be changed here; the permit is issued for the current site.",
-    "subtitle": "Distribute workers to track sites and issue internal entry permits TL-F11 (FR-12..13).",
     "validUntil": "Valid until"
   },
   "registration": {
@@ -1074,15 +1097,12 @@
     "done": "Workers registered and employee numbers issued",
     "duplicateHint": "A passport number is duplicated; review the data or confirm registration.",
     "empty": "No approved candidates awaiting registration in your tracks",
-    "formHint": "Values start from defaults and every cell can be edited.",
     "formTitle": "Registration data ({{count}})",
     "libyanHint": "For Libyan nationals",
     "queue": "Approved candidates awaiting registration",
-    "queueHint": "Select candidates to register in one batch (FR-11).",
     "registerSelected": "Register selected ({{count}})",
     "resultTitle": "{{count}} worker(s) registered:",
-    "submit": "Register {{count}} worker(s)",
-    "subtitle": "Register approved candidates and issue employee numbers (FR-09..11)."
+    "submit": "Register {{count}} worker(s)"
   },
   "reports": {
     "candidateResult": "Candidate result",
@@ -1098,8 +1118,7 @@
     "report": "Report",
     "rowCount": "Rows: {{count}}",
     "run": "Run report",
-    "running": "Running…",
-    "subtitle": "Reports RPT-01 to RPT-13 and procedure step data (FR-57, FR-69)."
+    "running": "Running…"
   },
   "roles": {
     "code": "Code",
@@ -1118,7 +1137,6 @@
     "permissions": "Permissions",
     "sensitive": "Sensitive",
     "sensitiveHint": "Sensitive permissions expose restricted data and their use is logged.",
-    "subtitle": "Roles and the HR-issued permission matrix (FR-60).",
     "superAdmin": "Super admin",
     "superAdminHint": "This role has every permission automatically.",
     "system": "System role"
@@ -1128,7 +1146,6 @@
     "cancel": "Cancel proposal",
     "cancelConfirm": "The salary proposal will be cancelled. Continue?",
     "effectiveDate": "Effective date",
-    "hint": "Proposed by the section, approved by HR; history is kept (FR-21).",
     "none": "No proposals",
     "openProposal": "Open proposal",
     "propose": "Propose salary",
@@ -1139,7 +1156,6 @@
     "title": "Salary & allowance"
   },
   "settings": {
-    "subtitle": "Configurable thresholds, periods and values (NFR-10).",
     "updatedAt": "Updated {{date}}"
   },
   "staffing": {
@@ -1153,7 +1169,6 @@
     "leavingRequired": "Replacement requires selecting the leaving worker",
     "leavingWorker": "Leaving worker",
     "new": "New staffing request",
-    "newHint": "The site defines the need; it goes to Operations and then the General Manager for approval.",
     "number": "Request no.",
     "reason": "Reason",
     "rejectHint": "Rejection closes the request and notifies the requester with the reason.",
@@ -1165,15 +1180,17 @@
     "requiredStartDate": "Required start date",
     "submit": "Submit request",
     "submitted": "Request sent to Operations",
-    "subtitle": "Site staffing and replacement requests and their approvals (FR-01..04).",
     "tabs": {
       "candidates": "Candidates",
       "details": "Details & approvals"
     },
-    "unregistered": "Approved candidates not registered"
+    "unregistered": "Approved candidates not registered",
+    "sections": {
+      "position": "Position",
+      "request": "Request details"
+    }
   },
   "startApproval": {
-    "chain": "Section → HR → Operations → General Manager",
     "delayed": "Delayed {{days}} day(s)",
     "returnHint": "Returning sends the record back to step 1 and restarts the chain (AC-22).",
     "submit": "Submit for approval",
@@ -1190,15 +1207,12 @@
   },
   "tasks": {
     "actions": "Actions waiting for you",
-    "actionsHint": "Computed from open procedures on every load",
-    "greeting": "Hello {{name}}, here is the pending work within your permissions and scope.",
     "late": "Late",
     "noActions": "No pending actions",
     "noActionsHint": "Everything in your scope is up to date.",
     "noNotifications": "No notifications",
     "openInbox": "Open task inbox",
     "pendingDecisions": "Staffing requests awaiting your decision",
-    "pendingDecisionsHint": "Operations approval, then General Manager",
     "scopeHint": "Tasks and alerts shown here follow the permission matrix and your track or site scope.",
     "title": "My tasks"
   },
@@ -1239,7 +1253,6 @@
     "needed": "Replacement needed",
     "net": "Net",
     "new": "New termination",
-    "newHint": "Termination request TL-F10 with initiator and reason; resignation needs the notice date.",
     "noClearance": "No clearance items",
     "noSettlement": "Settlement not recorded yet",
     "notApprove": "Do not approve",
@@ -1265,11 +1278,9 @@
     "requestDate": "Request date",
     "returned": "Returned",
     "settlement": "Financial settlement",
-    "settlementHint": "Recorded and approved by finance; net = entitlements − deductions.",
     "submit": "Submit request",
     "submitted": "Termination request submitted",
     "submittedBy": "Submitted by",
-    "subtitle": "Termination requests, approval, execution, clearance, settlement and replacement (FR-46..53).",
     "terminationDate": "Termination date",
     "undecided": "Not decided yet"
   },
@@ -1288,7 +1299,6 @@
     "fromTo": "From {{from}} to {{to}}",
     "initiatedBy": "Initiated by",
     "new": "New transfer",
-    "newHint": "Transfer request from the worker or Operations (TL-F08 A).",
     "newPermit": "New permit",
     "newSalary": "New salary",
     "outsideTrack": "outside track",
@@ -1303,7 +1313,6 @@
     "submit": "Submit request",
     "submitted": "Transfer request submitted",
     "submittedBy": "Submitted by",
-    "subtitle": "Transfer requests, their three approvals and execution (FR-39..42).",
     "supervisorsInformed": "Supervisors informed",
     "to": "To site",
     "trackSitesOnly": "Track sites only; others need Operations permission"
@@ -1349,9 +1358,7 @@
     "passwordChangedAt": "Password changed",
     "resetPassword": "Reset password",
     "roles": "Roles",
-    "rolesHint": "Permissions follow the HR matrix",
     "signedOut": "User sessions ended",
-    "subtitle": "User accounts and their roles (FR-60).",
     "tempPasswordHint": "Copy the password now; it will not be shown again and the user must change it.",
     "tempPasswordTitle": "Temporary password",
     "unlock": "Unlock",
@@ -1398,7 +1405,6 @@
     "sortNumber": "Employee no.",
     "startFrom": "Started from",
     "startTo": "Started to",
-    "subtitle": "Search temporary worker files within your scope (FR-58).",
     "tabs": {
       "attachments": "Attachments",
       "leaves": "Leaves",

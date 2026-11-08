@@ -23,7 +23,9 @@ npm run dev                 # http://localhost:5173
 ```
 
 In development the Vite server proxies `/api` to `VITE_DEV_PROXY_TARGET`
-(default `http://qoottemporarylabor.runasp.net`), so no CORS setup is needed.
+(default `https://qoottemporarylabor.runasp.net`), so no CORS setup is needed. Keep the target on
+**https**: the API redirects http → https, and a redirect passed back through the proxy makes the browser
+call the API directly, which fails with a CORS error.
 
 ### Production build
 
@@ -46,7 +48,8 @@ The app uses client-side routing: configure the web server to fall back to `inde
 | `npm run typecheck` | TypeScript only |
 | `npm run lint` | ESLint |
 | `npm run i18n:check` | Verifies every used key exists in `ar.json` and `en.json` and both files match (NFR-14) |
-| `npm run check` | typecheck + lint + i18n check |
+| `npm test` | Vitest unit/component tests (`npm run test:watch` while developing) |
+| `npm run check` | typecheck + lint + i18n check + tests |
 | `npm run gen:api` | Regenerate `src/types/api.generated.ts` from `openapi/openapi.json` |
 
 To refresh the API contract: download `http://qoottemporarylabor.runasp.net/openapi/v1.json` to
@@ -59,15 +62,19 @@ To refresh the API contract: download `http://qoottemporarylabor.runasp.net/open
 ```
 src/
   app/          providers (Query, Theme+RTL, Snackbar, Auth), router (lazy routes, guards), theme
-  components/   common (PageHeader, StatusChip, states, InfoGrid…), forms (FormDialog, WorkerPicker…),
-                layout (sidebar, header, notifications, language), tables (server/local grids, filters),
-                workflow (approval rounds, party decisions)
+  components/   common (PageHeader, StatusChip, states, InfoGrid…), files (FileInput),
+                forms (FormDialog, FormLayout, RHF fields, WorkerPicker, unsaved-changes guard…),
+                layout (Sidebar, PageContainer, header, notifications, language),
+                tables (server/local grids, FilterPanel, SearchField), workflow (approval rounds, party decisions)
   features/     one folder per module: api.ts (endpoints + query keys) and pages
   services/api  axios client, token storage & refresh, ProblemDetails normalisation, file download
   i18n/         i18next setup + ar/en locale files
   constants/    navigation, permission gating, enum lists, directory slugs
-  hooks/ utils/ types/
+  hooks/ utils/ types/   useListState (URL list state), useTabParam, useObjectUrl…
+  test/         Vitest setup and helpers (tests live next to the code as *.test.ts(x))
 ```
+
+State ownership rules (server / URL / form / context / local) are in `STATE_MANAGEMENT_ARCHITECTURE.md`.
 
 ## Implemented features
 

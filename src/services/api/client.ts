@@ -1,4 +1,4 @@
-import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, type AxiosProgressEvent, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 import type { S } from '@/types/api';
 import { tokenStorage } from './tokenStorage';
 
@@ -84,6 +84,18 @@ http.interceptors.response.use(
   },
 );
 
+/** Cancellation and progress reporting for uploads (multipart requests). */
+export interface TransferOptions {
+  signal?: AbortSignal;
+  onUploadProgress?: (event: AxiosProgressEvent) => void;
+}
+
+/** Mutation variables for an upload: form values + transfer options (kept out of the FormData). */
+export interface UploadVars<T = Record<string, unknown>> {
+  values: T;
+  transfer?: TransferOptions;
+}
+
 /** Typed helpers returning response data. */
 export const api = {
   get: <T>(url: string, params?: object, config?: AxiosRequestConfig) =>
@@ -93,9 +105,12 @@ export const api = {
   put: <T = void>(url: string, body?: unknown, config?: AxiosRequestConfig) =>
     http.put<T>(url, body ?? {}, config).then((r) => r.data),
   delete: <T = void>(url: string, config?: AxiosRequestConfig) => http.delete<T>(url, config).then((r) => r.data),
-  /** multipart/form-data POST */
-  postForm: <T = void>(url: string, values: Record<string, unknown>) =>
-    http.post<T>(url, toFormData(values)).then((r) => r.data),
+  /**
+   * multipart/form-data POST. The browser sets the boundary header for FormData; `transfer`
+   * adds upload progress and cancellation (AbortSignal).
+   */
+  postForm: <T = void>(url: string, values: Record<string, unknown>, transfer?: TransferOptions) =>
+    http.post<T>(url, toFormData(values), { signal: transfer?.signal, onUploadProgress: transfer?.onUploadProgress }).then((r) => r.data),
   /** Binary GET/POST returning a Blob + suggested file name. */
   blob: async (method: 'get' | 'post', url: string, body?: unknown, params?: object) => {
     const r = await http.request<Blob>({ method, url, data: body, params, responseType: 'blob' });

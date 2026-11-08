@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Alert, Box, Button, Paper, Stack, TextField, MenuItem } from '@mui/material';
+import { useMemo } from 'react';
+import { Alert, Stack } from '@mui/material';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,45 +7,72 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { staffingApi, staffingKeys } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { WorkerPicker } from '@/components/forms/WorkerPicker';
+import { FormSelectField, FormTextField } from '@/components/forms/fields';
+import { FormActions, FormCard, FormErrorAlert, FormSection, FullRow } from '@/components/forms/FormLayout';
+import { UnsavedChangesGuard } from '@/components/forms/UnsavedChangesGuard';
+import { useFormServerError } from '@/components/forms/useFormServerError';
 import { useScopeOptions } from '@/features/shared/options';
 import { useEnumOptions } from '@/hooks/useEnumLabel';
 import { useApiMutation } from '@/hooks/useApiMutation';
 import { ENUMS } from '@/constants/enums';
-import type { ApiError } from '@/services/api/errors';
 import type { S } from '@/types/api';
 
 type Worker = S<'LaborWorkerListItem'>;
+
+const DEFAULTS = {
+  trackId: '',
+  workSiteId: '',
+  jobId: '',
+  count: 1,
+  reason: '',
+  leavingWorker: null as Worker | null,
+  requiredStartDate: '',
+  justification: '',
+  requestedBy: '',
+};
+/** API field → form field, for server validation messages. */
+const FIELD_MAP = { leavingEmployeeId: 'leavingWorker' };
 
 export default function StaffingCreatePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const enumOptions = useEnumOptions();
-  const [leaving, setLeaving] = useState<Worker | null>(null);
-  const [serverError, setServerError] = useState<ApiError | null>(null);
 
-  const schema = z
-    .object({
-      trackId: z.string().min(1, t('validation.required')),
-      workSiteId: z.string().min(1, t('validation.required')),
-      jobId: z.string().min(1, t('validation.required')),
-      count: z.coerce.number({ invalid_type_error: t('validation.number') }).int(t('validation.integer')).min(1, t('validation.min', { min: 1 })),
-      reason: z.string().min(1, t('validation.required')),
-      requiredStartDate: z.string().min(1, t('validation.required')),
-      justification: z.string().trim().min(1, t('validation.required')).max(1000, t('validation.maxLength', { max: 1000 })),
-      requestedBy: z.string().max(200, t('validation.maxLength', { max: 200 })),
-    })
-    .superRefine((v, ctx) => {
-      if (v.reason === 'Replacement' && !leaving) ctx.addIssue({ code: 'custom', path: ['reason'], message: t('staffing.leavingRequired') });
-    });
+  const schema = useMemo(
+    () =>
+      z
+        .object({
+          trackId: z.string().min(1, t('validation.required')),
+          workSiteId: z.string().min(1, t('validation.required')),
+          jobId: z.string().min(1, t('validation.required')),
+          count: z.coerce.number({ invalid_type_error: t('validation.number') }).int(t('validation.integer')).min(1, t('validation.min', { min: 1 })),
+          reason: z.string().min(1, t('validation.required')),
+          leavingWorker: z.custom<Worker | null>(),
+          requiredStartDate: z.string().min(1, t('validation.required')),
+          justification: z.string().trim().min(1, t('validation.required')).max(1000, t('validation.maxLength', { max: 1000 })),
+          requestedBy: z.string().max(200, t('validation.maxLength', { max: 200 })),
+        })
+        .superRefine((v, ctx) => {
+          // FR-02: a replacement request names the leaving worker.
+          if (v.reason === 'Replacement' && !v.leavingWorker) ctx.addIssue({ code: 'custom', path: ['leavingWorker'], message: t('staffing.leavingRequired') });
+        }),
+    [t],
+  );
   type Values = z.infer<typeof schema>;
   const { control, handleSubmit, watch, setValue, setError, formState } = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { trackId: '', workSiteId: '', jobId: '', count: 1, reason: '', requiredStartDate: '', justification: '', requestedBy: '' },
+    defaultValues: DEFAULTS,
   });
   const trackId = watch('trackId');
   const reason = watch('reason');
   const opts = useScopeOptions(trackId);
+  const { serverError, handleServerError, clearServerError } = useFormServerError(
+    (field, message) => setError(field as keyof Values, { type: 'server', message }),
+    Object.keys(DEFAULTS),
+    FIELD_MAP,
+  );
 
   const mutation = useApiMutation(staffingApi.submit, {
     invalidate: [staffingKeys.all],
@@ -55,7 +82,7 @@ export default function StaffingCreatePage() {
   });
 
   const onSubmit = handleSubmit(async (v) => {
-    setServerError(null);
+    clearServerError();
     try {
       await mutation.mutateAsync({
         trackId: Number(v.trackId),
@@ -63,103 +90,65 @@ export default function StaffingCreatePage() {
         jobId: Number(v.jobId),
         count: v.count,
         reason: v.reason as S<'StaffingReason'>,
-        leavingEmployeeId: v.reason === 'Replacement' ? leaving?.employeeId ?? null : null,
+        leavingEmployeeId: v.reason === 'Replacement' ? (v.leavingWorker?.employeeId ?? null) : null,
         requiredStartDate: v.requiredStartDate,
         justification: v.justification,
         requestedBy: v.requestedBy || null,
       });
     } catch (e) {
-      const err = e as ApiError;
-      Object.entries(err.fieldErrors).forEach(([k, m]) => {
-        if (k in v) setError(k as keyof Values, { message: m.join(' ') });
-      });
-      setServerError(err);
+      await handleServerError(e);
     }
   });
 
-  const select = (name: 'trackId' | 'workSiteId' | 'jobId' | 'reason', label: string, options: { value: string | number; label: string }[], onChange?: (v: string) => void) => (
-    <Controller
-      name={name}
-      control={control}
-      render={({ field, fieldState }) => (
-        <TextField
-          select
-          required
-          label={label}
-          {...field}
-          onChange={(e) => (onChange ? onChange(e.target.value) : field.onChange(e.target.value))}
-          error={!!fieldState.error}
-          helperText={fieldState.error?.message}
-        >
-          {options.map((o) => (
-            <MenuItem key={String(o.value)} value={String(o.value)}>
-              {o.label}
-            </MenuItem>
-          ))}
-        </TextField>
-      )}
-    />
-  );
-
   return (
-    <Box>
-      <PageHeader title={t('staffing.new')} subtitle={t('staffing.newHint')} breadcrumbs={[{ label: t('nav.items.staffing'), to: '/staffing-requests' }]} />
-      <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, maxWidth: 860 }}>
+    <PageContainer width="form">
+      <PageHeader title={t('staffing.new')} breadcrumbs={[{ label: t('nav.items.staffing'), to: '/staffing-requests' }]} />
+      <FormCard>
         <form onSubmit={onSubmit} noValidate>
-          <Stack spacing={2.5}>
+          <Stack spacing={3}>
             {opts.scopeEmpty && <Alert severity="warning">{t('common.scopeEmpty')}</Alert>}
-            {serverError && <Alert severity="error">{serverError.detail || serverError.title}</Alert>}
-            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
-              {select('trackId', t('fields.track'), opts.tracks, (v) => {
-                setValue('trackId', v, { shouldValidate: true });
-                setValue('workSiteId', '');
-              })}
-              {select('workSiteId', t('fields.workSite'), opts.sites)}
-              {select('jobId', t('fields.job'), opts.jobs)}
-              <Controller
-                name="count"
+            <FormErrorAlert value={serverError} />
+            <FormSection title={t('staffing.sections.position')}>
+              <FormSelectField
                 control={control}
-                render={({ field, fieldState }) => (
-                  <TextField type="number" required label={t('staffing.count')} {...field} error={!!fieldState.error} helperText={fieldState.error?.message} slotProps={{ htmlInput: { min: 1 } }} />
-                )}
+                name="trackId"
+                label={t('fields.track')}
+                required
+                options={opts.tracks}
+                onValueChange={(v) => {
+                  // Sites depend on the track (dependent dropdown).
+                  setValue('trackId', v, { shouldValidate: true, shouldDirty: true });
+                  setValue('workSiteId', '', { shouldDirty: true });
+                }}
               />
-              {select('reason', t('staffing.reason'), enumOptions('StaffingReason', ENUMS.StaffingReason))}
-              <Controller
-                name="requiredStartDate"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <TextField type="date" required label={t('staffing.requiredStartDate')} {...field} error={!!fieldState.error} helperText={fieldState.error?.message} slotProps={{ inputLabel: { shrink: true } }} />
-                )}
-              />
-            </Box>
-            {reason === 'Replacement' && (
-              <WorkerPicker value={leaving} onChange={setLeaving} label={t('staffing.leavingWorker')} required />
-            )}
-            <Controller
-              name="justification"
-              control={control}
-              render={({ field, fieldState }) => (
-                <TextField multiline minRows={3} required label={t('staffing.justification')} {...field} error={!!fieldState.error} helperText={fieldState.error?.message} />
+              <FormSelectField control={control} name="workSiteId" label={t('fields.workSite')} required options={opts.sites} disabled={!trackId} helperText={!trackId ? t('forms.chooseTrackFirst') : undefined} />
+              <FormSelectField control={control} name="jobId" label={t('fields.job')} required options={opts.jobs} />
+              <FormTextField control={control} name="count" type="number" label={t('staffing.count')} required slotProps={{ htmlInput: { min: 1 } }} />
+            </FormSection>
+            <FormSection title={t('staffing.sections.request')}>
+              <FormSelectField control={control} name="reason" label={t('staffing.reason')} required options={enumOptions('StaffingReason', ENUMS.StaffingReason)} />
+              <FormTextField control={control} name="requiredStartDate" type="date" label={t('staffing.requiredStartDate')} required />
+              {reason === 'Replacement' && (
+                <FullRow>
+                  <Controller
+                    name="leavingWorker"
+                    control={control}
+                    render={({ field, fieldState }) => <WorkerPicker value={field.value} onChange={field.onChange} label={t('staffing.leavingWorker')} required error={fieldState.error?.message} />}
+                  />
+                </FullRow>
               )}
-            />
-            <Controller
-              name="requestedBy"
-              control={control}
-              render={({ field, fieldState }) => (
-                <TextField label={t('staffing.requestedBy')} {...field} error={!!fieldState.error} helperText={fieldState.error?.message ?? t('staffing.requestedByHint')} />
-              )}
-            />
-            <Stack direction="row" spacing={1}>
-              <Button type="submit" variant="contained" disabled={formState.isSubmitting}>
-                {t('staffing.submit')}
-              </Button>
-              <Button color="inherit" onClick={() => navigate(-1)}>
-                {t('common.cancel')}
-              </Button>
-            </Stack>
+              <FullRow>
+                <FormTextField control={control} name="justification" label={t('staffing.justification')} required multiline minRows={3} />
+              </FullRow>
+              <FullRow>
+                <FormTextField control={control} name="requestedBy" label={t('staffing.requestedBy')} helperText={t('staffing.requestedByHint')} />
+              </FullRow>
+            </FormSection>
+            <FormActions submitLabel={t('staffing.submit')} submitting={formState.isSubmitting} onCancel={() => navigate('/staffing-requests')} />
           </Stack>
         </form>
-      </Paper>
-    </Box>
+      </FormCard>
+      <UnsavedChangesGuard when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful} />
+    </PageContainer>
   );
 }

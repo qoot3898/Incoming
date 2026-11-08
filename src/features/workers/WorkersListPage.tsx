@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
-import { Box, TextField } from '@mui/material';
+import { Box } from '@mui/material';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { workersApi, workersKeys } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
-import { FilterBar } from '@/components/tables/FilterBar';
-import { SearchField } from '@/components/tables/SearchField';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { FilterPanel } from '@/components/tables/FilterPanel';
+import { clearFilters, isFiltered, type FilterDef } from '@/components/tables/filters';
 import { ServerDataGrid } from '@/components/tables/ServerDataGrid';
-import { SelectField } from '@/components/forms/SelectField';
 import { col } from '@/components/tables/columns';
 import { useListState } from '@/hooks/useListState';
 import { useEnumOptions } from '@/hooks/useEnumLabel';
@@ -27,7 +27,29 @@ export default function WorkersListPage() {
   const list = useListState({ Text: '', Status: '', TrackId: '', WorkSiteId: '', JobId: '', NationalityId: '', ManagementId: '', StartFrom: '', StartTo: '', Sort: '' });
   const opts = useScopeOptions(list.filters.TrackId);
   const params = list.params as unknown as Q<'SearchLaborWorkers'>;
-  const query = useQuery({ queryKey: workersKeys.list(params), queryFn: () => workersApi.search(params), placeholderData: keepPreviousData });
+  const query = useQuery({ queryKey: workersKeys.list(params), queryFn: ({ signal }) => workersApi.search(params, signal), placeholderData: keepPreviousData });
+
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'Text', kind: 'search', label: t('workers.searchLabel'), chipLabel: t('common.search'), wide: true },
+    { key: 'Status', kind: 'select', label: t('fields.status'), options: enumOptions('LaborStatus', ENUMS.LaborStatus) },
+    { key: 'TrackId', kind: 'select', label: t('fields.track'), options: opts.tracks, clears: ['WorkSiteId'] },
+    { key: 'WorkSiteId', kind: 'select', label: t('fields.workSite'), options: opts.sites },
+    { key: 'JobId', kind: 'select', label: t('fields.job'), options: opts.jobs },
+    { key: 'NationalityId', kind: 'select', label: t('fields.nationality'), options: opts.nationalities },
+    { key: 'ManagementId', kind: 'select', label: t('fields.management'), options: opts.managements },
+    { key: 'StartFrom', kind: 'date', label: t('workers.startFrom') },
+    { key: 'StartTo', kind: 'date', label: t('workers.startTo') },
+    {
+      key: 'Sort',
+      kind: 'select',
+      label: t('workers.sort'),
+      emptyLabel: t('workers.sortDefault'),
+      options: [
+        { value: 'Number', label: t('workers.sortNumber') },
+        { value: 'Name', label: t('workers.sortName') },
+      ],
+    },
+  ];
 
   const columns = useMemo<GridColDef<Row>[]>(
     () => [
@@ -53,34 +75,17 @@ export default function WorkersListPage() {
   );
 
   return (
-    <Box>
-      <PageHeader title={t('nav.items.workers')} subtitle={t('workers.subtitle')} />
-      <FilterBar onReset={list.reset}>
-        <SearchField label={t('workers.searchLabel')} value={list.filters.Text} onCommit={(v) => list.setFilter('Text', v)} sx={{ gridColumn: { md: 'span 2' } }} />
-        <SelectField label={t('fields.status')} value={list.filters.Status} options={enumOptions('LaborStatus', ENUMS.LaborStatus)} onChange={(v) => list.setFilter('Status', v)} />
-        <SelectField label={t('fields.track')} value={list.filters.TrackId} options={opts.tracks} onChange={(v) => list.setFilters({ ...list.filters, TrackId: v, WorkSiteId: '' })} />
-        <SelectField label={t('fields.workSite')} value={list.filters.WorkSiteId} options={opts.sites} onChange={(v) => list.setFilter('WorkSiteId', v)} />
-        <SelectField label={t('fields.job')} value={list.filters.JobId} options={opts.jobs} onChange={(v) => list.setFilter('JobId', v)} />
-        <SelectField label={t('fields.nationality')} value={list.filters.NationalityId} options={opts.nationalities} onChange={(v) => list.setFilter('NationalityId', v)} />
-        <SelectField label={t('fields.management')} value={list.filters.ManagementId} options={opts.managements} onChange={(v) => list.setFilter('ManagementId', v)} />
-        <TextField type="date" label={t('workers.startFrom')} value={list.filters.StartFrom} onChange={(e) => list.setFilter('StartFrom', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <TextField type="date" label={t('workers.startTo')} value={list.filters.StartTo} onChange={(e) => list.setFilter('StartTo', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <SelectField
-          label={t('workers.sort')}
-          value={list.filters.Sort}
-          emptyLabel={t('workers.sortDefault')}
-          options={[
-            { value: 'Number', label: t('workers.sortNumber') },
-            { value: 'Name', label: t('workers.sortName') },
-          ]}
-          onChange={(v) => list.setFilter('Sort', v)}
-        />
-      </FilterBar>
+    <PageContainer>
+      <PageHeader title={t('nav.items.workers')} />
+      <FilterPanel list={list} filters={filters} />
       <ServerDataGrid<Row>
         columns={columns}
         data={query.data}
         loading={query.isFetching}
         error={query.error}
+        onRetry={query.refetch}
+        filtered={isFiltered(list, filters)}
+        onClearFilters={() => clearFilters(list, filters)}
         getRowId={(r) => r.employeeId}
         page={list.page}
         pageSize={list.pageSize}
@@ -88,6 +93,6 @@ export default function WorkersListPage() {
         onPageSizeChange={list.setPageSize}
         onRowClick={(r) => navigate(`/workers/${r.employeeId}`)}
       />
-    </Box>
+    </PageContainer>
   );
 }

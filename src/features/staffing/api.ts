@@ -9,7 +9,7 @@ export const staffingKeys = {
 };
 
 export const staffingApi = {
-  list: (q: Q<'ListStaffingRequests'>) => api.get<Paged<S<'StaffingRequestListItem'>>>('/staffing-requests', q),
+  list: (q: Q<'ListStaffingRequests'>, signal?: AbortSignal) => api.get<Paged<S<'StaffingRequestListItem'>>>('/staffing-requests', q, { signal }),
   get: (number: number) => api.get<S<'StaffingRequestDetails'>>(`/staffing-requests/${number}`),
   submit: (body: S<'StaffingRequestRequest'>) => api.post<S<'IdResponse'>>('/staffing-requests', body),
   decide: (number: number, body: S<'StaffingRequestDecision'>) => api.post(`/staffing-requests/${number}/decision`, body),
@@ -19,7 +19,7 @@ export const staffingApi = {
 export const candidatesKeys = { all: ['candidates'] as const, list: (p: object) => ['candidates', 'list', p] as const };
 
 export const candidatesApi = {
-  list: (q: Q<'ListCandidates'>) => api.get<Paged<S<'CandidateListItem'>>>('/candidates', q),
+  list: (q: Q<'ListCandidates'>, signal?: AbortSignal) => api.get<Paged<S<'CandidateListItem'>>>('/candidates', q, { signal }),
   forRequest: (requestNumber: number) => api.get<S<'RequestCandidates'>>(`/staffing-requests/${requestNumber}/candidates`),
   add: (body: S<'AddCandidateRequest'>) => api.post<S<'IdResponse'>>('/candidates', body),
   interview: (id: number, body: S<'InterviewCandidateRequest'>) => api.post(`/candidates/${id}/interview`, body),

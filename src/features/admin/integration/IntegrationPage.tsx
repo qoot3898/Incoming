@@ -1,35 +1,35 @@
 import { useState } from 'react';
-import { Alert, Box, Button, FormControlLabel, Paper, Stack, Switch, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, FormControlLabel, Paper, Stack, Switch, Tab, Tabs, Typography } from '@mui/material';
 import { brand } from '@/app/theme/brand';
-import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { adminKeys, integrationApi } from '../api';
 import { attendanceApi } from '@/features/attendance/api';
 import { PageHeader } from '@/components/common/PageHeader';
-import { FilterBar } from '@/components/tables/FilterBar';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { FilterPanel } from '@/components/tables/FilterPanel';
+import { clearFilters, isFiltered, type FilterDef } from '@/components/tables/filters';
 import { LocalDataGrid, ServerDataGrid } from '@/components/tables/ServerDataGrid';
-import { SelectField } from '@/components/forms/SelectField';
 import { ActionFormButton } from '@/components/forms/ActionFormButton';
 import { col } from '@/components/tables/columns';
 import { useListState } from '@/hooks/useListState';
+import { useTabParam } from '@/hooks/useTabParam';
 import { useEnumLabel, useEnumOptions } from '@/hooks/useEnumLabel';
 import { useApiMutation } from '@/hooks/useApiMutation';
 import { ENUMS } from '@/constants/enums';
 import { parseCsv } from '@/utils/csv';
+import { FileInput } from '@/components/files/FileInput';
 import type { Q, S } from '@/types/api';
 
 const TABS = ['events', 'log', 'workers', 'device', 'migration'] as const;
 
 export default function IntegrationPage() {
   const { t } = useTranslation();
-  const [sp, setSp] = useSearchParams();
-  const tab = TABS.includes(sp.get('tab') as (typeof TABS)[number]) ? (sp.get('tab') as (typeof TABS)[number]) : 'events';
+  const [tab, setTab] = useTabParam(TABS, 'events');
   return (
-    <Box>
-      <PageHeader title={t('nav.items.integration')} subtitle={t('integration.subtitle')} />
-      <Tabs value={tab} onChange={(_, v: string) => setSp({ tab: v }, { replace: true })} variant="scrollable" allowScrollButtonsMobile sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
+    <PageContainer>
+      <PageHeader title={t('nav.items.integration')} />
+      <Tabs value={tab} onChange={(_, v: (typeof TABS)[number]) => setTab(v)} variant="scrollable" allowScrollButtonsMobile sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
         {TABS.map((x) => (
           <Tab key={x} value={x} label={t(`integration.tabs.${x}`)} />
         ))}
@@ -39,7 +39,7 @@ export default function IntegrationPage() {
       {tab === 'workers' && <WorkersTab />}
       {tab === 'device' && <DeviceTab />}
       {tab === 'migration' && <MigrationTab />}
-    </Box>
+    </PageContainer>
   );
 }
 
@@ -48,24 +48,25 @@ function EventsTab() {
   const { t } = useTranslation();
   const label = useEnumLabel();
   const enumOptions = useEnumOptions();
-  const list = useListState({ State: '', Kind: '', tab: 'events' });
-  const params = { State: list.filters.State, Kind: list.filters.Kind, Page: list.page, PageSize: list.pageSize } as unknown as Q<'ListIntegrationEvents'>;
-  const q = useQuery({ queryKey: [...adminKeys.integration, 'events', params], queryFn: () => integrationApi.events(params), placeholderData: keepPreviousData });
+  const list = useListState({ State: '', Kind: '' });
+  const params = list.params as unknown as Q<'ListIntegrationEvents'>;
+  const q = useQuery({ queryKey: adminKeys.integrationList('events', params), queryFn: ({ signal }) => integrationApi.events(params, signal), placeholderData: keepPreviousData });
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'State', kind: 'select', label: t('integration.state'), options: enumOptions('IntegrationEventState', ENUMS.IntegrationEventState) },
+    { key: 'Kind', kind: 'select', label: t('payroll.kind'), options: enumOptions('PayrollNoticeKind', ENUMS.PayrollNoticeKind) },
+  ];
   const ack = useApiMutation((v: S<'AcknowledgeIntegrationEventRequest'> & { id: number }) => integrationApi.acknowledge(v.id, v), { invalidate: [adminKeys.integration], rethrow: true });
   const fail = useApiMutation((v: S<'ReportIntegrationFailureRequest'> & { id: number }) => integrationApi.failure(v.id, v), { invalidate: [adminKeys.integration], rethrow: true });
   return (
     <Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        {t('integration.eventsHint')}
-      </Typography>
-      <FilterBar onReset={() => list.setFilters({ State: '', Kind: '', tab: 'events' })}>
-        <SelectField label={t('integration.state')} value={list.filters.State} options={enumOptions('IntegrationEventState', ENUMS.IntegrationEventState)} onChange={(v) => list.setFilter('State', v)} />
-        <SelectField label={t('payroll.kind')} value={list.filters.Kind} options={enumOptions('PayrollNoticeKind', ENUMS.PayrollNoticeKind)} onChange={(v) => list.setFilter('Kind', v)} />
-      </FilterBar>
+      <FilterPanel list={list} filters={filters} />
       <ServerDataGrid<Ev>
         data={q.data}
         loading={q.isFetching}
         error={q.error}
+        onRetry={q.refetch}
+        filtered={isFiltered(list, filters)}
+        onClearFilters={() => clearFilters(list, filters)}
         getRowId={(r) => r.noticeId}
         page={list.page}
         pageSize={list.pageSize}
@@ -117,19 +118,23 @@ type Log = S<'IntegrationLogItem'>;
 function LogTab() {
   const { t } = useTranslation();
   const enumOptions = useEnumOptions();
-  const list = useListState({ Outcome: '', NoticeId: '', tab: 'log' });
-  const params = { Outcome: list.filters.Outcome, NoticeId: list.filters.NoticeId, Page: list.page, PageSize: list.pageSize } as unknown as Q<'ListIntegrationLog'>;
-  const q = useQuery({ queryKey: [...adminKeys.integration, 'log', params], queryFn: () => integrationApi.log(params), placeholderData: keepPreviousData });
+  const list = useListState({ Outcome: '', NoticeId: '' });
+  const params = list.params as unknown as Q<'ListIntegrationLog'>;
+  const q = useQuery({ queryKey: adminKeys.integrationList('log', params), queryFn: ({ signal }) => integrationApi.log(params, signal), placeholderData: keepPreviousData });
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'Outcome', kind: 'select', label: t('integration.outcome'), options: enumOptions('IntegrationOutcome', ENUMS.IntegrationOutcome) },
+    { key: 'NoticeId', kind: 'search', inputType: 'number', label: t('integration.noticeId') },
+  ];
   return (
     <Box>
-      <FilterBar onReset={() => list.setFilters({ Outcome: '', NoticeId: '', tab: 'log' })}>
-        <SelectField label={t('integration.outcome')} value={list.filters.Outcome} options={enumOptions('IntegrationOutcome', ENUMS.IntegrationOutcome)} onChange={(v) => list.setFilter('Outcome', v)} />
-        <TextField type="number" label={t('integration.noticeId')} value={list.filters.NoticeId} onChange={(e) => list.setFilter('NoticeId', e.target.value)} />
-      </FilterBar>
+      <FilterPanel list={list} filters={filters} />
       <ServerDataGrid<Log>
         data={q.data}
         loading={q.isFetching}
         error={q.error}
+        onRetry={q.refetch}
+        filtered={isFiltered(list, filters)}
+        onClearFilters={() => clearFilters(list, filters)}
         getRowId={(r) => r.id}
         page={list.page}
         pageSize={list.pageSize}
@@ -152,21 +157,25 @@ type W = S<'IntegrationWorkerItem'>;
 function WorkersTab() {
   const { t } = useTranslation();
   const label = useEnumLabel();
-  const list = useListState({ ChangedSince: '', tab: 'workers' });
-  const params = { ChangedSince: list.filters.ChangedSince ? new Date(list.filters.ChangedSince).toISOString() : undefined, Page: list.page, PageSize: list.pageSize } as unknown as Q<'ListIntegrationWorkers'>;
-  const q = useQuery({ queryKey: [...adminKeys.integration, 'workers', params], queryFn: () => integrationApi.workers(params), placeholderData: keepPreviousData });
+  const list = useListState({ ChangedSince: '' });
+  const changedSince = list.filters.ChangedSince ? new Date(list.filters.ChangedSince) : null;
+  const params = {
+    ChangedSince: changedSince && !Number.isNaN(changedSince.getTime()) ? changedSince.toISOString() : undefined,
+    Page: list.page,
+    PageSize: list.pageSize,
+  } as unknown as Q<'ListIntegrationWorkers'>;
+  const q = useQuery({ queryKey: adminKeys.integrationList('workers', params), queryFn: ({ signal }) => integrationApi.workers(params, signal), placeholderData: keepPreviousData });
+  const filters: FilterDef<typeof list.filters>[] = [{ key: 'ChangedSince', kind: 'date', withTime: true, label: t('integration.changedSince') }];
   return (
     <Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        {t('integration.workersHint')}
-      </Typography>
-      <FilterBar onReset={() => list.setFilters({ ChangedSince: '', tab: 'workers' })}>
-        <TextField type="datetime-local" label={t('integration.changedSince')} value={list.filters.ChangedSince} onChange={(e) => list.setFilter('ChangedSince', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-      </FilterBar>
+      <FilterPanel list={list} filters={filters} />
       <ServerDataGrid<W>
         data={q.data}
         loading={q.isFetching}
         error={q.error}
+        onRetry={q.refetch}
+        filtered={isFiltered(list, filters)}
+        onClearFilters={() => clearFilters(list, filters)}
         getRowId={(r) => r.employeeNumber}
         page={list.page}
         pageSize={list.pageSize}
@@ -188,16 +197,18 @@ function WorkersTab() {
   );
 }
 
+/** Local CSV selection: the file stays in the browser and is parsed into rows (no upload). */
 function useCsvFile() {
+  const [file, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<Record<string, string>[] | null>(null);
-  const [name, setName] = useState('');
-  const pick = async (file?: File | null) => {
-    if (!file) return;
-    setName(file.name);
-    setRows(parseCsv(await file.text()));
+  const pick = async (next: File | null) => {
+    setFile(next);
+    setRows(next ? parseCsv(await next.text()) : null);
   };
-  return { rows, name, pick, reset: () => setRows(null) };
+  return { file, rows, pick };
 }
+
+const CSV_ACCEPT = '.csv,text/csv';
 
 function DeviceTab() {
   const { t } = useTranslation();
@@ -215,13 +226,17 @@ function DeviceTab() {
         <Box component="code" sx={{ direction: 'ltr', bgcolor: brand.creamSoft, p: 1, borderRadius: 1, fontSize: 12 }}>
           employeeNumber,recordedAt,device
         </Box>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Button component="label" variant="outlined" startIcon={<UploadFileOutlinedIcon />}>
-            {t('integration.chooseCsv')}
-            <input hidden type="file" accept=".csv,text/csv" onChange={(e) => csv.pick(e.target.files?.[0])} />
-          </Button>
-          <Typography variant="caption">{csv.name}</Typography>
-        </Stack>
+        <FileInput
+          label={t('integration.chooseCsv')}
+          accept={CSV_ACCEPT}
+          maxSizeMb={10}
+          value={csv.file}
+          onChange={(f) => {
+            setReport(null);
+            void csv.pick(f);
+          }}
+          disabled={imp.isPending}
+        />
         {csv.rows && (
           <Alert severity={invalid ? 'warning' : 'info'}>
             {t('integration.parsed', { count: records.length })} {invalid > 0 && t('integration.invalidRows', { count: invalid })}
@@ -288,13 +303,17 @@ function MigrationTab() {
           <Box component="code" sx={{ direction: 'ltr', bgcolor: brand.creamSoft, p: 1, borderRadius: 1, fontSize: 12, overflowWrap: 'anywhere' }}>
             {MIGRATION_COLUMNS.join(',')}
           </Box>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Button component="label" variant="outlined" startIcon={<UploadFileOutlinedIcon />}>
-              {t('integration.chooseCsv')}
-              <input hidden type="file" accept=".csv,text/csv" onChange={(e) => csv.pick(e.target.files?.[0])} />
-            </Button>
-            <Typography variant="caption">{csv.name}</Typography>
-          </Stack>
+          <FileInput
+            label={t('integration.chooseCsv')}
+            accept={CSV_ACCEPT}
+            maxSizeMb={10}
+            value={csv.file}
+            onChange={(f) => {
+              setReport(null);
+              void csv.pick(f);
+            }}
+            disabled={migrate.isPending}
+          />
           {csv.rows && <Alert severity="info">{t('integration.parsed', { count: workers.length })}</Alert>}
           <FormControlLabel control={<Switch checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />} label={t('integration.dryRun')} />
           <Box>

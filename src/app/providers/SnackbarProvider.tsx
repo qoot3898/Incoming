@@ -12,7 +12,8 @@ interface Toast {
 export function SnackbarProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<Toast[]>([]);
   const notify = useCallback((message: string, severity: AlertColor = 'success') => {
-    setQueue((q) => [...q, { id: Date.now() + Math.random(), message, severity }]);
+    // The same message raised twice in a row (e.g. two failing requests) is shown once.
+    setQueue((q) => (q.length && q[q.length - 1].message === message && q[q.length - 1].severity === severity ? q : [...q, { id: Date.now() + Math.random(), message, severity }]));
   }, []);
   const current = queue[0];
   const close = () => setQueue((q) => q.slice(1));

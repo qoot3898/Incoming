@@ -2,22 +2,23 @@ import { useState } from 'react';
 import { Alert, Box, Button, Stack, Tab, Tabs } from '@mui/material';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { Link as RouterLink, useSearchParams } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { permitsApi, permitsKeys } from './api';
 import { workersKeys } from '@/features/workers/api';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { ErrorState, LoadingState } from '@/components/common/States';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { FileActionButton } from '@/components/common/FileButtons';
-import { FilterBar } from '@/components/tables/FilterBar';
-import { SearchField } from '@/components/tables/SearchField';
+import { FilterPanel } from '@/components/tables/FilterPanel';
+import { clearFilters, isFiltered, type FilterDef } from '@/components/tables/filters';
 import { LocalDataGrid, ServerDataGrid } from '@/components/tables/ServerDataGrid';
-import { SelectField } from '@/components/forms/SelectField';
 import { FormDialog } from '@/components/forms/FormDialog';
 import { ActionFormButton } from '@/components/forms/ActionFormButton';
 import { col } from '@/components/tables/columns';
 import { useListState } from '@/hooks/useListState';
+import { useTabParam } from '@/hooks/useTabParam';
 import { useEnumOptions } from '@/hooks/useEnumLabel';
 import { useApiMutation } from '@/hooks/useApiMutation';
 import { useScopeOptions } from '@/features/shared/options';
@@ -25,23 +26,24 @@ import { ENUMS } from '@/constants/enums';
 import { todayIso } from '@/utils/format';
 import type { Q, S } from '@/types/api';
 
+const PERMIT_TABS = ['queue', 'permits'] as const;
+
 export default function EntryPermitsPage() {
   const { t } = useTranslation();
-  const [sp, setSp] = useSearchParams();
-  const tab = sp.get('tab') === 'permits' ? 1 : 0;
+  const [tab, setTab] = useTabParam(PERMIT_TABS, 'queue');
   return (
-    <Box>
-      <PageHeader title={t('nav.items.permits')} subtitle={t('permits.subtitle')} />
+    <PageContainer>
+      <PageHeader title={t('nav.items.permits')} />
       <Tabs
         value={tab}
-        onChange={(_, v: number) => setSp(v === 1 ? { tab: 'permits' } : {}, { replace: true })}
+        onChange={(_, v: (typeof PERMIT_TABS)[number]) => setTab(v)}
         sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
       >
-        <Tab label={t('permits.distributionQueue')} />
-        <Tab label={t('permits.permits')} />
+        <Tab value="queue" label={t('permits.distributionQueue')} />
+        <Tab value="permits" label={t('permits.permits')} />
       </Tabs>
-      {tab === 0 ? <DistributionQueueTab /> : <PermitsTab />}
-    </Box>
+      {tab === 'queue' ? <DistributionQueueTab /> : <PermitsTab />}
+    </PageContainer>
   );
 }
 
@@ -157,7 +159,13 @@ function PermitsTab() {
   const list = useListState({ Search: '', Status: '', TrackId: '', WorkSiteId: '' });
   const opts = useScopeOptions(list.filters.TrackId);
   const params = list.params as unknown as Q<'ListEntryPermits'>;
-  const query = useQuery({ queryKey: [...permitsKeys.all, 'list', params], queryFn: () => permitsApi.list(params), placeholderData: keepPreviousData });
+  const query = useQuery({ queryKey: permitsKeys.list(params), queryFn: ({ signal }) => permitsApi.list(params, signal), placeholderData: keepPreviousData });
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'Search', kind: 'search', label: t('common.search') },
+    { key: 'Status', kind: 'select', label: t('fields.status'), options: enumOptions('EntryPermitStatus', ENUMS.EntryPermitStatus) },
+    { key: 'TrackId', kind: 'select', label: t('fields.track'), options: opts.tracks, clears: ['WorkSiteId'] },
+    { key: 'WorkSiteId', kind: 'select', label: t('fields.workSite'), options: opts.sites },
+  ];
   const [selected, setSelected] = useState<(string | number)[]>([]);
   const cancel = useApiMutation((v: { id: number; reason: string | null }) => permitsApi.cancel(v.id, { reason: v.reason }), {
     invalidate: [permitsKeys.all, workersKeys.all],
@@ -166,11 +174,7 @@ function PermitsTab() {
 
   return (
     <Box>
-      <FilterBar onReset={list.reset}>
-        <SearchField label={t('common.search')} value={list.filters.Search} onCommit={(v) => list.setFilter('Search', v)} />
-        <SelectField label={t('fields.status')} value={list.filters.Status} options={enumOptions('EntryPermitStatus', ENUMS.EntryPermitStatus)} onChange={(v) => list.setFilter('Status', v)} />
-        <SelectField label={t('fields.track')} value={list.filters.TrackId} options={opts.tracks} onChange={(v) => list.setFilters({ ...list.filters, TrackId: v, WorkSiteId: '' })} />
-        <SelectField label={t('fields.workSite')} value={list.filters.WorkSiteId} options={opts.sites} onChange={(v) => list.setFilter('WorkSiteId', v)} />
+      <FilterPanel list={list} filters={filters}>
         <FileActionButton
           label={t('permits.printSelected', { count: selected.length })}
           fileName="entry-permits.pdf"
@@ -178,11 +182,14 @@ function PermitsTab() {
           icon={<PrintOutlinedIcon />}
           action={() => permitsApi.print(selected.map(Number))}
         />
-      </FilterBar>
+      </FilterPanel>
       <ServerDataGrid<PItem>
         data={query.data}
         loading={query.isFetching}
         error={query.error}
+        onRetry={query.refetch}
+        filtered={isFiltered(list, filters)}
+        onClearFilters={() => clearFilters(list, filters)}
         getRowId={(r) => r.permitId}
         page={list.page}
         pageSize={list.pageSize}

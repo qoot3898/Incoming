@@ -30,7 +30,13 @@ export interface NavItem {
   to: string;
   icon: SvgIconComponent;
   permissions: readonly string[];
-  /** optional badge source key in tasks counts */
+  /**
+   * Nested entries rendered as an expandable group under this item (the group opens
+   * automatically when one of its routes is active). The current menu is one level deep.
+   */
+  children?: NavItem[];
+  /** Extra path prefixes that also mark this item active (e.g. detail routes outside `to`). */
+  matches?: string[];
 }
 
 export interface NavSection {

@@ -1,15 +1,14 @@
 import { useMemo } from 'react';
-import { Box } from '@mui/material';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { candidatesApi, candidatesKeys } from '@/features/staffing/api';
 import { PageHeader } from '@/components/common/PageHeader';
-import { FilterBar } from '@/components/tables/FilterBar';
-import { SearchField } from '@/components/tables/SearchField';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { FilterPanel } from '@/components/tables/FilterPanel';
+import { clearFilters, isFiltered, type FilterDef } from '@/components/tables/filters';
 import { ServerDataGrid } from '@/components/tables/ServerDataGrid';
-import { SelectField } from '@/components/forms/SelectField';
 import { col } from '@/components/tables/columns';
 import { useListState } from '@/hooks/useListState';
 import { useEnumLabel, useEnumOptions } from '@/hooks/useEnumLabel';
@@ -27,7 +26,13 @@ export default function CandidatesListPage() {
   const opts = useScopeOptions();
   const list = useListState({ Search: '', Status: '', TrackId: '', RequestNumber: '' });
   const params = list.params as unknown as Q<'ListCandidates'>;
-  const query = useQuery({ queryKey: candidatesKeys.list(params), queryFn: () => candidatesApi.list(params), placeholderData: keepPreviousData });
+  const query = useQuery({ queryKey: candidatesKeys.list(params), queryFn: ({ signal }) => candidatesApi.list(params, signal), placeholderData: keepPreviousData });
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'Search', kind: 'search', label: t('common.search') },
+    { key: 'Status', kind: 'select', label: t('fields.status'), options: enumOptions('CandidateStatus', ENUMS.CandidateStatus) },
+    { key: 'TrackId', kind: 'select', label: t('fields.track'), options: opts.tracks },
+    { key: 'RequestNumber', kind: 'search', inputType: 'number', label: t('staffing.number') },
+  ];
 
   const columns = useMemo<GridColDef<Row>[]>(
     () => [
@@ -46,19 +51,17 @@ export default function CandidatesListPage() {
   );
 
   return (
-    <Box>
-      <PageHeader title={t('nav.items.candidates')} subtitle={t('candidates.subtitle')} />
-      <FilterBar onReset={list.reset}>
-        <SearchField label={t('common.search')} value={list.filters.Search} onCommit={(v) => list.setFilter('Search', v)} />
-        <SelectField label={t('fields.status')} value={list.filters.Status} options={enumOptions('CandidateStatus', ENUMS.CandidateStatus)} onChange={(v) => list.setFilter('Status', v)} />
-        <SelectField label={t('fields.track')} value={list.filters.TrackId} options={opts.tracks} onChange={(v) => list.setFilter('TrackId', v)} />
-        <SearchField label={t('staffing.number')} type="number" value={list.filters.RequestNumber} onCommit={(v) => list.setFilter('RequestNumber', v)} />
-      </FilterBar>
+    <PageContainer>
+      <PageHeader title={t('nav.items.candidates')} />
+      <FilterPanel list={list} filters={filters} />
       <ServerDataGrid<Row>
         columns={columns}
         data={query.data}
         loading={query.isFetching}
         error={query.error}
+        onRetry={query.refetch}
+        filtered={isFiltered(list, filters)}
+        onClearFilters={() => clearFilters(list, filters)}
         getRowId={(r) => r.id}
         page={list.page}
         pageSize={list.pageSize}
@@ -66,6 +69,6 @@ export default function CandidatesListPage() {
         onPageSizeChange={list.setPageSize}
         onRowClick={(r) => navigate(`/staffing-requests/${r.requestNumber}`)}
       />
-    </Box>
+    </PageContainer>
   );
 }

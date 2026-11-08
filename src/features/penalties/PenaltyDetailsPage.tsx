@@ -16,6 +16,7 @@ import { useEnumLabel, useEnumOptions } from '@/hooks/useEnumLabel';
 import { ENUMS } from '@/constants/enums';
 import { formatDate, formatDateTime, todayIso } from '@/utils/format';
 import type { S } from '@/types/api';
+import type { UploadVars } from '@/services/api/client';
 
 export default function PenaltyDetailsPage() {
   const { t } = useTranslation();
@@ -26,7 +27,7 @@ export default function PenaltyDetailsPage() {
   const invalidate = [penaltiesKeys.all, ['workers'], ['tasks'], ['payroll']];
   const decide = useApiMutation((v: S<'PenaltyDecisionInput'>) => penaltiesApi.decide(id, v), { invalidate, rethrow: true });
   const dismiss = useApiMutation((v: S<'DismissPenaltyRequest'>) => penaltiesApi.dismiss(id, v), { invalidate, rethrow: true });
-  const acknowledge = useApiMutation((v: Record<string, unknown>) => penaltiesApi.acknowledge(id, v), { invalidate, rethrow: true });
+  const acknowledge = useApiMutation(({ values, transfer }: UploadVars) => penaltiesApi.acknowledge(id, values, transfer), { invalidate, rethrow: true });
   const apply = useApiMutation((v: S<'ApplyPenaltyRequest'>) => penaltiesApi.apply(id, v), { invalidate, rethrow: true });
 
   return (
@@ -78,9 +79,9 @@ export default function PenaltyDetailsPage() {
                       { name: 'scan', kind: 'file', label: t('penalties.signedScan'), required: true },
                     ]}
                     defaultValues={{ acknowledgedOn: todayIso(), workerRefused: false }}
-                    onSubmit={(v) => {
-                      if (v.workerRefused && !v.witnessName) return Promise.reject({ title: t('penalties.witnessRequired'), fieldErrors: { witnessName: [t('validation.required')] } });
-                      return acknowledge.mutateAsync(v);
+                    onSubmit={(values, transfer) => {
+                      if (values.workerRefused && !values.witnessName) return Promise.reject({ title: t('penalties.witnessRequired'), fieldErrors: { witnessName: [t('validation.required')] } });
+                      return acknowledge.mutateAsync({ values, transfer });
                     }}
                   />
                 )}

@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { adminKeys, backupsApi } from '../api';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { QueryBoundary } from '@/components/common/States';
 import { SectionCard } from '@/components/common/SectionCard';
 import { InfoGrid } from '@/components/common/InfoGrid';
@@ -22,10 +23,9 @@ export default function BackupsPage() {
   const create = useApiMutation(() => backupsApi.create(), { invalidate: [adminKeys.backups], success: t('backups.created') });
   const [confirm, setConfirm] = useState(false);
   return (
-    <Box>
+    <PageContainer>
       <PageHeader
         title={t('nav.items.backups')}
-        subtitle={t('backups.subtitle')}
         actions={
           <Button variant="contained" startIcon={<BackupOutlinedIcon />} onClick={() => setConfirm(true)} disabled={create.isPending}>
             {create.isPending ? t('backups.creating') : t('backups.create')}
@@ -59,6 +59,6 @@ export default function BackupsPage() {
         )}
       </QueryBoundary>
       <ConfirmDialog open={confirm} title={t('backups.create')} message={t('backups.confirm')} loading={create.isPending} onClose={() => setConfirm(false)} onConfirm={() => create.mutate(undefined, { onSettled: () => setConfirm(false) })} />
-    </Box>
+    </PageContainer>
   );
 }

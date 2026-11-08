@@ -3,12 +3,13 @@ import type { Q, S } from '@/types/api';
 
 export const leavesKeys = {
   all: ['leaves'] as const,
+  list: (p: object) => ['leaves', 'list', p] as const,
   detail: (id: number) => ['leaves', 'detail', id] as const,
   history: (employeeId: number) => ['leaves', 'history', employeeId] as const,
 };
 
 export const leavesApi = {
-  list: (q: Q<'ListLeaves'>) => api.get<S<'LeaveList'>>('/leaves', q),
+  list: (q: Q<'ListLeaves'>, signal?: AbortSignal) => api.get<S<'LeaveList'>>('/leaves', q, { signal }),
   get: (id: number) => api.get<S<'LeaveDetails'>>(`/leaves/${id}`),
   history: (employeeId: number) => api.get<S<'LeaveHistory'>>(`/workers/${employeeId}/leaves`),
   submit: (employeeId: number, body: S<'LeaveRequest'>) => api.post<S<'IdResponse'>>(`/workers/${employeeId}/leaves`, body),

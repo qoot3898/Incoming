@@ -8,6 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { adminKeys, directoriesApi } from '../api';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { ErrorState, EmptyState, LoadingState } from '@/components/common/States';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ToneChip } from '@/components/common/StatusChip';
@@ -29,8 +30,8 @@ export default function DirectoriesPage() {
   const [custom, setCustom] = useState('');
 
   return (
-    <Box>
-      <PageHeader title={t('nav.items.directories')} subtitle={t('directories.subtitle')} />
+    <PageContainer>
+      <PageHeader title={t('nav.items.directories')} />
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
           {DIRECTORY_SLUGS.length > 0 && (
@@ -65,7 +66,7 @@ export default function DirectoriesPage() {
         )}
       </Paper>
       {slug ? <Directory slug={slug} /> : <Paper variant="outlined"><EmptyState title={t('directories.choose')} /></Paper>}
-    </Box>
+    </PageContainer>
   );
 }
 

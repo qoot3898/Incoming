@@ -66,10 +66,9 @@ export default function LoginPage() {
           </Typography>
         </Stack>
         <Box sx={{ maxWidth: 460, position: 'relative', zIndex: 1 }}>
-          <Typography variant="h4" sx={{ fontSize: '2.1rem', lineHeight: 1.35, mb: 2 }}>
+          <Typography variant="h4" sx={{ fontSize: '2.1rem', lineHeight: 1.35 }}>
             {t('app.name')}
           </Typography>
-          <Typography sx={{ color: onTeal.text, lineHeight: 1.9 }}>{t('auth.tagline')}</Typography>
         </Box>
         <Box
           aria-hidden
@@ -100,9 +99,6 @@ export default function LoginPage() {
             </Box>
             <Typography variant="h5" component="h1">
               {t('auth.signInTitle')}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {t('auth.signInSubtitle')}
             </Typography>
           </Stack>
           <form onSubmit={onSubmit} noValidate>

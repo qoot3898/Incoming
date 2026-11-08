@@ -10,9 +10,9 @@ import { useTranslation } from 'react-i18next';
 import { tasksApi, tasksKeys } from './api';
 import { ACTION_ROUTES, resolveLink } from './links';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { EmptyState, QueryBoundary } from '@/components/common/States';
 import { SectionCard } from '@/components/common/SectionCard';
-import { useAuth } from '@/app/providers/authContext';
 import { useEnumLabel } from '@/hooks/useEnumLabel';
 import { formatDateTime } from '@/utils/format';
 import { useApiMutation } from '@/hooks/useApiMutation';
@@ -21,7 +21,6 @@ import { ToneChip } from '@/components/common/StatusChip';
 export default function TasksPage() {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { user } = useAuth();
   const navigate = useNavigate();
   const label = useEnumLabel();
   const query = useQuery({ queryKey: tasksKeys.all, queryFn: tasksApi.get });
@@ -29,10 +28,9 @@ export default function TasksPage() {
   const Chevron = theme.direction === 'rtl' ? ChevronLeftIcon : ChevronRightIcon;
 
   return (
-    <Box>
+    <PageContainer>
       <PageHeader
         title={t('tasks.title')}
-        subtitle={t('tasks.greeting', { name: user?.fullName || user?.userName })}
         breadcrumbs={[]}
         actions={
           <Button variant="outlined" onClick={() => void query.refetch()} disabled={query.isFetching}>
@@ -46,7 +44,7 @@ export default function TasksPage() {
             <Grid size={{ xs: 12, lg: 8 }}>
               <Stack spacing={3}>
                 {data.pendingDecisions.length > 0 && (
-                  <SectionCard title={t('tasks.pendingDecisions')} subheader={t('tasks.pendingDecisionsHint')} noPadding>
+                  <SectionCard title={t('tasks.pendingDecisions')} noPadding>
                     <List disablePadding>
                       {data.pendingDecisions.map((d) => (
                         <ListItemButton key={`${d.number}-${d.party}`} component={RouterLink} to={`/staffing-requests/${d.number}`} divider>
@@ -60,7 +58,7 @@ export default function TasksPage() {
                     </List>
                   </SectionCard>
                 )}
-                <SectionCard title={t('tasks.actions')} subheader={t('tasks.actionsHint')} noPadding>
+                <SectionCard title={t('tasks.actions')} noPadding>
                   {data.actions.length === 0 ? (
                     <EmptyState title={t('tasks.noActions')} description={t('tasks.noActionsHint')} />
                   ) : (
@@ -146,6 +144,6 @@ export default function TasksPage() {
           </Grid>
         )}
       </QueryBoundary>
-    </Box>
+    </PageContainer>
   );
 }

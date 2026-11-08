@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { workersApi } from '@/features/workers/api';
 import type { S } from '@/types/api';
 
@@ -42,4 +43,22 @@ export function usePrefilledWorker() {
   const [picked, setPicked] = useState<Item | null | undefined>(undefined);
   const worker = picked !== undefined ? picked : (prefill.data ?? null);
   return [worker, setPicked as (worker: Item | null) => void] as const;
+}
+
+/**
+ * Required worker picker state for page forms: prefill from `?employeeNumber=`, a "required"
+ * message once the user tries to submit, and a slot for the server's `employeeId` error.
+ * (The picker stays outside React Hook Form because its prefill is an async lookup.)
+ */
+export function useWorkerField() {
+  const { t } = useTranslation();
+  const [worker, setPicked] = usePrefilledWorker();
+  const [attempted, setAttempted] = useState(false);
+  const [serverMessage, setServerMessage] = useState<string | null>(null);
+  const setWorker = (w: Item | null) => {
+    setServerMessage(null);
+    setPicked(w);
+  };
+  const error = serverMessage ?? (attempted && !worker ? t('validation.required') : undefined);
+  return { worker, setWorker, error, markAttempted: () => setAttempted(true), setServerMessage };
 }

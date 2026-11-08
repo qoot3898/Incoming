@@ -32,7 +32,7 @@ export function useApiMutation<TVars, TData = unknown>(fn: (vars: TVars) => Prom
       options.onSuccess?.(data);
     },
     onError: (err) => {
-      if (!options.rethrow) notify(errorMessage(err), 'error');
+      if (!options.rethrow && !err.cancelled) notify(errorMessage(err), 'error');
     },
   });
 }

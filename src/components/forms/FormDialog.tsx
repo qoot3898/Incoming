@@ -1,27 +1,34 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  Alert,
   Box,
   Button,
   Checkbox,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControlLabel,
   FormHelperText,
+  LinearProgress,
   MenuItem,
   Stack,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import AttachFileIcon from '@mui/icons-material/AttachFile';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { toApiError, type ApiError } from '@/services/api/errors';
+import type { TransferOptions } from '@/services/api/client';
+import { FileInput } from '@/components/files/FileInput';
+import { useFileProblemText } from '@/components/files/useFileProblemText';
+import { DEFAULT_ACCEPT, DEFAULT_MAX_FILE_MB, validateFile, type FileProblem } from '@/utils/files';
+import { FormErrorAlert } from './FormLayout';
+import { useFormServerError } from './useFormServerError';
 
 export interface Option {
   value: string | number;
@@ -47,7 +54,7 @@ export type FieldConfig<T> = Base<T> &
     | { kind: 'date'; min?: string; max?: string }
     | { kind: 'select'; options: Option[] }
     | { kind: 'boolean' }
-    | { kind: 'file'; accept?: string }
+    | { kind: 'file'; accept?: string; maxSizeMb?: number }
   );
 
 type RawValue = string | boolean | File | null;
@@ -59,7 +66,7 @@ function initial<T>(f: FieldConfig<T>, dv: unknown): RawValue {
   return dv === null || dv === undefined ? '' : String(dv);
 }
 
-function buildSchema<T>(fields: FieldConfig<T>[], t: TFunction) {
+function buildSchema<T>(fields: FieldConfig<T>[], t: TFunction, fileProblem: (p: FileProblem) => string) {
   const shape: Record<string, z.ZodTypeAny> = {};
   fields.forEach((f) => {
     if (f.hidden) return;
@@ -68,10 +75,18 @@ function buildSchema<T>(fields: FieldConfig<T>[], t: TFunction) {
         shape[f.name] = z.boolean();
         break;
       case 'file':
+        // Same rules as the picker (it rejects bad files up front); kept here as the single submit gate.
         shape[f.name] = z
           .instanceof(File)
           .nullable()
-          .refine((v) => !f.required || v !== null, t('validation.required'));
+          .superRefine((v, ctx) => {
+            if (!v) {
+              if (f.required) ctx.addIssue({ code: 'custom', message: t('validation.required') });
+              return;
+            }
+            const problem = validateFile(v, { accept: f.accept ?? DEFAULT_ACCEPT, maxMb: f.maxSizeMb ?? DEFAULT_MAX_FILE_MB });
+            if (problem) ctx.addIssue({ code: 'custom', message: fileProblem(problem) });
+          });
         break;
       case 'number':
         shape[f.name] = z.string().superRefine((v, ctx) => {
@@ -141,7 +156,11 @@ export interface FormDialogProps<T> {
   maxWidth?: 'xs' | 'sm' | 'md';
   children?: ReactNode;
   onClose: () => void;
-  onSubmit: (values: T) => Promise<unknown>;
+  /**
+   * Performs the action. `transfer` carries an AbortSignal and an upload-progress callback:
+   * pass it to `api.postForm` for forms with a file field so the upload shows progress and can be cancelled.
+   */
+  onSubmit: (values: T, transfer: TransferOptions) => Promise<unknown>;
 }
 
 /**
@@ -151,8 +170,10 @@ export interface FormDialogProps<T> {
  */
 export function FormDialog<T>({ open, onClose, maxWidth = 'sm', ...body }: FormDialogProps<T>) {
   const [submitting, setSubmitting] = useState(false);
+  const theme = useTheme();
+  const phone = useMediaQuery(theme.breakpoints.down('sm'));
   return (
-    <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth={maxWidth}>
+    <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth={maxWidth} fullScreen={phone} aria-busy={submitting || undefined}>
       <FormDialogBody<T> {...body} onClose={onClose} onSubmittingChange={setSubmitting} />
     </Dialog>
   );
@@ -162,10 +183,11 @@ type BodyProps<T> = Omit<FormDialogProps<T>, 'open' | 'maxWidth'> & { onSubmitti
 
 function FormDialogBody<T>({ title, description, fields, defaultValues, submitLabel, destructive, children, onClose, onSubmit, onSubmittingChange }: BodyProps<T>) {
   const { t } = useTranslation();
+  const fileProblem = useFileProblemText();
   // Fields stay live (select options may arrive while the dialog is open);
   // defaults are captured once per opening — the body remounts every time the dialog opens.
   const visible = useMemo(() => fields.filter((f) => !f.hidden), [fields]);
-  const schema = useMemo(() => buildSchema(visible, t), [visible, t]);
+  const schema = useMemo(() => buildSchema(visible, t, fileProblem), [visible, t, fileProblem]);
   const [defaults] = useState(() => {
     const d: RawValues = {};
     fields.forEach((f) => {
@@ -174,27 +196,42 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
     return d;
   });
 
-  const { control, handleSubmit, setError, formState } = useForm<RawValues>({
+  const { control, handleSubmit, setError, formState, getValues } = useForm<RawValues>({
     resolver: zodResolver(schema),
     defaultValues: defaults,
   });
-  const [serverError, setServerError] = useState<ApiError | null>(null);
+  const { serverError, handleServerError, clearServerError } = useFormServerError(
+    (field, message) => setError(field, { type: 'server', message }),
+    visible.map((f) => f.name),
+  );
+
+  // One request at a time (fast double clicks / Enter), and a handle to cancel an upload.
+  const inFlight = useRef(false);
+  const controller = useRef<AbortController | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  const uploading = progress !== null && progress < 100;
 
   const submit = handleSubmit(async (raw) => {
-    setServerError(null);
+    if (inFlight.current) return;
+    inFlight.current = true;
+    clearServerError();
     onSubmittingChange(true);
+    const hasFile = visible.some((f) => f.kind === 'file' && getValues(f.name) instanceof File);
+    const ctrl = new AbortController();
+    controller.current = ctrl;
+    if (hasFile) setProgress(0);
     try {
-      await onSubmit(convert(visible, raw));
+      await onSubmit(convert(visible, raw), {
+        signal: ctrl.signal,
+        onUploadProgress: hasFile ? (e) => setProgress(e.total ? Math.round((e.loaded * 100) / e.total) : null) : undefined,
+      });
       onClose();
     } catch (e) {
-      const err = isApiError(e) ? e : await toApiError(e, t('errors.generic'));
-      const unmatched: string[] = [];
-      Object.entries(err.fieldErrors).forEach(([k, msgs]) => {
-        if (visible.some((f) => f.name === k)) setError(k, { message: msgs.join(' ') });
-        else unmatched.push(...msgs);
-      });
-      setServerError({ ...err, fieldErrors: unmatched.length ? { _: unmatched } : {} });
+      await handleServerError(e);
     } finally {
+      inFlight.current = false;
+      controller.current = null;
+      setProgress(null);
       onSubmittingChange(false);
     }
   });
@@ -210,14 +247,7 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
             </Typography>
           )}
           {children}
-          {serverError && (
-            <Alert severity="error">
-              {serverError.detail || serverError.title}
-              {(serverError.fieldErrors._ ?? []).map((m) => (
-                <div key={m}>{m}</div>
-              ))}
-            </Alert>
-          )}
+          <FormErrorAlert value={serverError} />
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
             {visible.map((f) => (
               <Box key={f.name} sx={{ gridColumn: f.half ? undefined : '1 / -1' }}>
@@ -239,24 +269,18 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
                       );
                     }
                     if (f.kind === 'file') {
-                      const file = field.value instanceof File ? field.value : null;
                       return (
-                        <Box>
-                          <Button component="label" variant="outlined" startIcon={<AttachFileIcon />} color={err ? 'error' : 'primary'}>
-                            {f.label}
-                            {f.required ? ' *' : ''}
-                            <input
-                              hidden
-                              type="file"
-                              accept={f.accept ?? 'application/pdf,image/*'}
-                              onChange={(e) => field.onChange(e.target.files?.[0] ?? null)}
-                            />
-                          </Button>
-                          <Typography variant="caption" sx={{ ms: 1, display: 'inline-block', mx: 1 }} color="text.secondary">
-                            {file ? file.name : t('common.noFile')}
-                          </Typography>
-                          {help && <FormHelperText error={!!err}>{help}</FormHelperText>}
-                        </Box>
+                        <FileInput
+                          label={f.label}
+                          value={field.value instanceof File ? field.value : null}
+                          onChange={(file) => field.onChange(file)}
+                          accept={f.accept}
+                          maxSizeMb={f.maxSizeMb}
+                          required={f.required}
+                          disabled={formState.isSubmitting}
+                          error={err}
+                          helperText={f.helperText}
+                        />
                       );
                     }
                     return (
@@ -304,18 +328,34 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
           </Box>
         </Stack>
       </DialogContent>
+      {progress !== null && (
+        <Box sx={{ px: 3, pb: 1 }} role="status" aria-live="polite">
+          <LinearProgress variant={progress > 0 ? 'determinate' : 'indeterminate'} value={progress} />
+          <Typography variant="caption" color="text.secondary">
+            {progress >= 100 ? t('files.processing') : t('files.uploading', { percent: progress })}
+          </Typography>
+        </Box>
+      )}
       <DialogActions>
-        <Button onClick={onClose} color="inherit" disabled={formState.isSubmitting}>
-          {t('common.cancel')}
-        </Button>
-        <Button type="submit" variant="contained" color={destructive ? 'error' : 'primary'} disabled={formState.isSubmitting}>
+        {uploading ? (
+          <Button onClick={() => controller.current?.abort()} color="inherit">
+            {t('files.cancelUpload')}
+          </Button>
+        ) : (
+          <Button onClick={onClose} color="inherit" disabled={formState.isSubmitting}>
+            {t('common.cancel')}
+          </Button>
+        )}
+        <Button
+          type="submit"
+          variant="contained"
+          color={destructive ? 'error' : 'primary'}
+          disabled={formState.isSubmitting}
+          startIcon={formState.isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+        >
           {formState.isSubmitting ? t('common.saving') : submitLabel ?? t('common.save')}
         </Button>
       </DialogActions>
     </form>
   );
-}
-
-function isApiError(e: unknown): e is ApiError {
-  return typeof e === 'object' && e !== null && 'fieldErrors' in e && 'title' in e;
 }

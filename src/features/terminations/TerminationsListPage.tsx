@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Box, Button, Tab, Tabs, TextField } from '@mui/material';
+import { Button, Tab, Tabs } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
@@ -7,10 +7,10 @@ import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { terminationsApi, terminationsKeys } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
-import { FilterBar } from '@/components/tables/FilterBar';
-import { SearchField } from '@/components/tables/SearchField';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { FilterPanel } from '@/components/tables/FilterPanel';
+import { clearFilters, isFiltered, type FilterDef } from '@/components/tables/filters';
 import { ServerDataGrid } from '@/components/tables/ServerDataGrid';
-import { SelectField } from '@/components/forms/SelectField';
 import { col } from '@/components/tables/columns';
 import { useListState } from '@/hooks/useListState';
 import { useEnumLabel, useEnumOptions } from '@/hooks/useEnumLabel';
@@ -29,7 +29,16 @@ export default function TerminationsListPage() {
   const list = useListState({ Stage: 'All', Search: '', Reason: '', Initiator: '', TrackId: '', WorkSiteId: '', From: '', To: '' });
   const opts = useScopeOptions(list.filters.TrackId);
   const params = list.params as unknown as Q<'ListTerminations'>;
-  const query = useQuery({ queryKey: [...terminationsKeys.all, 'list', params], queryFn: () => terminationsApi.list(params), placeholderData: keepPreviousData });
+  const query = useQuery({ queryKey: terminationsKeys.list(params), queryFn: ({ signal }) => terminationsApi.list(params, signal), placeholderData: keepPreviousData });
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'Search', kind: 'search', label: t('common.search') },
+    { key: 'Reason', kind: 'select', label: t('terminations.reason'), options: enumOptions('TerminationReason', ENUMS.TerminationReason) },
+    { key: 'Initiator', kind: 'select', label: t('terminations.initiator'), options: enumOptions('TerminationInitiator', ENUMS.TerminationInitiator) },
+    { key: 'TrackId', kind: 'select', label: t('fields.track'), options: opts.tracks, clears: ['WorkSiteId'] },
+    { key: 'WorkSiteId', kind: 'select', label: t('fields.workSite'), options: opts.sites },
+    { key: 'From', kind: 'date', label: t('common.from') },
+    { key: 'To', kind: 'date', label: t('common.to') },
+  ];
   const counts = query.data?.counts;
 
   const columns = useMemo<GridColDef<Row>[]>(
@@ -49,10 +58,9 @@ export default function TerminationsListPage() {
   );
 
   return (
-    <Box>
+    <PageContainer>
       <PageHeader
         title={t('nav.items.terminations')}
-        subtitle={t('terminations.subtitle')}
         actions={
           <Button component={RouterLink} to="/terminations/new" variant="contained" startIcon={<AddIcon />}>
             {t('terminations.new')}
@@ -64,19 +72,14 @@ export default function TerminationsListPage() {
           <Tab key={s} value={s} label={`${label('TerminationStage', s)}${counts ? ` (${counts[COUNT_KEY[s]]})` : ''}`} />
         ))}
       </Tabs>
-      <FilterBar onReset={list.reset}>
-        <SearchField label={t('common.search')} value={list.filters.Search} onCommit={(v) => list.setFilter('Search', v)} />
-        <SelectField label={t('terminations.reason')} value={list.filters.Reason} options={enumOptions('TerminationReason', ENUMS.TerminationReason)} onChange={(v) => list.setFilter('Reason', v)} />
-        <SelectField label={t('terminations.initiator')} value={list.filters.Initiator} options={enumOptions('TerminationInitiator', ENUMS.TerminationInitiator)} onChange={(v) => list.setFilter('Initiator', v)} />
-        <SelectField label={t('fields.track')} value={list.filters.TrackId} options={opts.tracks} onChange={(v) => list.setFilters({ ...list.filters, TrackId: v, WorkSiteId: '' })} />
-        <SelectField label={t('fields.workSite')} value={list.filters.WorkSiteId} options={opts.sites} onChange={(v) => list.setFilter('WorkSiteId', v)} />
-        <TextField type="date" label={t('common.from')} value={list.filters.From} onChange={(e) => list.setFilter('From', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <TextField type="date" label={t('common.to')} value={list.filters.To} onChange={(e) => list.setFilter('To', e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-      </FilterBar>
+      <FilterPanel list={list} filters={filters} />
       <ServerDataGrid<Row>
         data={query.data?.page}
         loading={query.isFetching}
         error={query.error}
+        onRetry={query.refetch}
+        filtered={isFiltered(list, filters)}
+        onClearFilters={() => clearFilters(list, filters)}
         getRowId={(r) => r.id}
         page={list.page}
         pageSize={list.pageSize}
@@ -85,6 +88,6 @@ export default function TerminationsListPage() {
         onRowClick={(r) => navigate(`/terminations/${r.id}`)}
         columns={columns}
       />
-    </Box>
+    </PageContainer>
   );
 }

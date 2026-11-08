@@ -1,4 +1,4 @@
-import { Alert, Box, Grid2 as Grid, List, ListItem, ListItemIcon, ListItemText, Stack, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
+import { Alert, Box, Grid2 as Grid, List, ListItem, ListItemIcon, ListItemText, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { useQuery } from '@tanstack/react-query';
@@ -17,6 +17,7 @@ import { useApiMutation } from '@/hooks/useApiMutation';
 import { useEnumLabel } from '@/hooks/useEnumLabel';
 import { formatDate, formatDateTime, formatMoney, todayIso } from '@/utils/format';
 import type { S } from '@/types/api';
+import type { UploadVars } from '@/services/api/client';
 
 type T = S<'TerminationDetails'>;
 
@@ -39,7 +40,7 @@ function View({ d }: { d: T }) {
   const recordItem = useApiMutation((v: S<'RecordClearanceRequest'> & { itemId: number }) => terminationsApi.recordClearance(id, v.itemId, v), { invalidate, rethrow: true });
   const recordSettlement = useApiMutation((v: S<'TerminationSettlementInput'>) => terminationsApi.recordSettlement(id, v), { invalidate, rethrow: true });
   const approveSettlement = useApiMutation((v: S<'ApproveSettlementRequest'>) => terminationsApi.approveSettlement(id, v), { invalidate, rethrow: true });
-  const handPassport = useApiMutation((v: Record<string, unknown>) => terminationsApi.handPassport(id, v), { invalidate, rethrow: true });
+  const handPassport = useApiMutation(({ values, transfer }: UploadVars) => terminationsApi.handPassport(id, values, transfer), { invalidate, rethrow: true });
   const decideReplacement = useApiMutation((v: S<'DecideReplacementRequest'>) => terminationsApi.decideReplacement(id, v), { invalidate, rethrow: true });
   const prepareReplacement = useApiMutation((v: S<'PrepareReplacementRequestRequest'>) => terminationsApi.prepareReplacement(id, v), { invalidate, rethrow: true, success: t('terminations.replacementPrepared') });
   const close = useApiMutation((v: S<'CloseTerminationRequest'>) => terminationsApi.close(id, v), { invalidate, rethrow: true, success: t('terminations.closed') });
@@ -175,60 +176,61 @@ function View({ d }: { d: T }) {
                 {ex.clearance.length === 0 ? (
                   <EmptyState title={t('terminations.noClearance')} />
                 ) : (
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>{t('terminations.item')}</TableCell>
-                        <TableCell>{t('terminations.returned')}</TableCell>
-                        <TableCell>{t('onboarding.receivedBy')}</TableCell>
-                        <TableCell>{t('common.date')}</TableCell>
-                        <TableCell />
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {ex.clearance.map((c) => (
-                        <TableRow key={c.id}>
-                          <TableCell>{c.item}</TableCell>
-                          <TableCell>{c.returned === null || c.returned === undefined ? '—' : c.returned ? t('common.yes') : t('common.no')}</TableCell>
-                          <TableCell>{c.receivedBy ?? '—'}</TableCell>
-                          <TableCell>{formatDate(c.date)}</TableCell>
-                          <TableCell align="right">
-                            {a.canManageClearance && (
-                              <ActionFormButton<{ returned: string; receivedBy: string | null; date: string | null }>
-                                label={t('common.record')}
-                                size="small"
-                                variant="text"
-                                dialogTitle={c.item ?? ''}
-                                fields={[
-                                  {
-                                    name: 'returned',
-                                    kind: 'select',
-                                    label: t('terminations.returned'),
-                                    required: true,
-                                    options: [
-                                      { value: 'true', label: t('common.yes') },
-                                      { value: 'false', label: t('common.no') },
-                                    ],
-                                  },
-                                  { name: 'receivedBy', kind: 'text', label: t('onboarding.receivedBy'), half: true, maxLength: 200 },
-                                  { name: 'date', kind: 'date', label: t('common.date'), half: true },
-                                ]}
-                                defaultValues={{ returned: c.returned === null || c.returned === undefined ? '' : String(c.returned), receivedBy: c.receivedBy, date: c.date ?? todayIso() }}
-                                onSubmit={(v) => recordItem.mutateAsync({ itemId: c.id, returned: v.returned === 'true', receivedBy: v.receivedBy, date: v.date })}
-                              />
-                            )}
-                          </TableCell>
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>{t('terminations.item')}</TableCell>
+                          <TableCell>{t('terminations.returned')}</TableCell>
+                          <TableCell>{t('onboarding.receivedBy')}</TableCell>
+                          <TableCell>{t('common.date')}</TableCell>
+                          <TableCell />
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHead>
+                      <TableBody>
+                        {ex.clearance.map((c) => (
+                          <TableRow key={c.id}>
+                            <TableCell>{c.item}</TableCell>
+                            <TableCell>{c.returned === null || c.returned === undefined ? '—' : c.returned ? t('common.yes') : t('common.no')}</TableCell>
+                            <TableCell>{c.receivedBy ?? '—'}</TableCell>
+                            <TableCell>{formatDate(c.date)}</TableCell>
+                            <TableCell align="right">
+                              {a.canManageClearance && (
+                                <ActionFormButton<{ returned: string; receivedBy: string | null; date: string | null }>
+                                  label={t('common.record')}
+                                  size="small"
+                                  variant="text"
+                                  dialogTitle={c.item ?? ''}
+                                  fields={[
+                                    {
+                                      name: 'returned',
+                                      kind: 'select',
+                                      label: t('terminations.returned'),
+                                      required: true,
+                                      options: [
+                                        { value: 'true', label: t('common.yes') },
+                                        { value: 'false', label: t('common.no') },
+                                      ],
+                                    },
+                                    { name: 'receivedBy', kind: 'text', label: t('onboarding.receivedBy'), half: true, maxLength: 200 },
+                                    { name: 'date', kind: 'date', label: t('common.date'), half: true },
+                                  ]}
+                                  defaultValues={{ returned: c.returned === null || c.returned === undefined ? '' : String(c.returned), receivedBy: c.receivedBy, date: c.date ?? todayIso() }}
+                                  onSubmit={(v) => recordItem.mutateAsync({ itemId: c.id, returned: v.returned === 'true', receivedBy: v.receivedBy, date: v.date })}
+                                />
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 )}
               </Stack>
             </SectionCard>
 
             <SectionCard
               title={t('terminations.settlement')}
-              subheader={t('terminations.settlementHint')}
               action={
                 <Stack direction="row" spacing={1}>
                   {a.canRecordSettlement && (
@@ -297,7 +299,7 @@ function View({ d }: { d: T }) {
                       { name: 'scan', kind: 'file', label: t('attachments.scan') },
                     ]}
                     defaultValues={{ date: todayIso(), receivedBy: w.name }}
-                    onSubmit={(v) => handPassport.mutateAsync(v)}
+                    onSubmit={(values, transfer) => handPassport.mutateAsync({ values, transfer })}
                   />
                 )
               }

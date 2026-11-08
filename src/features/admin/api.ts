@@ -10,10 +10,13 @@ export const adminKeys = {
   audit: ['admin', 'audit'] as const,
   integration: ['admin', 'integration'] as const,
   backups: ['admin', 'backups'] as const,
+  userList: (p: object) => ['admin', 'users', 'list', p] as const,
+  auditList: (p: object) => ['admin', 'audit', 'list', p] as const,
+  integrationList: (kind: 'events' | 'log' | 'workers', p: object) => ['admin', 'integration', kind, p] as const,
 };
 
 export const usersApi = {
-  list: (q: Q<'ListUsers'>) => api.get<Paged<S<'UserListItem'>>>('/users', q),
+  list: (q: Q<'ListUsers'>, signal?: AbortSignal) => api.get<Paged<S<'UserListItem'>>>('/users', q, { signal }),
   get: (id: number) => api.get<S<'UserDetails'>>(`/users/${id}`),
   create: (body: S<'CreateUserRequest'>) => api.post<S<'TemporaryPasswordResult'>>('/users', body),
   update: (id: number, body: S<'UpdateUserRequest'>) => api.put(`/users/${id}`, body),
@@ -55,22 +58,22 @@ export const laborSettingsApi = {
   trackSites: (trackId: number) => api.get<S<'LaborTrackSiteItem'>[]>(`/labor-settings/tracks/${trackId}/sites`),
   addTrackSite: (trackId: number, workSiteId: number) => api.put(`/labor-settings/tracks/${trackId}/sites/${workSiteId}`),
   removeTrackSite: (trackId: number, workSiteId: number) => api.delete(`/labor-settings/tracks/${trackId}/sites/${workSiteId}`),
-  userScopes: (q: Q<'ListLaborUserScopes'>) => api.get<S<'LaborUserScopeItem'>[]>('/labor-settings/user-scopes', q),
+  userScopes: (q: Q<'ListLaborUserScopes'>, signal?: AbortSignal) => api.get<S<'LaborUserScopeItem'>[]>('/labor-settings/user-scopes', q, { signal }),
   addUserScope: (body: S<'AddLaborUserScopeRequest'>) => api.post('/labor-settings/user-scopes', body),
   removeUserScope: (scopeId: number) => api.delete(`/labor-settings/user-scopes/${scopeId}`),
 };
 
 export const auditApi = {
-  search: (q: Q<'SearchAudit'>) => api.get<Paged<S<'AuditLogItem'>>>('/audit', q),
+  search: (q: Q<'SearchAudit'>, signal?: AbortSignal) => api.get<Paged<S<'AuditLogItem'>>>('/audit', q, { signal }),
   get: (id: number) => api.get<unknown>(`/audit/${id}`),
 };
 
 export const integrationApi = {
-  workers: (q: Q<'ListIntegrationWorkers'>) => api.get<Paged<S<'IntegrationWorkerItem'>>>('/integration/workers', q),
-  events: (q: Q<'ListIntegrationEvents'>) => api.get<Paged<S<'IntegrationEventItem'>>>('/integration/events', q),
+  workers: (q: Q<'ListIntegrationWorkers'>, signal?: AbortSignal) => api.get<Paged<S<'IntegrationWorkerItem'>>>('/integration/workers', q, { signal }),
+  events: (q: Q<'ListIntegrationEvents'>, signal?: AbortSignal) => api.get<Paged<S<'IntegrationEventItem'>>>('/integration/events', q, { signal }),
   acknowledge: (noticeId: number, body: S<'AcknowledgeIntegrationEventRequest'>) => api.post(`/integration/events/${noticeId}/acknowledge`, body),
   failure: (noticeId: number, body: S<'ReportIntegrationFailureRequest'>) => api.post(`/integration/events/${noticeId}/failure`, body),
-  log: (q: Q<'ListIntegrationLog'>) => api.get<Paged<S<'IntegrationLogItem'>>>('/integration/log', q),
+  log: (q: Q<'ListIntegrationLog'>, signal?: AbortSignal) => api.get<Paged<S<'IntegrationLogItem'>>>('/integration/log', q, { signal }),
   migrate: (body: S<'MigrateCurrentWorkersRequest'>) => api.post<S<'MigrationReport'>>('/migration/current-workers', body),
 };
 

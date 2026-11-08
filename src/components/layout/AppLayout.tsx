@@ -7,14 +7,8 @@ import {
   Drawer,
   IconButton,
   InputBase,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  ListSubheader,
   Menu,
   MenuItem,
-  Stack,
   Toolbar,
   Typography,
   useMediaQuery,
@@ -22,91 +16,33 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import SearchIcon from '@mui/icons-material/Search';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { NAVIGATION } from '@/constants/navigation';
 import { useAuth } from '@/app/providers/authContext';
 import { LoadingState } from '@/components/common/States';
-import { brand, onTeal } from '@/app/theme/brand';
-import { BrandMark } from './BrandMark';
+import { brand } from '@/app/theme/brand';
+import { layout } from '@/app/theme/layout';
+import { Sidebar } from './Sidebar';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { NotificationsMenu } from './NotificationsMenu';
 
-const DRAWER = 264;
+const COLLAPSED_KEY = 'qoot.labor.sidebarCollapsed';
 
-function isActive(pathname: string, to: string) {
-  if (to === '/') return pathname === '/';
-  if (to === '/attendance') return pathname === '/attendance' || pathname.startsWith('/attendance/sheets');
-  return pathname === to || pathname.startsWith(`${to}/`);
+/** Per-browser UI preference; storage can be unavailable (private mode), so every access is guarded. */
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === '1';
+  } catch {
+    return false;
+  }
 }
 
-function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const { t } = useTranslation();
-  const { pathname } = useLocation();
-  const { can } = useAuth();
-  return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: brand.teal, color: onTeal.text }}>
-      <Stack direction="row" spacing={1.5} alignItems="center" sx={{ px: 2.5, height: 64, flexShrink: 0 }}>
-        <BrandMark size={34} />
-        <Box sx={{ minWidth: 0 }}>
-          <Typography fontWeight={700} color={brand.cream} lineHeight={1.2}>
-            {t('app.company')}
-          </Typography>
-          <Typography variant="caption" sx={{ color: onTeal.textMuted }}>
-            {t('app.name')}
-          </Typography>
-        </Box>
-      </Stack>
-      <Divider sx={{ borderColor: onTeal.divider }} />
-      <Box component="nav" aria-label={t('nav.main')} sx={{ flex: 1, overflowY: 'auto', px: 1.5, py: 1 }}>
-        {NAVIGATION.map((section) => {
-          const items = section.items.filter((i) => can(i.permissions));
-          if (!items.length) return null;
-          return (
-            <List
-              key={section.key}
-              dense
-              subheader={
-                <ListSubheader
-                  disableSticky
-                  sx={{ bgcolor: 'transparent', color: onTeal.textFaint, fontSize: '0.72rem', lineHeight: '32px', px: 1.5 }}
-                >
-                  {t(`nav.sections.${section.key}`)}
-                </ListSubheader>
-              }
-            >
-              {items.map((i) => {
-                const Icon = i.icon;
-                const active = isActive(pathname, i.to);
-                return (
-                  <ListItemButton
-                    key={i.key}
-                    component={NavLink}
-                    to={i.to}
-                    end={i.to === '/'}
-                    selected={active}
-                    onClick={onNavigate}
-                    sx={{
-                      mb: 0.25,
-                      color: active ? brand.cream : onTeal.text,
-                      '&:hover': { bgcolor: onTeal.hover },
-                      '&.Mui-selected': { bgcolor: onTeal.selected, color: brand.cream },
-                      '&.Mui-selected:hover': { bgcolor: onTeal.selectedHover },
-                    }}
-                  >
-                    <ListItemIcon sx={{ minWidth: 36, color: active ? brand.leaf : onTeal.textMuted }}>
-                      <Icon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText primary={t(`nav.items.${i.key}`)} primaryTypographyProps={{ fontSize: '0.875rem', fontWeight: active ? 600 : 500 }} />
-                  </ListItemButton>
-                );
-              })}
-            </List>
-          );
-        })}
-      </Box>
-    </Box>
-  );
+function writeCollapsed(value: boolean) {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, value ? '1' : '0');
+  } catch {
+    /* preference stays for this session only */
+  }
 }
 
 function UserMenu() {
@@ -180,29 +116,45 @@ function GlobalSearch() {
 
 export function AppLayout() {
   const theme = useTheme();
-  const desktop = useMediaQuery(theme.breakpoints.up('lg'));
+  // noSsr: read the media query on the first render so desktop never mounts the mobile drawer first.
+  const desktop = useMediaQuery(theme.breakpoints.up('lg'), { noSsr: true });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(readCollapsed);
   const { t } = useTranslation();
+  const width = desktop ? (collapsed ? layout.drawerCollapsedWidth : layout.drawerWidth) : 0;
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    writeCollapsed(next);
+  };
+  const transition = theme.transitions.create('width', { duration: theme.transitions.duration.shorter });
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', minHeight: '100dvh' }}>
       <a href="#main" className="skip-link">
         {t('common.skipToContent')}
       </a>
-      <Box component="aside" sx={{ width: { lg: DRAWER }, flexShrink: 0 }}>
+      {/* Reserves the docked sidebar's width so content never slides underneath it. */}
+      <Box component="aside" sx={{ width, flexShrink: 0, transition }}>
         {desktop ? (
-          <Drawer variant="permanent" open PaperProps={{ sx: { width: DRAWER, border: 0 } }}>
-            <Sidebar />
+          <Drawer variant="permanent" open PaperProps={{ sx: { width, border: 0, overflow: 'hidden', transition } }}>
+            <Sidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
           </Drawer>
         ) : (
-          <Drawer variant="temporary" open={mobileOpen} onClose={() => setMobileOpen(false)} ModalProps={{ keepMounted: true }} PaperProps={{ sx: { width: DRAWER, border: 0 } }}>
-            <Sidebar onNavigate={() => setMobileOpen(false)} />
+          <Drawer
+            variant="temporary"
+            open={mobileOpen}
+            onClose={() => setMobileOpen(false)}
+            ModalProps={{ keepMounted: true }}
+            PaperProps={{ sx: { width: `min(${layout.drawerWidth}px, 86vw)`, border: 0, overflow: 'hidden' } }}
+          >
+            <Sidebar onNavigate={() => setMobileOpen(false)} mobile />
           </Drawer>
         )}
       </Box>
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <AppBar position="sticky" color="inherit" elevation={0} sx={{ bgcolor: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(6px)', borderBottom: 1, borderColor: 'divider' }}>
-          <Toolbar sx={{ gap: 1.5, minHeight: { xs: 60, sm: 64 } }}>
+          <Toolbar sx={{ gap: { xs: 1, sm: 1.5 }, minHeight: { xs: 56, sm: layout.headerHeight }, px: { xs: 1.5, sm: 3 } }}>
             {!desktop && (
               <IconButton edge="start" onClick={() => setMobileOpen(true)} aria-label={t('header.openMenu')}>
                 <MenuIcon />
@@ -218,7 +170,12 @@ export function AppLayout() {
             <UserMenu />
           </Toolbar>
         </AppBar>
-        <Box component="main" id="main" tabIndex={-1} sx={{ flex: 1, p: { xs: 2, sm: 3, lg: 4 }, maxWidth: 1480, width: '100%', mx: 'auto', outline: 'none' }}>
+        <Box
+          component="main"
+          id="main"
+          tabIndex={-1}
+          sx={{ flex: 1, p: layout.pagePadding, maxWidth: layout.contentMaxWidth, width: '100%', mx: 'auto', outline: 'none', minWidth: 0 }}
+        >
           <Suspense fallback={<LoadingState />}>
             <Outlet />
           </Suspense>

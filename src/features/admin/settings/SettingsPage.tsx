@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { adminKeys, settingsApi } from '../api';
 import { PageHeader } from '@/components/common/PageHeader';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { QueryBoundary } from '@/components/common/States';
 import { SectionCard } from '@/components/common/SectionCard';
 import { useApiMutation } from '@/hooks/useApiMutation';
@@ -23,8 +24,8 @@ export default function SettingsPage() {
   const { t } = useTranslation();
   const query = useQuery({ queryKey: adminKeys.settings, queryFn: settingsApi.list });
   return (
-    <Box>
-      <PageHeader title={t('nav.items.settings')} subtitle={t('settings.subtitle')} />
+    <PageContainer>
+      <PageHeader title={t('nav.items.settings')} />
       <QueryBoundary query={query}>
         {(groups) => (
           <Stack spacing={3}>
@@ -34,7 +35,7 @@ export default function SettingsPage() {
           </Stack>
         )}
       </QueryBoundary>
-    </Box>
+    </PageContainer>
   );
 }
 

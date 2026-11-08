@@ -11,8 +11,10 @@
     "lint": "eslint .",
     "gen:api": "node scripts/normalize-openapi.mjs && openapi-typescript ./openapi/openapi.normalized.json -o ./src/types/api.generated.ts",
     "i18n:check": "node scripts/check-i18n.mjs",
-    "check": "npm run typecheck && npm run lint && npm run i18n:check",
-    "doctor": "npx react-doctor@latest"
+    "check": "npm run typecheck && npm run lint && npm run i18n:check && npm run test",
+    "doctor": "npx react-doctor@latest",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
@@ -36,6 +38,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.3.0",
     "@types/node": "^22.20.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
@@ -45,10 +49,12 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^15.15.0",
+    "jsdom": "^25.0.1",
     "openapi-typescript": "^7.6.1",
     "react-doctor": "^0.9.21",
     "typescript": "~5.6.3",
     "typescript-eslint": "^8.24.1",
-    "vite": "^5.4.14"
+    "vite": "^5.4.14",
+    "vitest": "^2.1.9"
   }
 }

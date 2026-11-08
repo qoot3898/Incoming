@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Box, Button, Stack } from '@mui/material';
+import { Button, Stack } from '@mui/material';
 import PersonAddAlt1OutlinedIcon from '@mui/icons-material/PersonAddAlt1Outlined';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -8,10 +8,10 @@ import type { GridColDef } from '@mui/x-data-grid';
 import { adminKeys, usersApi } from '../api';
 import { TempPasswordDialog } from '../TempPasswordDialog';
 import { PageHeader } from '@/components/common/PageHeader';
-import { FilterBar } from '@/components/tables/FilterBar';
-import { SearchField } from '@/components/tables/SearchField';
+import { PageContainer } from '@/components/layout/PageContainer';
+import { FilterPanel } from '@/components/tables/FilterPanel';
+import { clearFilters, isFiltered, type FilterDef } from '@/components/tables/filters';
 import { ServerDataGrid } from '@/components/tables/ServerDataGrid';
-import { SelectField } from '@/components/forms/SelectField';
 import { FormDialog } from '@/components/forms/FormDialog';
 import { col } from '@/components/tables/columns';
 import { ToneChip } from '@/components/common/StatusChip';
@@ -30,7 +30,11 @@ export default function UsersPage() {
   const enumOptions = useEnumOptions();
   const list = useListState({ Search: '', Status: 'All' });
   const params = list.params as unknown as Q<'ListUsers'>;
-  const query = useQuery({ queryKey: [...adminKeys.users, 'list', params], queryFn: () => usersApi.list(params), placeholderData: keepPreviousData });
+  const query = useQuery({ queryKey: adminKeys.userList(params), queryFn: ({ signal }) => usersApi.list(params, signal), placeholderData: keepPreviousData });
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'Search', kind: 'search', label: t('common.search') },
+    { key: 'Status', kind: 'select', label: t('fields.status'), emptyLabel: false, options: enumOptions('UserStatusFilter', ENUMS.UserStatusFilter) },
+  ];
   const [createOpen, setCreateOpen] = useState(false);
   const [temp, setTemp] = useState<S<'TemporaryPasswordResult'> | null>(null);
   const roles = useQuery({ queryKey: [...adminKeys.users, 'assignable'], queryFn: usersApi.assignableRoles, enabled: createOpen });
@@ -60,24 +64,23 @@ export default function UsersPage() {
   );
 
   return (
-    <Box>
+    <PageContainer>
       <PageHeader
         title={t('nav.items.users')}
-        subtitle={t('users.subtitle')}
         actions={
           <Button variant="contained" startIcon={<PersonAddAlt1OutlinedIcon />} onClick={() => setCreateOpen(true)}>
             {t('users.new')}
           </Button>
         }
       />
-      <FilterBar onReset={list.reset}>
-        <SearchField label={t('common.search')} value={list.filters.Search} onCommit={(v) => list.setFilter('Search', v)} />
-        <SelectField label={t('fields.status')} value={list.filters.Status} emptyLabel={false} options={enumOptions('UserStatusFilter', ENUMS.UserStatusFilter)} onChange={(v) => list.setFilter('Status', v)} />
-      </FilterBar>
+      <FilterPanel list={list} filters={filters} />
       <ServerDataGrid<Row>
         data={query.data}
         loading={query.isFetching}
         error={query.error}
+        onRetry={query.refetch}
+        filtered={isFiltered(list, filters)}
+        onClearFilters={() => clearFilters(list, filters)}
         getRowId={(r) => r.id}
         page={list.page}
         pageSize={list.pageSize}
@@ -103,6 +106,6 @@ export default function UsersPage() {
         onSubmit={({ roleId, ...v }) => create.mutateAsync({ ...v, roleIds: roleId ? [roleId] : [] })}
       />
       <TempPasswordDialog result={temp} onClose={() => setTemp(null)} />
-    </Box>
+    </PageContainer>
   );
 }

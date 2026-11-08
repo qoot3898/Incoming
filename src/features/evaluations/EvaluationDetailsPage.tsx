@@ -1,4 +1,4 @@
-import { Box, Button, Grid2 as Grid, Stack, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
+import { Box, Button, Grid2 as Grid, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -83,24 +83,26 @@ export default function EvaluationDetailsPage() {
                     />
                   </SectionCard>
                   <SectionCard title={t('evaluations.items')} noPadding>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>{t('evaluations.criterion')}</TableCell>
-                          <TableCell>{t('evaluations.rating')}</TableCell>
-                          <TableCell>{t('common.notes')}</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {e.items.map((i) => (
-                          <TableRow key={i.criterion}>
-                            <TableCell>{label('EvaluationCriterion', i.criterion)}</TableCell>
-                            <TableCell>{label('EvaluationRating', i.rating)}</TableCell>
-                            <TableCell>{i.notes ?? '—'}</TableCell>
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>{t('evaluations.criterion')}</TableCell>
+                            <TableCell>{t('evaluations.rating')}</TableCell>
+                            <TableCell>{t('common.notes')}</TableCell>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHead>
+                        <TableBody>
+                          {e.items.map((i) => (
+                            <TableRow key={i.criterion}>
+                              <TableCell>{label('EvaluationCriterion', i.criterion)}</TableCell>
+                              <TableCell>{label('EvaluationRating', i.rating)}</TableCell>
+                              <TableCell>{i.notes ?? '—'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
                   </SectionCard>
                 </Stack>
               </Grid>

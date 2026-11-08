@@ -12,6 +12,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   Tooltip,
@@ -39,6 +40,7 @@ import { useEnumLabel, useEnumOptions } from '@/hooks/useEnumLabel';
 import { ENUMS } from '@/constants/enums';
 import { formatDate, formatDateTime, formatMoney, todayIso } from '@/utils/format';
 import type { LaborParty, S } from '@/types/api';
+import type { UploadVars } from '@/services/api/client';
 
 type Rec = S<'OnboardingRecord'>;
 
@@ -81,7 +83,7 @@ export function ChecklistCard({ r }: { r: Rec }) {
   const label = useEnumLabel();
   const enumOptions = useEnumOptions();
   const invalidate = useOnboardingInvalidation();
-  const receive = useApiMutation((v: Record<string, unknown>) => onboardingApi.receiveDocument(r.employeeId, v), { invalidate, rethrow: true });
+  const receive = useApiMutation(({ values, transfer }: UploadVars) => onboardingApi.receiveDocument(r.employeeId, values, transfer), { invalidate, rethrow: true });
   const remove = useApiMutation(onboardingApi.removeDocument, { invalidate });
   const [toRemove, setToRemove] = useState<number | null>(null);
 
@@ -102,7 +104,7 @@ export function ChecklistCard({ r }: { r: Rec }) {
               { name: 'scan', kind: 'file', label: t('attachments.scan') },
             ]}
             defaultValues={{ receivedOn: todayIso() }}
-            onSubmit={(v) => receive.mutateAsync(v)}
+            onSubmit={(values, transfer) => receive.mutateAsync({ values, transfer })}
           />
         )
       }
@@ -124,37 +126,39 @@ export function ChecklistCard({ r }: { r: Rec }) {
           {r.checklistComplete ? t('onboarding.checklistComplete') : t('onboarding.missingCount', { count: r.missingCount })}
         </Typography>
         {r.documents.length > 0 && (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>{t('onboarding.documentKind')}</TableCell>
-                <TableCell>{t('onboarding.receivedOn')}</TableCell>
-                <TableCell>{t('onboarding.expiresOn')}</TableCell>
-                <TableCell>{t('onboarding.receivedBy')}</TableCell>
-                <TableCell />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {r.documents.map((d) => (
-                <TableRow key={d.id}>
-                  <TableCell>{label('LaborDocumentKind', d.kind)}</TableCell>
-                  <TableCell>{formatDate(d.receivedOn)}</TableCell>
-                  <TableCell>{formatDate(d.expiresOn)}</TableCell>
-                  <TableCell>{d.receivedBy ?? '—'}</TableCell>
-                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                    {d.attachmentId && <AttachmentButton attachmentId={d.attachmentId} icon />}
-                    {r.canManage && (
-                      <Tooltip title={t('common.delete')}>
-                        <IconButton size="small" onClick={() => setToRemove(d.id)} aria-label={t('common.delete')}>
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                  </TableCell>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('onboarding.documentKind')}</TableCell>
+                  <TableCell>{t('onboarding.receivedOn')}</TableCell>
+                  <TableCell>{t('onboarding.expiresOn')}</TableCell>
+                  <TableCell>{t('onboarding.receivedBy')}</TableCell>
+                  <TableCell />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {r.documents.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell>{label('LaborDocumentKind', d.kind)}</TableCell>
+                    <TableCell>{formatDate(d.receivedOn)}</TableCell>
+                    <TableCell>{formatDate(d.expiresOn)}</TableCell>
+                    <TableCell>{d.receivedBy ?? '—'}</TableCell>
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                      {d.attachmentId && <AttachmentButton attachmentId={d.attachmentId} icon />}
+                      {r.canManage && (
+                        <Tooltip title={t('common.delete')}>
+                          <IconButton size="small" onClick={() => setToRemove(d.id)} aria-label={t('common.delete')}>
+                            <DeleteOutlineIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
       </Stack>
       <ConfirmDialog
@@ -174,7 +178,7 @@ export function PassportCard({ r }: { r: Rec }) {
   const { t } = useTranslation();
   const label = useEnumLabel();
   const invalidate = useOnboardingInvalidation();
-  const receive = useApiMutation((v: Record<string, unknown>) => onboardingApi.receivePassport(r.employeeId, v), { invalidate, rethrow: true });
+  const receive = useApiMutation(({ values, transfer }: UploadVars) => onboardingApi.receivePassport(r.employeeId, values, transfer), { invalidate, rethrow: true });
   const relocate = useApiMutation((v: S<'RelocatePassportRequest'>) => onboardingApi.relocatePassport(r.employeeId, v), { invalidate, rethrow: true });
   const p = r.passport;
   return (
@@ -198,7 +202,7 @@ export function PassportCard({ r }: { r: Rec }) {
                   { name: 'scan', kind: 'file', label: t('attachments.scan') },
                 ]}
                 defaultValues={{ passportNumber: r.passportNumber, receivedOn: todayIso(), handedBy: r.name }}
-                onSubmit={(v) => receive.mutateAsync(v)}
+                onSubmit={(values, transfer) => receive.mutateAsync({ values, transfer })}
               />
             )}
             {p && p.status === 'Kept' && (
@@ -226,8 +230,8 @@ export function PassportCard({ r }: { r: Rec }) {
             ]}
           />
           <List dense disablePadding>
-            {p.movements.map((m, i) => (
-              <ListItem key={i} divider secondaryAction={m.attachmentId ? <AttachmentButton attachmentId={m.attachmentId} icon /> : undefined}>
+            {p.movements.map((m) => (
+              <ListItem key={`${m.kind}|${m.date}|${m.attachmentId ?? ''}|${m.handedBy ?? ''}`} divider secondaryAction={m.attachmentId ? <AttachmentButton attachmentId={m.attachmentId} icon /> : undefined}>
                 <ListItemText
                   primaryTypographyProps={{ component: 'div' }}
                   secondaryTypographyProps={{ component: 'div' }}
@@ -250,7 +254,7 @@ export function SurveyCard({ r }: { r: Rec }) {
   const invalidate = useOnboardingInvalidation();
   const [showDetails, setShowDetails] = useState(false);
   const setApplicable = useApiMutation((v: { applicable: string }) => onboardingApi.setSurveyApplicability(r.employeeId, { applicable: v.applicable === 'true' }), { invalidate, rethrow: true });
-  const review = useApiMutation((v: Record<string, unknown>) => onboardingApi.reviewSurvey(r.employeeId, v), { invalidate: [...invalidate, [...onboardingKeys.all, 'survey', r.employeeId]], rethrow: true });
+  const review = useApiMutation(({ values, transfer }: UploadVars) => onboardingApi.reviewSurvey(r.employeeId, values, transfer), { invalidate: [...invalidate, [...onboardingKeys.all, 'survey', r.employeeId]], rethrow: true });
   const details = useQuery({
     queryKey: [...onboardingKeys.all, 'survey', r.employeeId],
     queryFn: () => onboardingApi.survey(r.employeeId),
@@ -260,7 +264,6 @@ export function SurveyCard({ r }: { r: Rec }) {
   return (
     <SectionCard
       title={t('onboarding.securitySurvey')}
-      subheader={t('onboarding.surveyRestricted')}
       action={
         <Stack direction="row" spacing={1}>
           {r.canManage && (
@@ -295,7 +298,7 @@ export function SurveyCard({ r }: { r: Rec }) {
                 { name: 'scan', kind: 'file', label: t('attachments.scan') },
               ]}
               defaultValues={{ reviewedOn: todayIso() }}
-              onSubmit={(v) => review.mutateAsync(v)}
+              onSubmit={(values, transfer) => review.mutateAsync({ values, transfer })}
             />
           )}
         </Stack>
@@ -377,7 +380,6 @@ export function SalaryCard({ employeeId }: { employeeId: number }) {
   return (
     <SectionCard
       title={t('salary.title')}
-      subheader={t('salary.hint')}
       action={
         <Stack direction="row" spacing={1}>
           {d.canPropose && (
@@ -499,7 +501,6 @@ export function StartApprovalCard({ employeeId }: { employeeId: number }) {
   return (
     <SectionCard
       title={t('startApproval.title')}
-      subheader={t('startApproval.chain')}
       action={
         d.canSubmit && (
           <Button size="small" variant="contained" onClick={() => submit.mutate(undefined)} disabled={submit.isPending}>
@@ -571,7 +572,7 @@ export function NoticeCard({ employeeId }: { employeeId: number }) {
 
   const notFound = axios.isAxiosError(q.error) && q.error.response?.status === 404;
   return (
-    <SectionCard title={t('payroll.onboardingNotice')} subheader={t('payroll.onboardingNoticeHint')}>
+    <SectionCard title={t('payroll.onboardingNotice')}>
       {q.isLoading ? (
         <LoadingState minHeight={80} />
       ) : notFound || (!q.error && !q.data) ? (
