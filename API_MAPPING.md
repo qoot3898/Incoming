@@ -1,12 +1,13 @@
 # API Mapping — Frontend ↔ Qoot.TemporaryLabor.Api v1
 
-Base URL: `VITE_API_BASE_URL` (default dev proxy → `http://qoottemporarylabor.runasp.net`). All endpoints require `Authorization: Bearer <accessToken>` except `POST /auth/login` and `POST /auth/refresh`.
+Base URL: `VITE_API_BASE_URL` (default dev proxy → `https://qoottemporarylabor.runasp.net`). All endpoints require `Authorization: Bearer <accessToken>` except `POST /auth/login`, `POST /auth/refresh` and `POST /public/complaints` (sent by `publicHttp`, without the header).
 
 Conventions observed in the spec:
 
 - Lists return `PagedResult<T>` = `{ items, total, page, pageSize }` with `Page` / `PageSize` query params (server-side pagination).
 - Create endpoints return `201 { id }`; actions return `204`.
-- Errors: `400 HttpValidationProblemDetails` (`errors: { field: string[] }`), `401/403/404/409/422 ProblemDetails` (`title`, `detail`).
+- Errors: RFC 9457 ProblemDetails — `title`, `detail`, stable `code`, `correlationId`; field errors in `errors` keyed by request property (`Workers[0].PassportNumber`). The client keeps `code` on `ApiError` (`API_ERROR_CODES`). `403 ASSIGNMENT_APPROVAL_REQUIRED` / `PASSWORD_CHANGE_REQUIRED` on any request re-reads `auth/me` and the route guard opens the matching screen.
+- Enum values in requests may also be sent as numbers (needed for configurable list items such as a punishment type `60`).
 - Enums are serialized as strings (e.g. `LaborStatus = Registered | Onboarding | Active | Suspended | Terminated | Closed`).
 - File endpoints (`print`, `export`, attachments) return binary; frontend downloads them as Blob.
 - Multipart endpoints (passport, documents, survey review, acknowledgement, handover, attachments) accept `scan` file + fields.
@@ -38,6 +39,9 @@ Screen(s): /admin/users, /admin/users/:id
 | GET | `/api/v1/users` | قائمة المستخدمين | ListUsers |
 | POST | `/api/v1/users` | إنشاء مستخدم بكلمة مرور مؤقتة | CreateUser |
 | GET | `/api/v1/users/assignable-roles` | الأدوار القابلة للإسناد | ListAssignableRoles |
+| GET | `/api/v1/users/assignments` | ملفات تكليف المستخدمين — /admin/assignments (TL-N3) | ListAssignments |
+| GET | `/api/v1/users/{userId}/assignment/file` | فتح ملف تكليف مستخدم (PDF، يُسجَّل كل فتح) | OpenAssignment |
+| POST | `/api/v1/users/{userId}/assignment/decision` | اعتماد ملف التكليف أو إعادته (`rowVersion` من الصف؛ 409 عند الاستبدال) | DecideAssignment |
 | POST | `/api/v1/users/{userId}/force-sign-out` | إنهاء جلسات مستخدم | ForceSignOut |
 
 ## النقل
@@ -401,3 +405,35 @@ Screen(s): /workers/:id (Attachments tab), file opener
 | GET | `/api/v1/attachments/{attachmentId}` | فتح مرفق عامل | OpenLaborAttachment |
 | GET | `/api/v1/workers/{employeeId}/attachments` | مرفقات سجل العامل | ListWorkerAttachments |
 | POST | `/api/v1/workers/{employeeId}/attachments` | إرفاق نموذج موقع ممسوح بسجل العامل | AttachWorkerForm |
+
+## الشكاوى (TL-N1, 2026-11-08)
+
+Screen(s): /complaint (public, no sign-in), /complaints, /complaints/:id — permission `TemporaryLabor.ManageComplaints`
+
+| Method | Endpoint | Purpose | operationId |
+|---|---|---|---|
+| POST | `/api/v1/public/complaints` | تقديم شكوى من النموذج العام (دون دخول؛ 429 حد المعدل، 413 أكبر من 16 KB) | SubmitComplaint |
+| GET | `/api/v1/complaints` | قائمة الشكاوى (`{ page, newCount }`، تبويب New الأقدم أولًا) | ListComplaints |
+| GET | `/api/v1/complaints/{complaintId}` | شكوى واحدة (`canReview`) | GetComplaint |
+| POST | `/api/v1/complaints/{complaintId}/review` | تسجيل مراجعة شكوى (مرة واحدة) | ReviewComplaint |
+
+## Changes of 2026-11-08 to existing endpoints
+
+| Endpoint | Change | Screen |
+|---|---|---|
+| `GET /auth/me` | `assignment { status, fileName, submittedAt, reviewedAt, reviewNote }` (TL-N3) | route guard → /assignment |
+| `POST /auth/me/assignment` | upload the assignment letter (multipart `file`, PDF) | /assignment |
+| `GET /registration/options` | `canRegisterWithoutPassport` | /registration |
+| `POST /registration/workers` | `passportIssueDate`, `passportExpiryDate`, `passportWaived`, `passportWaiverReason`, `healthCertificateIssueDate` (required), expiry required; phone optional (TL-N2/N4) | /registration |
+| `GET /workers/{employeeId}` | `passportIssueDate`, `passportExpiryDate`, `healthCertificateIssueDate`, `passportWaiverReason` | /workers/:id |
+| `PUT /employees/{employeeId}/identity` | `passportIssueDate`, `passportExpiryDate` (always sent back) | /workers/:id → edit identity |
+| `POST /workers/{employeeId}/documents` | `issuedOn` (health certificate, with `expiresOn`) | onboarding checklist |
+| `POST /workers/{employeeId}/passport` | `issuedOn`, `expiresOn` (required when none recorded; must match recorded) | onboarding passport custody |
+| `POST /migration/current-workers` | optional passport and health-certificate dates per row | — (API only) |
+| `POST /penalties` | `issuedBy`, `issuedOn` (TL-N5) | /penalties/new |
+| `GET /penalties` | filters `TrackId`, `EmployeeId`, `Source`, `IssuedBy`, `IssuedFrom`, `IssuedTo`; rows `issuedBy`, `issuedOn` | /penalties, worker file → penalties tab |
+| `POST /penalties/{id}/decision` | `decision` = any type of `labor-penalty-decisions` (name or number); days only for `DeductionOfDays` | /penalties/:id |
+| `GET /directories/{slug}` | `Search`, `Active` filters | /admin/directories/:slug |
+| `GET /directories/{slug}/{id}` | single entry (fresh `rowVersion` before editing) | /admin/directories/:slug |
+| `GET /audit` | filters `ActorUserId`, `ActionCodes[]`, `Module`, `EntityType`, `EntityId`, `IpAddress`, `CorrelationId`, `IncludeChanges`; rows `actorUserId`, `actorUserName`, `userAgent`, `correlationId`, `changes` (TL-N6) | /admin/audit |
+| `GET /audit/options` | filter lists (actions, modules, entity types, actors) | /admin/audit |

@@ -6,6 +6,21 @@
  */
 const TL = 'TemporaryLabor';
 
+/** Codes checked directly by screens (besides navigation). */
+export const PERMISSIONS = {
+  view: `${TL}.View`,
+  manageSettings: `${TL}.ManageSettings`,
+  /** TL-N1: list complaints and record their review (section manager by default). */
+  manageComplaints: `${TL}.ManageComplaints`,
+  /** TL-N2: register a non-Libyan worker without a passport (no default role; super admins implicitly). */
+  registerWithoutPassport: `${TL}.RegisterWithoutPassport`,
+  /** TL-N3: review users' assignment letters (system administrator by default). */
+  reviewAssignments: 'Users.ReviewAssignments',
+  /** TL-N6: users' activity on the system (audit log). */
+  auditView: 'Audit.View',
+  usersView: 'Users.View',
+} as const;
+
 export const NAV_PERMISSIONS: Record<string, readonly string[]> = {
   tasks: [`${TL}.View`],
   workers: [`${TL}.View`],
@@ -22,8 +37,10 @@ export const NAV_PERMISSIONS: Record<string, readonly string[]> = {
   transfers: [`${TL}.View`],
   evaluations: [`${TL}.View`],
   terminations: [`${TL}.View`],
+  complaints: [PERMISSIONS.manageComplaints],
   reports: [`${TL}.ViewReports`],
   users: ['Users.View'],
+  assignments: [PERMISSIONS.reviewAssignments],
   roles: ['Roles.View'],
   directories: [`${TL}.ManageSettings`],
   laborSettings: [`${TL}.ManageSettings`],

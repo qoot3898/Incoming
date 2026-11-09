@@ -24,6 +24,7 @@ export const ENUMS = {
   PenaltyStatus: ['PendingDecision', 'Dismissed', 'Decided', 'Acknowledged', 'Applied'],
   PenaltyViolation: ['AbsenceWithoutPermission', 'Other'],
   PenaltyDecision: ['Warning', 'DeductionOfDays', 'FinalWarning'],
+  PenaltySource: ['Direct', 'AbsenceIncident', 'Evaluation'],
   TransferStatus: ['PendingApprovals', 'Returned', 'Rejected', 'Approved', 'Executed', 'Cancelled'],
   TransferInitiator: ['Worker', 'Operations'],
   TransferVerdict: ['Approve', 'Return', 'Reject'],
@@ -45,6 +46,8 @@ export const ENUMS = {
   LaborFormCode: ['F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F07', 'F08', 'F09', 'F10', 'F11', 'R01', 'R02'],
   UserStatusFilter: ['All', 'Active', 'Inactive', 'Locked'],
   AuditOutcome: ['Success', 'Failure', 'Denied'],
+  ComplaintStatus: ['New', 'Reviewed'],
+  AssignmentState: ['NotRequired', 'Required', 'PendingReview', 'Returned', 'Approved'],
   IntegrationEventState: ['Pending', 'Acknowledged', 'Failed'],
   IntegrationOutcome: ['Acknowledged', 'Failed'],
 } as const;

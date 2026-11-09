@@ -3,8 +3,9 @@ import { FormControlLabel, Switch } from '@mui/material';
 import { FilterBar, type ActiveFilter } from './FilterBar';
 import { SearchField } from './SearchField';
 import { SelectField } from '@/components/forms/SelectField';
+import { MultiSelectField } from '@/components/forms/MultiSelectField';
 import type { FilterDefaults, FilterValue, ListState } from '@/hooks/useListState';
-import type { FilterDef } from './filters';
+import { MULTI_SEPARATOR, splitMulti, type FilterDef } from './filters';
 import { formatDate, formatDateTime } from '@/utils/format';
 
 interface Props<F extends FilterDefaults> {
@@ -42,6 +43,10 @@ export function FilterPanel<F extends FilterDefaults>({ list, filters, children 
         return def.withTime ? formatDateTime(String(value)) : formatDate(String(value));
       case 'switch':
         return '';
+      case 'multiselect':
+        return splitMulti(value)
+          .map((v) => def.options.find((o) => String(o.value) === v)?.label ?? v)
+          .join(', ');
       default:
         return String(value);
     }
@@ -100,6 +105,17 @@ export function FilterPanel<F extends FilterDefaults>({ list, filters, children 
                 options={def.options}
                 emptyLabel={def.emptyLabel}
                 onChange={(v) => setFilters(patchFor(def, coerce(value, v)))}
+                sx={sx}
+              />
+            );
+          case 'multiselect':
+            return (
+              <MultiSelectField
+                key={def.key}
+                label={def.label}
+                value={splitMulti(value)}
+                options={def.options}
+                onChange={(values) => setFilter(def.key, values.join(MULTI_SEPARATOR) as F[typeof def.key])}
                 sx={sx}
               />
             );

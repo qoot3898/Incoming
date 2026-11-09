@@ -19,12 +19,12 @@ import { ErrorState, LoadingState } from '@/components/common/States';
 import { useEnumOptions } from '@/hooks/useEnumLabel';
 import { useApiMutation } from '@/hooks/useApiMutation';
 import { ENUMS } from '@/constants/enums';
-import { formatDate } from '@/utils/format';
+import { formatDate, todayIso } from '@/utils/format';
 import type { S } from '@/types/api';
 
 type Draft = S<'PenaltyIncidentDraft'>;
 
-const EMPTY = { violation: '', violationDates: '', days: '', reportReference: '', description: '' };
+const EMPTY = { violation: '', violationDates: '', days: '', reportReference: '', description: '', issuedBy: '', issuedOn: '' };
 const FIELDS = [...Object.keys(EMPTY), 'worker'];
 const FIELD_MAP = { employeeId: 'worker' };
 
@@ -68,6 +68,12 @@ function PenaltyForm({ incidentId, draft }: { incidentId: number | null; draft?:
         days: z.string().regex(/^\d*$/, t('validation.integer')),
         reportReference: z.string().max(200, t('validation.maxLength', { max: 200 })),
         description: z.string().trim().min(1, t('validation.required')).max(2000, t('validation.maxLength', { max: 2000 })),
+        // TL-N5: who issued the penalty and when — distinct from the entering user and time.
+        issuedBy: z.string().trim().min(1, t('validation.required')).max(100, t('validation.maxLength', { max: 100 })),
+        issuedOn: z
+          .string()
+          .min(1, t('validation.required'))
+          .refine((v) => v <= todayIso(), t('validation.notAfterToday')),
       }),
     [t],
   );
@@ -75,7 +81,7 @@ function PenaltyForm({ incidentId, draft }: { incidentId: number | null; draft?:
   const { control, handleSubmit, setError, formState } = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: draft
-      ? { violation: 'AbsenceWithoutPermission', violationDates: draft.violationDates ?? '', days: String(draft.days), reportReference: draft.reportReference ?? '', description: draft.description ?? '' }
+      ? { ...EMPTY, violation: 'AbsenceWithoutPermission', violationDates: draft.violationDates ?? '', days: String(draft.days), reportReference: draft.reportReference ?? '', description: draft.description ?? '' }
       : EMPTY,
   });
   const { serverError, handleServerError, clearServerError } = useFormServerError(
@@ -105,6 +111,8 @@ function PenaltyForm({ incidentId, draft }: { incidentId: number | null; draft?:
           days: v.days ? Number(v.days) : null,
           reportReference: v.reportReference || null,
           description: v.description,
+          issuedBy: v.issuedBy,
+          issuedOn: v.issuedOn,
         });
       } catch (err) {
         await handleServerError(err);
@@ -133,6 +141,10 @@ function PenaltyForm({ incidentId, draft }: { incidentId: number | null; draft?:
             <FullRow>
               <FormTextField control={control} name="description" label={t('penalties.description')} required multiline minRows={3} />
             </FullRow>
+          </FormSection>
+          <FormSection title={t('penalties.sections.issuance')}>
+            <FormTextField control={control} name="issuedBy" label={t('penalties.issuedBy')} required helperText={t('penalties.issuedByHint')} slotProps={{ htmlInput: { maxLength: 100 } }} />
+            <FormTextField control={control} name="issuedOn" type="date" label={t('penalties.issuedOn')} required slotProps={{ htmlInput: { max: todayIso() } }} />
           </FormSection>
           <FormActions submitLabel={t('penalties.propose')} submitting={formState.isSubmitting} onCancel={() => navigate(incidentId ? '/attendance/incidents' : '/penalties')} />
         </Stack>

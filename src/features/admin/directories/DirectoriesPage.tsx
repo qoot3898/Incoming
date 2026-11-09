@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { Alert, Box, Button, IconButton, Paper, Stack, Switch, TextField, Tooltip, Typography } from '@mui/material';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, Box, Button, CircularProgress, IconButton, Paper, Stack, Switch, TextField, Tooltip, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import type { GridColDef } from '@mui/x-data-grid';
 import { adminKeys, directoriesApi } from '../api';
 import { PageHeader } from '@/components/common/PageHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -13,12 +14,16 @@ import { ErrorState, EmptyState, LoadingState } from '@/components/common/States
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ToneChip } from '@/components/common/StatusChip';
 import { LocalDataGrid } from '@/components/tables/ServerDataGrid';
+import { FilterPanel } from '@/components/tables/FilterPanel';
+import type { FilterDef } from '@/components/tables/filters';
 import { FormDialog, type FieldConfig } from '@/components/forms/FormDialog';
 import { SelectField } from '@/components/forms/SelectField';
 import { col } from '@/components/tables/columns';
 import { useApiMutation } from '@/hooks/useApiMutation';
-import { DIRECTORY_SLUGS } from '@/constants/directories';
-import type { S } from '@/types/api';
+import { useListState } from '@/hooks/useListState';
+import { useEnumLabel } from '@/hooks/useEnumLabel';
+import { DIRECTORY_RULES, DIRECTORY_SLUGS, type DirectoryRules } from '@/constants/directories';
+import type { Q, S } from '@/types/api';
 
 type Entry = S<'DirectoryEntryItem'>;
 type Values = Record<string, unknown> & { number: number | null; name: string | null };
@@ -65,43 +70,175 @@ export default function DirectoriesPage() {
           </Typography>
         )}
       </Paper>
-      {slug ? <Directory slug={slug} /> : <Paper variant="outlined"><EmptyState title={t('directories.choose')} /></Paper>}
+      {slug ? (
+        // Keyed by slug: each list starts with its own state (and its own search in the URL).
+        <Directory key={slug} slug={slug} />
+      ) : (
+        <Paper variant="outlined">
+          <EmptyState title={t('directories.choose')} />
+        </Paper>
+      )}
     </PageContainer>
   );
 }
 
+const isBase = (rules: DirectoryRules | undefined, e: Pick<Entry, 'number'> | null) => !!e && !!rules?.baseEntries?.numbers.includes(e.number);
+
 function Directory({ slug }: { slug: string }) {
   const { t } = useTranslation();
+  const enumLabel = useEnumLabel();
+  const qc = useQueryClient();
+  const rules = DIRECTORY_RULES[slug];
+  const list = useListState({ Search: '', Active: '' });
+  const params = useMemo<Q<'ListDirectoryEntries'>>(
+    () => ({ Search: list.filters.Search || undefined, Active: list.filters.Active === '' ? undefined : list.filters.Active === 'true' }),
+    [list.filters.Search, list.filters.Active],
+  );
   const key = [...adminKeys.directories, slug];
-  const q = useQuery({ queryKey: key, queryFn: () => directoriesApi.list(slug) });
+  const q = useQuery({ queryKey: [...key, params], queryFn: ({ signal }) => directoriesApi.list(slug, params, signal), placeholderData: keepPreviousData });
   const invalidate = [key, ['shared'], ['registration']];
   const create = useApiMutation((v: S<'CreateDirectoryEntryRequest'>) => directoriesApi.create(slug, v), { invalidate, rethrow: true });
   const update = useApiMutation((v: S<'UpdateDirectoryEntryRequest'> & { id: number }) => directoriesApi.update(slug, v.id, v), { invalidate, rethrow: true });
-  const setActive = useApiMutation((v: { id: number; active: boolean }) => directoriesApi.setActive(slug, v.id, { active: v.active }), { invalidate });
+  const { mutate: toggleActive } = useApiMutation((v: { id: number; active: boolean }) => directoriesApi.setActive(slug, v.id, { active: v.active }), { invalidate });
   const remove = useApiMutation((id: number) => directoriesApi.remove(slug, id), { invalidate });
   const [editing, setEditing] = useState<Entry | 'new' | null>(null);
+  const [opening, setOpening] = useState<number | null>(null);
   const [toDelete, setToDelete] = useState<Entry | null>(null);
 
+  // Edit from the entry's current state (fresh rowVersion), so a stale list row does not end in a conflict.
+  const openEdit = useCallback(
+    async (row: Entry) => {
+      setOpening(row.id);
+      try {
+        setEditing(await qc.fetchQuery({ queryKey: [...adminKeys.directories, slug, 'entry', row.id], queryFn: () => directoriesApi.get(slug, row.id), staleTime: 0 }));
+      } catch {
+        setEditing(row);
+      } finally {
+        setOpening(null);
+      }
+    },
+    [qc, slug],
+  );
+
+  const d = q.data;
+  const filters: FilterDef<typeof list.filters>[] = [
+    { key: 'Search', kind: 'search', label: t('directories.search'), wide: true },
+    {
+      key: 'Active',
+      kind: 'select',
+      label: t('directories.state'),
+      options: [
+        { value: 'true', label: t('directories.active') },
+        { value: 'false', label: t('directories.inactive') },
+      ],
+    },
+  ];
+
+  const columns = useMemo<GridColDef<Entry>[]>(() => {
+    if (!d) return [];
+    const show = (fieldKey: string, v: unknown) => {
+      const choice = rules?.choices?.[fieldKey];
+      if (choice && typeof v === 'string' && v) return enumLabel(choice.enumName, v);
+      return (v as string | number | null) ?? '—';
+    };
+    return [
+      col.num<Entry>('number', t('directories.number'), { width: 90 }),
+      col.text<Entry>('name', t('fields.name'), { flex: 1.5 }),
+      ...d.fields.map((f) => ({ field: `f_${f.key}`, headerName: f.label ?? '', width: 150, valueGetter: (_: unknown, r: Entry) => show(f.key ?? '', r.fields[f.key ?? '']) })),
+      { field: 'usageCount', headerName: d.usageLabel ?? t('directories.usage'), width: 120 },
+      {
+        field: 'isActive',
+        headerName: t('directories.active'),
+        width: 110,
+        renderCell: (p) =>
+          p.row.isFixed ? (
+            <ToneChip tone="info" label={t('directories.fixed')} />
+          ) : (
+            <Switch size="small" checked={p.row.isActive} onChange={(e) => toggleActive({ id: p.row.id, active: e.target.checked })} inputProps={{ 'aria-label': t('directories.active') }} />
+          ),
+      },
+      {
+        field: 'actions',
+        headerName: '',
+        width: 110,
+        sortable: false,
+        renderCell: (p) => {
+          if (p.row.isFixed) return null;
+          const base = isBase(rules, p.row);
+          const deleteHint = base ? t('directories.baseEntry') : p.row.usageCount > 0 ? t('directories.inUse') : t('common.delete');
+          return (
+            <Stack direction="row" alignItems="center" sx={{ height: '100%' }}>
+              <Tooltip title={t('common.edit')}>
+                <span>
+                  <IconButton size="small" onClick={() => void openEdit(p.row)} disabled={opening !== null} aria-label={t('common.edit')}>
+                    {opening === p.row.id ? <CircularProgress size={16} /> : <EditOutlinedIcon fontSize="small" />}
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title={deleteHint}>
+                <span>
+                  <IconButton size="small" disabled={base || p.row.usageCount > 0} onClick={() => setToDelete(p.row)} aria-label={t('common.delete')}>
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Stack>
+          );
+        },
+      },
+    ];
+  }, [d, rules, opening, openEdit, toggleActive, t, enumLabel]);
+
   if (q.isLoading) return <LoadingState />;
-  if (q.error) return <ErrorState error={q.error} />;
-  const d = q.data!;
-  const extra: FieldConfig<Values>[] = d.fields.map((f) => ({
-    name: f.key ?? '',
-    label: f.label ?? f.key ?? '',
-    ...(f.kind === 'Text' ? { kind: 'text' as const, maxLength: f.maxLength || undefined } : { kind: 'number' as const, min: 0 }),
-    half: true,
-  }));
+  if (q.error && !d) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
+  if (!d) return null;
+
+  const entry = editing && editing !== 'new' ? editing : null;
+  const baseEntry = isBase(rules, entry);
+  const extra: FieldConfig<Values>[] = d.fields.map((f) => {
+    const name = f.key ?? '';
+    const choice = rules?.choices?.[name];
+    const locked = baseEntry && !!rules?.baseEntries?.lockedFields.includes(name);
+    if (choice) {
+      return {
+        name,
+        label: f.label ?? name,
+        kind: 'select' as const,
+        options: choice.values.map((v) => ({ value: v, label: enumLabel(choice.enumName, v) })),
+        required: !entry,
+        disabled: locked,
+        helperText: locked ? t('directories.lockedForBase') : undefined,
+        half: true,
+      };
+    }
+    return {
+      name,
+      label: f.label ?? name,
+      ...(f.kind === 'Text' ? { kind: 'text' as const, maxLength: f.maxLength || undefined } : { kind: 'number' as const, min: 0 }),
+      disabled: locked,
+      half: true,
+    };
+  });
   const fields: FieldConfig<Values>[] = [
-    { name: 'number', kind: 'number', label: t('directories.number'), required: true, half: true, min: 1 },
+    {
+      name: 'number',
+      kind: 'number',
+      label: t('directories.number'),
+      required: true,
+      half: true,
+      min: 1,
+      disabled: !!entry && !!rules?.lockNumberOnEdit,
+      helperText: entry && rules?.lockNumberOnEdit ? t('directories.numberFixed') : undefined,
+    },
     { name: 'name', kind: 'text', label: t('fields.name'), required: true, half: true, maxLength: 200 },
     ...extra,
   ];
+  // Every extra field is sent on update: a missing optional field (e.g. `name-en`) is cleared by the API.
   const splitFields = (v: Values) => {
     const out: Record<string, unknown> = {};
     d.fields.forEach((f) => f.key && (out[f.key] = v[f.key]));
     return out;
   };
-  const entry = editing && editing !== 'new' ? editing : null;
 
   return (
     <Stack spacing={2}>
@@ -122,51 +259,10 @@ function Directory({ slug }: { slug: string }) {
           </Box>
         </Stack>
       </Paper>
-      <LocalDataGrid<Entry>
-        rows={d.entries}
-        getRowId={(r) => r.id}
-        columns={[
-          col.num<Entry>('number', t('directories.number'), { width: 90 }),
-          col.text<Entry>('name', t('fields.name'), { flex: 1.5 }),
-          ...d.fields.map((f) => ({ field: `f_${f.key}`, headerName: f.label ?? '', width: 140, valueGetter: (_: unknown, r: Entry) => (r.fields[f.key ?? ''] as string | number | null) ?? '—' })),
-          { field: 'usageCount', headerName: d.usageLabel ?? t('directories.usage'), width: 120 },
-          {
-            field: 'isActive',
-            headerName: t('directories.active'),
-            width: 110,
-            renderCell: (p) =>
-              p.row.isFixed ? (
-                <ToneChip tone="info" label={t('directories.fixed')} />
-              ) : (
-                <Switch size="small" checked={p.row.isActive} onChange={(e) => setActive.mutate({ id: p.row.id, active: e.target.checked })} inputProps={{ 'aria-label': t('directories.active') }} />
-              ),
-          },
-          {
-            field: 'actions',
-            headerName: '',
-            width: 110,
-            sortable: false,
-            renderCell: (p) =>
-              !p.row.isFixed && (
-                <Stack direction="row" alignItems="center" sx={{ height: '100%' }}>
-                  <Tooltip title={t('common.edit')}>
-                    <IconButton size="small" onClick={() => setEditing(p.row)} aria-label={t('common.edit')}>
-                      <EditOutlinedIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={p.row.usageCount > 0 ? t('directories.inUse') : t('common.delete')}>
-                    <span>
-                      <IconButton size="small" disabled={p.row.usageCount > 0} onClick={() => setToDelete(p.row)} aria-label={t('common.delete')}>
-                        <DeleteOutlineIcon fontSize="small" />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                </Stack>
-              ),
-          },
-        ]}
-      />
+      <FilterPanel list={list} filters={filters} />
+      <LocalDataGrid<Entry> rows={d.entries} getRowId={(r) => r.id} loading={q.isFetching} columns={columns} emptyText={list.activeKeys.length ? t('common.noResults') : undefined} />
       {d.entries.some((e) => e.usageCount > 0) && <Alert severity="info">{t('directories.deleteHint')}</Alert>}
+      {rules?.baseEntries && <Alert severity="info">{t('directories.baseEntriesHint', { numbers: rules.baseEntries.numbers.join(', ') })}</Alert>}
       <FormDialog<Values>
         open={editing !== null}
         onClose={() => setEditing(null)}
@@ -175,7 +271,7 @@ function Directory({ slug }: { slug: string }) {
         defaultValues={entry ? { number: entry.number, name: entry.name, ...entry.fields } : { number: d.nextNumber }}
         onSubmit={(v) =>
           entry
-            ? update.mutateAsync({ slug, id: entry.id, number: v.number, name: v.name, rowVersion: entry.rowVersion, fields: splitFields(v) })
+            ? update.mutateAsync({ slug, id: entry.id, number: rules?.lockNumberOnEdit ? entry.number : v.number, name: v.name, rowVersion: entry.rowVersion, fields: splitFields(v) })
             : create.mutateAsync({ slug, number: v.number, name: v.name, fields: splitFields(v) })
         }
       />

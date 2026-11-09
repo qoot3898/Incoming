@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Box, Button, Checkbox, FormControlLabel, Grid2 as Grid, Stack, Typography, Alert } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { Link as RouterLink, useParams } from 'react-router-dom';
+import PersonSearchOutlinedIcon from '@mui/icons-material/PersonSearchOutlined';
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import { useTranslation } from 'react-i18next';
 import { adminKeys, usersApi } from '../api';
 import { TempPasswordDialog } from '../TempPasswordDialog';
@@ -14,6 +16,9 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ActionFormButton } from '@/components/forms/ActionFormButton';
 import { useApiMutation } from '@/hooks/useApiMutation';
 import { formatDateTime } from '@/utils/format';
+import { useAuth } from '@/app/providers/authContext';
+import { PERMISSIONS } from '@/constants/permissions';
+import { auditLink } from '../audit/auditLinks';
 import type { S } from '@/types/api';
 
 type Confirm = 'unlock' | 'reset' | 'signout' | 'toggle' | null;
@@ -21,6 +26,8 @@ type Confirm = 'unlock' | 'reset' | 'signout' | 'toggle' | null;
 export default function UserDetailsPage() {
   const { t } = useTranslation();
   const id = Number(useParams().userId);
+  const { can } = useAuth();
+  const canAudit = can([PERMISSIONS.auditView]);
   const query = useQuery({ queryKey: [...adminKeys.users, 'detail', id], queryFn: () => usersApi.get(id) });
   const roles = useQuery({ queryKey: [...adminKeys.users, 'assignable'], queryFn: usersApi.assignableRoles });
   const invalidate = [adminKeys.users, adminKeys.roles];
@@ -87,6 +94,17 @@ export default function UserDetailsPage() {
                   <Button variant="outlined" color="inherit" onClick={() => setConfirm('signout')}>
                     {t('users.forceSignOut')}
                   </Button>
+                  {canAudit && (
+                    <>
+                      {/* TL-N6: what this user did (incl. failed sign-ins), and the history of the account itself. */}
+                      <Button component={RouterLink} to={auditLink({ ActorUserId: u.id })} startIcon={<PersonSearchOutlinedIcon />}>
+                        {t('audit.userActivity')}
+                      </Button>
+                      <Button component={RouterLink} to={auditLink({ EntityType: 'User', EntityId: String(u.id), IncludeChanges: true })} startIcon={<HistoryOutlinedIcon />}>
+                        {t('audit.accountHistory')}
+                      </Button>
+                    </>
+                  )}
                 </>
               }
             />

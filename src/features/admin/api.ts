@@ -10,8 +10,11 @@ export const adminKeys = {
   audit: ['admin', 'audit'] as const,
   integration: ['admin', 'integration'] as const,
   backups: ['admin', 'backups'] as const,
+  assignments: ['admin', 'assignments'] as const,
   userList: (p: object) => ['admin', 'users', 'list', p] as const,
+  assignmentList: (p: object) => ['admin', 'assignments', 'list', p] as const,
   auditList: (p: object) => ['admin', 'audit', 'list', p] as const,
+  auditOptions: ['admin', 'audit', 'options'] as const,
   integrationList: (kind: 'events' | 'log' | 'workers', p: object) => ['admin', 'integration', kind, p] as const,
 };
 
@@ -28,6 +31,14 @@ export const usersApi = {
   assignableRoles: () => api.get<S<'AssignableRoleItem'>[]>('/users/assignable-roles'),
 };
 
+/** Assignment letters (TL-N3), permission `Users.ReviewAssignments`. */
+export const assignmentsApi = {
+  list: (q: Q<'ListAssignments'>, signal?: AbortSignal) => api.get<S<'AssignmentList'>>('/users/assignments', q, { signal }),
+  /** The letter as PDF; every opening is logged by the API. */
+  openFile: (userId: number) => api.blob('get', `/users/${userId}/assignment/file`),
+  decide: (userId: number, body: S<'DecideAssignmentRequest'>) => api.post(`/users/${userId}/assignment/decision`, body),
+};
+
 export const rolesApi = {
   list: () => api.get<S<'RoleListItem'>[]>('/roles'),
   get: (id: number) => api.get<S<'RoleDetails'>>(`/roles/${id}`),
@@ -39,7 +50,10 @@ export const rolesApi = {
 };
 
 export const directoriesApi = {
-  list: (slug: string) => api.get<S<'DirectoryListing'>>(`/directories/${encodeURIComponent(slug)}`),
+  /** `Search` matches the number exactly or every word in the name / extra fields; `Active` filters active or stopped entries. */
+  list: (slug: string, q: Q<'ListDirectoryEntries'> = {}, signal?: AbortSignal) =>
+    api.get<S<'DirectoryListing'>>(`/directories/${encodeURIComponent(slug)}`, q, { signal }),
+  get: (slug: string, id: number) => api.get<S<'DirectoryEntryItem'>>(`/directories/${encodeURIComponent(slug)}/${id}`),
   create: (slug: string, body: S<'CreateDirectoryEntryRequest'>) => api.post<S<'IdResponse'>>(`/directories/${encodeURIComponent(slug)}`, body),
   update: (slug: string, id: number, body: S<'UpdateDirectoryEntryRequest'>) => api.put(`/directories/${encodeURIComponent(slug)}/${id}`, body),
   remove: (slug: string, id: number) => api.delete(`/directories/${encodeURIComponent(slug)}/${id}`),
@@ -66,6 +80,8 @@ export const laborSettingsApi = {
 export const auditApi = {
   search: (q: Q<'SearchAudit'>, signal?: AbortSignal) => api.get<Paged<S<'AuditLogItem'>>>('/audit', q, { signal }),
   get: (id: number) => api.get<unknown>(`/audit/${id}`),
+  /** Filter values: semantic actions (by module), modules, entity types and actors (TL-N6). */
+  options: () => api.get<S<'AuditOptions'>>('/audit/options'),
 };
 
 export const integrationApi = {

@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AuthContext, type AuthUser } from './authContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { authApi } from '@/features/authentication/api';
-import { onSessionExpired } from '@/services/api/client';
+import { onAccessGate, onSessionExpired } from '@/services/api/client';
 import { tokenStorage } from '@/services/api/tokenStorage';
 import i18n, { normalizeLanguage } from '@/i18n';
 import { hasAnyPermission } from '@/constants/permissions';
@@ -35,6 +35,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tokenStorage.clear();
       setStatus('anonymous');
     });
+  }, [reload]);
+
+  // A 403 PASSWORD_CHANGE_REQUIRED / ASSIGNMENT_APPROVAL_REQUIRED on any request means the account
+  // state changed (e.g. a letter was returned): re-read auth/me so the route guard shows the right
+  // screen. Several failing requests at once trigger one reload.
+  const gateReload = useRef<Promise<void> | null>(null);
+  useEffect(() => {
+    const unsubscribe = onAccessGate(() => {
+      if (gateReload.current || !tokenStorage.get()) return;
+      gateReload.current = reload()
+        .catch(() => undefined)
+        .finally(() => {
+          gateReload.current = null;
+        });
+    });
+    return () => {
+      unsubscribe();
+    };
   }, [reload]);
 
   useEffect(() => {

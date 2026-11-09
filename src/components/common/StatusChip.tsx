@@ -11,7 +11,7 @@ const TONES: Record<string, Tone> = {
   Received: 'success', Done: 'success', Filled: 'success', Registered: 'primary', Excused: 'success', Success: 'success', Kept: 'primary',
   Rejected: 'error', NotApproved: 'error', NotAccepted: 'error', Unsatisfactory: 'error', Failed: 'error', Failure: 'error',
   Denied: 'error', Overdue: 'error', Dismissal: 'error', Suspended: 'error', AbsentWithoutPermission: 'error', Missing: 'error',
-  Returned: 'warning', Due: 'warning', Onboarding: 'info', Open: 'info', Interview: 'info', Reported: 'info', Collecting: 'info',
+  Returned: 'warning', Due: 'warning', New: 'warning', Required: 'warning', Onboarding: 'info', Open: 'info', Interview: 'info', Reported: 'info', Collecting: 'info',
   Submitted: 'info', Reviewed: 'info', Delivered: 'info', Decided: 'info', Penalized: 'warning', HandedForTravel: 'warning',
   Cancelled: 'neutral', Closed: 'neutral', Terminated: 'neutral', Dismissed: 'neutral', NotRequired: 'neutral', HandedOnExit: 'neutral',
 };

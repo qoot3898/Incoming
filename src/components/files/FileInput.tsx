@@ -116,7 +116,9 @@ function DropZone({ label, accept, maxSizeMb, invalid, disabled, onBrowse, onFil
     setDragging(false);
     if (!disabled) onFiles(e.dataTransfer.files);
   };
-  const types = accept === DEFAULT_ACCEPT ? t('files.pdfOrImage') : accept;
+  const tokens = accept.split(',').map((x) => x.trim().toLowerCase());
+  const pdfOnly = tokens.every((x) => x === 'application/pdf' || x === '.pdf');
+  const types = accept === DEFAULT_ACCEPT ? t('files.pdfOrImage') : pdfOnly ? t('files.pdfOnly') : accept;
   const borderColor = invalid ? 'error.main' : dragging ? 'primary.main' : brand.inputLine;
   return (
     <Box

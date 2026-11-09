@@ -4,7 +4,8 @@ import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { useTranslation } from 'react-i18next';
-import { toApiErrorSync } from '@/services/api/errors';
+import { Link as RouterLink } from 'react-router-dom';
+import { API_ERROR_CODES, toApiErrorSync } from '@/services/api/errors';
 import { brand } from '@/app/theme/brand';
 
 export function LoadingState({ label, minHeight = 240 }: { label?: string; minHeight?: number }) {
@@ -34,6 +35,22 @@ export function EmptyState({ title, description, action, icon }: { title?: strin
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const { t } = useTranslation();
   const e = toApiErrorSync(error, t('errors.generic'));
+  if (e.status === 403 && e.code === API_ERROR_CODES.assignmentApprovalRequired) {
+    return (
+      <Paper variant="outlined" sx={{ p: 4 }}>
+        <EmptyState
+          icon={<LockOutlinedIcon />}
+          title={t('assignment.title')}
+          description={t('errors.assignmentRequired')}
+          action={
+            <Button component={RouterLink} to="/assignment" variant="contained" sx={{ mt: 1 }}>
+              {t('assignment.open')}
+            </Button>
+          }
+        />
+      </Paper>
+    );
+  }
   if (e.status === 403) {
     return (
       <Paper variant="outlined" sx={{ p: 4 }}>

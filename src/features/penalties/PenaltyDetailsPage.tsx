@@ -1,8 +1,13 @@
-import { Box, Grid2 as Grid, Stack } from '@mui/material';
+import { Box, Button, Grid2 as Grid, Stack } from '@mui/material';
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import { useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { penaltiesApi, penaltiesKeys } from './api';
+import { decisionValue, usePenaltyDecisionTypes } from './decisionTypes';
+import { useAuth } from '@/app/providers/authContext';
+import { PERMISSIONS } from '@/constants/permissions';
+import { auditLink } from '@/features/admin/audit/auditLinks';
 import { PageHeader } from '@/components/common/PageHeader';
 import { QueryBoundary, EmptyState } from '@/components/common/States';
 import { SectionCard } from '@/components/common/SectionCard';
@@ -12,16 +17,27 @@ import { RefusalHint } from '@/components/common/RefusalHint';
 import { AttachmentButton, PrintFormButton } from '@/components/common/FileButtons';
 import { ActionFormButton } from '@/components/forms/ActionFormButton';
 import { useApiMutation } from '@/hooks/useApiMutation';
-import { useEnumLabel, useEnumOptions } from '@/hooks/useEnumLabel';
-import { ENUMS } from '@/constants/enums';
+import { useEnumLabel } from '@/hooks/useEnumLabel';
 import { formatDate, formatDateTime, todayIso } from '@/utils/format';
 import type { S } from '@/types/api';
 import type { UploadVars } from '@/services/api/client';
 
+/** Decision dialog values: the type is chosen by number from the configurable list (TL-N5). */
+interface DecisionForm {
+  decision: string | null;
+  deductedDays: number | null;
+  basis: string | null;
+  note: string | null;
+}
+
+/** Deducted days allowed by the API (1 … LaborPenalty.MaxDeductedDays). */
+const MAX_DEDUCTED_DAYS = 31;
+
 export default function PenaltyDetailsPage() {
   const { t } = useTranslation();
   const label = useEnumLabel();
-  const enumOptions = useEnumOptions();
+  const decisions = usePenaltyDecisionTypes();
+  const { can } = useAuth();
   const id = Number(useParams().penaltyId);
   const query = useQuery({ queryKey: penaltiesKeys.detail(id), queryFn: () => penaltiesApi.get(id) });
   const invalidate = [penaltiesKeys.all, ['workers'], ['tasks'], ['payroll']];
@@ -43,19 +59,37 @@ export default function PenaltyDetailsPage() {
               <>
                 {p.canDecide && (
                   <>
-                    <ActionFormButton<S<'PenaltyDecisionInput'>>
+                    <ActionFormButton<DecisionForm>
                       label={t('penalties.decide')}
                       variant="contained"
                       description={t('penalties.decideHint')}
                       fields={[
-                        { name: 'decision', kind: 'select', label: t('penalties.decision'), required: true, half: true, options: enumOptions('PenaltyDecision', ENUMS.PenaltyDecision) },
-                        { name: 'deductedDays', kind: 'number', label: t('penalties.deductedDays'), half: true, min: 1, helperText: t('penalties.deductedDaysHint') },
+                        { name: 'decision', kind: 'select', label: t('penalties.decision'), required: true, half: true, options: decisions.options() },
+                        {
+                          name: 'deductedDays',
+                          kind: 'number',
+                          label: t('penalties.deductedDays'),
+                          half: true,
+                          required: true,
+                          min: 1,
+                          max: MAX_DEDUCTED_DAYS,
+                          step: 1,
+                          helperText: t('penalties.deductedDaysHint', { max: MAX_DEDUCTED_DAYS }),
+                          // Only types that behave as a deduction take days (base type 2 or a custom DeductionOfDays type).
+                          visibleWhen: (v) => decisions.behavior(v.decision) === 'DeductionOfDays',
+                        },
                         { name: 'basis', kind: 'textarea', label: t('penalties.basis'), helperText: t('penalties.basisHint'), maxLength: 500 },
                         { name: 'note', kind: 'textarea', label: t('workflow.note'), maxLength: 500 },
                       ]}
                       onSubmit={(v) => {
-                        if (v.decision === 'DeductionOfDays' && !v.deductedDays) return Promise.reject({ title: t('penalties.deductedDaysRequired'), fieldErrors: { deductedDays: [t('validation.required')] } });
-                        return decide.mutateAsync(v);
+                        const number = Number(v.decision);
+                        return decide.mutateAsync({
+                          // The generated type lists the base names only; any type number is accepted.
+                          decision: decisionValue(number) as S<'PenaltyDecision'>,
+                          deductedDays: decisions.behavior(number) === 'DeductionOfDays' ? v.deductedDays : null,
+                          basis: v.basis,
+                          note: v.note,
+                        });
                       }}
                     />
                     <ActionFormButton<S<'DismissPenaltyRequest'>>
@@ -96,6 +130,11 @@ export default function PenaltyDetailsPage() {
                   />
                 )}
                 <PrintFormButton code="F07" recordId={p.id} />
+                {can([PERMISSIONS.auditView]) && (
+                  <Button component={RouterLink} to={auditLink({ EntityType: 'LaborPenalty', EntityId: String(p.id), IncludeChanges: true })} startIcon={<HistoryOutlinedIcon />}>
+                    {t('audit.history')}
+                  </Button>
+                )}
               </>
             }
           />
@@ -116,8 +155,10 @@ export default function PenaltyDetailsPage() {
                       { label: t('penalties.violationDates'), value: p.violationDates },
                       { label: t('common.days'), value: p.days },
                       { label: t('penalties.reportReference'), value: p.reportReference },
+                      { label: t('penalties.issuedBy'), value: p.issuedBy },
+                      { label: t('penalties.issuedOn'), value: formatDate(p.issuedOn) },
                       { label: t('penalties.proposedBy'), value: p.proposedBy },
-                      { label: t('common.createdAt'), value: formatDateTime(p.createdAt) },
+                      { label: t('penalties.enteredAt'), value: formatDateTime(p.createdAt) },
                       {
                         label: t('penalties.source'),
                         value: p.absenceIncidentId ? t('penalties.fromIncidentShort') : p.evaluationId ? <RouterLink to={`/evaluations/${p.evaluationId}`}>{t('penalties.fromEvaluation')}</RouterLink> : '—',
@@ -131,7 +172,7 @@ export default function PenaltyDetailsPage() {
                   {p.decision ? (
                     <InfoGrid
                       items={[
-                        { label: t('penalties.decision'), value: label('PenaltyDecision', p.decision) },
+                        { label: t('penalties.decision'), value: decisions.label(p.decision) },
                         { label: t('penalties.deductedDays'), value: p.deductedDays },
                         { label: t('penalties.basis'), value: p.basis },
                         { label: t('workflow.decidedBy'), value: p.decidedBy },

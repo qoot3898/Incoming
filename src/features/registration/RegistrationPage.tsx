@@ -1,26 +1,12 @@
-import { Fragment, useMemo, useState } from 'react';
-import {
-  Alert,
-  Box,
-  Button,
-  MenuItem,
-  Paper,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Typography,
-} from '@mui/material';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, Box, Button, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material';
 import HowToRegOutlinedIcon from '@mui/icons-material/HowToRegOutlined';
 import { useQuery } from '@tanstack/react-query';
 import { Link as RouterLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { z } from 'zod';
 import { registrationApi, registrationKeys } from './api';
+import { COLUMN_GROUPS, defaultsFor, rowIssues, splitServerErrors, toInput, type RegistrationRow, type RowIssue } from './registrationRow';
+import { RegistrationRowEditor, type RowChoices } from './RegistrationRowEditor';
 import { PageHeader } from '@/components/common/PageHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { ErrorState, LoadingState, EmptyState } from '@/components/common/States';
@@ -32,50 +18,13 @@ import { useApiMutation } from '@/hooks/useApiMutation';
 import { ENUMS } from '@/constants/enums';
 import { candidatesKeys, staffingKeys } from '@/features/staffing/api';
 import { permitsKeys } from '@/features/permits/api';
+import { API_ERROR_CODES, type ApiError } from '@/services/api/errors';
+import { brand } from '@/app/theme/brand';
+import { todayIso } from '@/utils/format';
 import type { S } from '@/types/api';
-import type { ApiError } from '@/services/api/errors';
 
 type QueueItem = S<'RegistrationQueueItem'>;
-type Options = S<'RegistrationOptions'>;
-interface Row {
-  candidateId: number;
-  requestNumber: number;
-  name: string;
-  nationalityId: string;
-  gender: string;
-  maritalStatus: string;
-  birthDate: string;
-  birthPlaceId: string;
-  passportNumber: string;
-  nationalNumber: string;
-  idCardNumber: string;
-  phoneNumber: string;
-  healthCertificateExpiryDate: string;
-  departmentId: string;
-}
-
-function defaultsFor(q: QueueItem, o: Options): Row {
-  const dept =
-    o.defaultDepartments.find((d) => d.managementId === q.managementId && d.jobId === q.jobId)?.departmentId ??
-    o.managementDepartments.find((d) => d.managementId === q.managementId)?.departmentId;
-  const birth = o.defaultBirthPlaces.find((b) => b.nationalityId === q.nationalityId)?.birthPlaceId;
-  return {
-    candidateId: q.candidateId,
-    requestNumber: q.requestNumber,
-    name: q.name ?? '',
-    nationalityId: String(q.nationalityId),
-    gender: 'Male',
-    maritalStatus: 'Single',
-    birthDate: '',
-    birthPlaceId: birth ? String(birth) : '',
-    passportNumber: '',
-    nationalNumber: '',
-    idCardNumber: '',
-    phoneNumber: '',
-    healthCertificateExpiryDate: '',
-    departmentId: dept ? String(dept) : '',
-  };
-}
+type RowErrors = Record<number, Partial<Record<string, string>>>;
 
 export default function RegistrationPage() {
   const { t } = useTranslation();
@@ -83,9 +32,9 @@ export default function RegistrationPage() {
   const queue = useQuery({ queryKey: [...registrationKeys.all, 'queue'], queryFn: registrationApi.queue });
   const options = useQuery({ queryKey: [...registrationKeys.all, 'options'], queryFn: registrationApi.options, staleTime: 600_000 });
   const [selection, setSelection] = useState<(string | number)[]>([]);
-  const [rows, setRows] = useState<Row[] | null>(null);
-  const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
-  const [serverError, setServerError] = useState<ApiError | null>(null);
+  const [rows, setRows] = useState<RegistrationRow[] | null>(null);
+  const [rowErrors, setRowErrors] = useState<RowErrors>({});
+  const [serverError, setServerError] = useState<{ error: ApiError; rest: string[] } | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
   const [result, setResult] = useState<S<'RegisteredWorker'>[] | null>(null);
 
@@ -95,64 +44,66 @@ export default function RegistrationPage() {
     success: t('registration.done'),
   });
 
-  const schema = useMemo(
-    () =>
-      z.object({
-        name: z.string().trim().min(1, t('validation.required')),
-        nationalityId: z.string().min(1, t('validation.required')),
-        gender: z.string().min(1, t('validation.required')),
-        maritalStatus: z.string().min(1, t('validation.required')),
-        nationalNumber: z.string().regex(/^\d*$/, t('validation.digits')),
-      }),
-    [t],
-  );
+  const o = options.data;
+  const libyan = useMemo(() => new Set(o?.libyanNationalityIds ?? []), [o]);
+  const canWaive = o?.canRegisterWithoutPassport ?? false;
+  const choices = useMemo<RowChoices>(() => {
+    const choice = (list: S<'RegistrationChoice'>[] = []) => list.map((c) => ({ value: c.id, label: c.name ?? String(c.number) }));
+    return {
+      nationalities: choice(o?.nationalities),
+      cities: choice(o?.cities),
+      departments: choice(o?.departments),
+      genders: enumOptions('Gender', ENUMS.Gender),
+      maritalStatuses: enumOptions('MaritalStatus', ENUMS.MaritalStatus),
+    };
+  }, [o, enumOptions]);
+
+  // Stable across renders so memoized rows only re-render when their own data changes.
+  const update = useCallback((idx: number, patch: Partial<RegistrationRow>) => {
+    setRows((current) => (current ? current.map((x, i) => (i === idx ? { ...x, ...patch } : x)) : current));
+    setRowErrors((current) => {
+      if (!current[idx]) return current;
+      const cleared = { ...current[idx] };
+      Object.keys(patch).forEach((k) => delete cleared[k]);
+      return { ...current, [idx]: cleared };
+    });
+  }, []);
 
   if (queue.isLoading || options.isLoading) return <LoadingState />;
-  if (queue.error || options.error) return <ErrorState error={queue.error ?? options.error} />;
-  const o = options.data!;
+  if (queue.error || options.error) return <ErrorState error={queue.error ?? options.error} onRetry={() => void (queue.error ? queue.refetch() : options.refetch())} />;
   const items = queue.data ?? [];
-  const libyan = new Set(o.libyanNationalityIds);
+  const columnCount = COLUMN_GROUPS.reduce((n, g) => n + g.fields.length, 0) - (canWaive ? 0 : 1);
+
+  const issueText = (issue: RowIssue) => (issue.code === 'required' ? t('validation.required') : t(`registration.issues.${issue.code}`, { max: issue.max }));
 
   const start = () => {
+    if (!o) return;
     setResult(null);
     setServerError(null);
+    setRowErrors({});
     setDuplicateWarning(false);
     const chosen = new Set(selection);
     setRows(items.filter((i) => chosen.has(i.candidateId)).map((i) => defaultsFor(i, o)));
   };
 
-  const update = (idx: number, patch: Partial<Row>) => setRows((r) => (r ? r.map((x, i) => (i === idx ? { ...x, ...patch } : x)) : r));
-
   const submit = async (confirmDuplicates: boolean) => {
     if (!rows) return;
-    const errs: Record<number, string> = {};
+    const today = todayIso();
+    const errs: RowErrors = {};
     rows.forEach((r, i) => {
-      const res = schema.safeParse(r);
-      if (!res.success) errs[i] = res.error.issues.map((x) => `${t(`registration.cols.${String(x.path[0])}`)}: ${x.message}`).join(' · ');
+      const issues = rowIssues(r, { libyan: libyan.has(Number(r.nationalityId)), canWaive, today });
+      if (issues.length) errs[i] = Object.fromEntries(issues.map((x) => [x.field, issueText(x)]));
     });
     setRowErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) {
+      setServerError(null);
+      return;
+    }
     setServerError(null);
-    const num = (v: string) => (v ? Number(v) : null);
-    const str = (v: string) => (v.trim() ? v.trim() : null);
     try {
       const res = await register.mutateAsync({
         confirmDuplicates,
-        workers: rows.map((r) => ({
-          candidateId: r.candidateId,
-          name: r.name.trim(),
-          nationalityId: num(r.nationalityId),
-          gender: r.gender as S<'Gender'>,
-          maritalStatus: r.maritalStatus as S<'MaritalStatus'>,
-          birthDate: str(r.birthDate),
-          birthPlaceId: num(r.birthPlaceId),
-          passportNumber: str(r.passportNumber),
-          nationalNumber: num(r.nationalNumber),
-          idCardNumber: str(r.idCardNumber),
-          phoneNumber: str(r.phoneNumber),
-          healthCertificateExpiryDate: str(r.healthCertificateExpiryDate),
-          departmentId: num(r.departmentId),
-        })),
+        workers: rows.map((r) => toInput(r, { libyan: libyan.has(Number(r.nationalityId)) })),
       });
       setResult(res);
       setRows(null);
@@ -160,26 +111,15 @@ export default function RegistrationPage() {
       setDuplicateWarning(false);
     } catch (e) {
       const err = e as ApiError;
-      if (err.status === 409 && !confirmDuplicates) setDuplicateWarning(true);
-      setServerError(err);
+      // The duplicate-passport rule (AC-10) asks for confirmation instead of refusing.
+      if ((err.code === API_ERROR_CODES.confirmationRequired || err.status === 409) && !confirmDuplicates) setDuplicateWarning(true);
+      const split = splitServerErrors(err.fieldErrors);
+      setRowErrors(split.rows);
+      setServerError({ error: err, rest: split.rest });
     }
   };
 
-  const sel = (value: string, onChange: (v: string) => void, opts: { value: string | number; label: string }[], width = 150, allowEmpty = true) => (
-    <TextField select value={value} onChange={(e) => onChange(e.target.value)} sx={{ minWidth: width }} size="small">
-      {allowEmpty && (
-        <MenuItem value="">
-          <em>—</em>
-        </MenuItem>
-      )}
-      {opts.map((x) => (
-        <MenuItem key={String(x.value)} value={String(x.value)}>
-          {x.label}
-        </MenuItem>
-      ))}
-    </TextField>
-  );
-  const choice = (list: S<'RegistrationChoice'>[]) => list.map((c) => ({ value: c.id, label: c.name ?? String(c.number) }));
+  const invalidCount = Object.values(rowErrors).filter((e) => Object.values(e).some(Boolean)).length;
 
   return (
     <PageContainer>
@@ -231,66 +171,60 @@ export default function RegistrationPage() {
         </SectionCard>
       ) : (
         <SectionCard title={t('registration.formTitle', { count: rows.length })} noPadding>
-          <Box sx={{ p: 2 }}>
+          <Stack spacing={1.5} sx={{ p: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              {t('registration.rulesHint')}
+            </Typography>
+            {canWaive && <Alert severity="info">{t('registration.waiverHint')}</Alert>}
+            {invalidCount > 0 && !serverError && <Alert severity="error">{t('registration.rowsInvalid', { count: invalidCount })}</Alert>}
             {serverError && (
-              <Alert severity={duplicateWarning ? 'warning' : 'error'} sx={{ mb: 2 }}>
-                {serverError.detail || serverError.title}
+              <Alert severity={duplicateWarning ? 'warning' : 'error'}>
+                {serverError.error.detail || serverError.error.title}
+                {serverError.rest.map((m) => (
+                  <div key={m}>{m}</div>
+                ))}
                 {duplicateWarning && <div>{t('registration.duplicateHint')}</div>}
               </Alert>
             )}
-          </Box>
+          </Stack>
           <TableContainer sx={{ maxHeight: '65vh' }}>
-            <Table stickyHeader size="small">
+            <Table stickyHeader size="small" aria-label={t('registration.formTitle', { count: rows.length })}>
               <TableHead>
                 <TableRow>
-                  {['name', 'nationalityId', 'gender', 'maritalStatus', 'birthDate', 'birthPlaceId', 'passportNumber', 'nationalNumber', 'idCardNumber', 'phoneNumber', 'healthCertificateExpiryDate', 'departmentId'].map((c) => (
-                    <TableCell key={c}>{t(`registration.cols.${c}`)}</TableCell>
+                  {COLUMN_GROUPS.map((g) => (
+                    <TableCell
+                      key={g.key}
+                      colSpan={g.key === 'passport' && !canWaive ? g.fields.length - 1 : g.fields.length}
+                      sx={{ bgcolor: brand.surfaceHead, fontWeight: 700, borderInlineEnd: 1, borderColor: 'divider' }}
+                    >
+                      {t(`registration.groups.${g.key}`)}
+                    </TableCell>
                   ))}
+                </TableRow>
+                <TableRow>
+                  {COLUMN_GROUPS.flatMap((g) => g.fields)
+                    .filter((f) => canWaive || f !== 'passportWaived')
+                    .map((c) => (
+                      <TableCell key={c} sx={{ top: 37, whiteSpace: 'nowrap' }}>
+                        {t(`registration.cols.${c}`)}
+                      </TableCell>
+                    ))}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows.map((r, i) => {
-                  const isLibyan = libyan.has(Number(r.nationalityId));
-                  return (
-                    <Fragment key={r.candidateId}>
-                      <TableRow sx={{ '& td': { borderBottom: rowErrors[i] ? 0 : undefined } }}>
-                        <TableCell>
-                          <TextField size="small" value={r.name} onChange={(e) => update(i, { name: e.target.value })} sx={{ minWidth: 180 }} error={!r.name.trim()} />
-                        </TableCell>
-                        <TableCell>{sel(r.nationalityId, (v) => update(i, { nationalityId: v }), choice(o.nationalities), 150, false)}</TableCell>
-                        <TableCell>{sel(r.gender, (v) => update(i, { gender: v }), enumOptions('Gender', ENUMS.Gender), 100, false)}</TableCell>
-                        <TableCell>{sel(r.maritalStatus, (v) => update(i, { maritalStatus: v }), enumOptions('MaritalStatus', ENUMS.MaritalStatus), 130, false)}</TableCell>
-                        <TableCell>
-                          <TextField size="small" type="date" value={r.birthDate} onChange={(e) => update(i, { birthDate: e.target.value })} />
-                        </TableCell>
-                        <TableCell>{sel(r.birthPlaceId, (v) => update(i, { birthPlaceId: v }), choice(o.cities), 140)}</TableCell>
-                        <TableCell>
-                          <TextField size="small" value={r.passportNumber} onChange={(e) => update(i, { passportNumber: e.target.value })} sx={{ minWidth: 120 }} />
-                        </TableCell>
-                        <TableCell>
-                          <TextField size="small" value={r.nationalNumber} onChange={(e) => update(i, { nationalNumber: e.target.value })} sx={{ minWidth: 130 }} placeholder={isLibyan ? t('registration.libyanHint') : ''} />
-                        </TableCell>
-                        <TableCell>
-                          <TextField size="small" value={r.idCardNumber} onChange={(e) => update(i, { idCardNumber: e.target.value })} sx={{ minWidth: 110 }} />
-                        </TableCell>
-                        <TableCell>
-                          <TextField size="small" value={r.phoneNumber} onChange={(e) => update(i, { phoneNumber: e.target.value })} sx={{ minWidth: 120 }} />
-                        </TableCell>
-                        <TableCell>
-                          <TextField size="small" type="date" value={r.healthCertificateExpiryDate} onChange={(e) => update(i, { healthCertificateExpiryDate: e.target.value })} />
-                        </TableCell>
-                        <TableCell>{sel(r.departmentId, (v) => update(i, { departmentId: v }), choice(o.departments), 150)}</TableCell>
-                      </TableRow>
-                      {rowErrors[i] && (
-                        <TableRow>
-                          <TableCell colSpan={12} sx={{ color: 'error.main', fontSize: '0.75rem', pt: 0 }}>
-                            {rowErrors[i]}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </Fragment>
-                  );
-                })}
+                {rows.map((r, i) => (
+                  <RegistrationRowEditor
+                    key={r.candidateId}
+                    row={r}
+                    index={i}
+                    choices={choices}
+                    libyan={libyan.has(Number(r.nationalityId))}
+                    canWaive={canWaive}
+                    errors={rowErrors[i]}
+                    columnCount={columnCount}
+                    onChange={update}
+                  />
+                ))}
               </TableBody>
             </Table>
           </TableContainer>
@@ -303,7 +237,8 @@ export default function RegistrationPage() {
                 {t('registration.confirmDuplicates')}
               </Button>
             )}
-            <Button color="inherit" onClick={() => setRows(null)}>
+            <Box sx={{ flex: 1 }} />
+            <Button color="inherit" onClick={() => setRows(null)} disabled={register.isPending}>
               {t('common.back')}
             </Button>
           </Paper>

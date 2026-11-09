@@ -23,6 +23,8 @@ import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import SyncAltOutlinedIcon from '@mui/icons-material/SyncAltOutlined';
 import BackupOutlinedIcon from '@mui/icons-material/BackupOutlined';
+import FeedbackOutlinedIcon from '@mui/icons-material/FeedbackOutlined';
+import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
 import { NAV_PERMISSIONS } from './permissions';
 
 export interface NavItem {
@@ -73,11 +75,13 @@ export const NAVIGATION: NavSection[] = [
     ],
   },
   { key: 'exit', items: [item('terminations', '/terminations', LogoutOutlinedIcon)] },
+  { key: 'feedback', items: [item('complaints', '/complaints', FeedbackOutlinedIcon)] },
   { key: 'reporting', items: [item('reports', '/reports', AssessmentOutlinedIcon)] },
   {
     key: 'admin',
     items: [
       item('users', '/admin/users', ManageAccountsOutlinedIcon),
+      item('assignments', '/admin/assignments', AssignmentIndOutlinedIcon),
       item('roles', '/admin/roles', AdminPanelSettingsOutlinedIcon),
       item('directories', '/admin/directories', ListAltOutlinedIcon),
       item('laborSettings', '/admin/labor-settings', AccountTreeOutlinedIcon),

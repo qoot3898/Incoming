@@ -1,6 +1,7 @@
 import axios, { AxiosError, type AxiosProgressEvent, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 import type { S } from '@/types/api';
 import { tokenStorage } from './tokenStorage';
+import { API_ERROR_CODES, blobText, problemCode } from './errors';
 
 const base = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
 export const API_PREFIX = `${base}/api/v1`;
@@ -32,6 +33,34 @@ const expiredListeners = new Set<SessionListener>();
 export function onSessionExpired(listener: SessionListener) {
   expiredListeners.add(listener);
   return () => expiredListeners.delete(listener);
+}
+
+/**
+ * Account-level gates the API reports on any request (403 + stable code): the temporary password
+ * must be changed, or the assignment letter (TL-N3) is not approved yet. The auth provider listens
+ * and re-reads `auth/me`, and the route guard then shows the matching screen.
+ */
+export type AccessGateCode = typeof API_ERROR_CODES.passwordChangeRequired | typeof API_ERROR_CODES.assignmentApprovalRequired;
+type AccessGateListener = (code: AccessGateCode) => void;
+const gateListeners = new Set<AccessGateListener>();
+export function onAccessGate(listener: AccessGateListener) {
+  gateListeners.add(listener);
+  return () => gateListeners.delete(listener);
+}
+
+const GATE_CODES: ReadonlySet<string> = new Set([API_ERROR_CODES.passwordChangeRequired, API_ERROR_CODES.assignmentApprovalRequired]);
+
+/** The error code of a 403 body; blob responses (file downloads) carry the ProblemDetails as a Blob. */
+async function forbiddenCode(data: unknown): Promise<string | undefined> {
+  if (data instanceof Blob) {
+    if (!data.type.includes('json')) return undefined;
+    try {
+      return problemCode(JSON.parse(await blobText(data)));
+    } catch {
+      return undefined;
+    }
+  }
+  return problemCode(data);
 }
 
 http.interceptors.request.use((config) => {
@@ -80,9 +109,23 @@ http.interceptors.response.use(
       tokenStorage.clear();
       expiredListeners.forEach((l) => l());
     }
+    if (error.response?.status === 403 && gateListeners.size > 0) {
+      const code = await forbiddenCode(error.response.data);
+      if (code && GATE_CODES.has(code)) gateListeners.forEach((l) => l(code as AccessGateCode));
+    }
     return Promise.reject(error);
   },
 );
+
+/**
+ * Client for the anonymous surface (`/public/*`, e.g. the complaint form, TL-N1): no
+ * `Authorization` header, no token refresh — only the language header.
+ */
+export const publicHttp = axios.create({ baseURL: API_PREFIX, headers: { Accept: 'application/json' } });
+publicHttp.interceptors.request.use((config) => {
+  config.headers['Accept-Language'] = currentLanguage;
+  return config;
+});
 
 /** Cancellation and progress reporting for uploads (multipart requests). */
 export interface TransferOptions {

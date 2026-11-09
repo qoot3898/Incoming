@@ -18,7 +18,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
@@ -44,6 +44,13 @@ type Base<T> = {
   /** half width on ≥sm screens */
   half?: boolean;
   hidden?: boolean;
+  /** Shown but not editable (e.g. a value fixed by the record); the value is still submitted. */
+  disabled?: boolean;
+  /**
+   * Shown only while this returns true for the current (raw) form values, e.g. expiry dates
+   * for one document kind. A field that is not shown is neither validated nor submitted.
+   */
+  visibleWhen?: (values: Record<string, unknown>) => boolean;
 };
 
 export type FieldConfig<T> = Base<T> &
@@ -59,6 +66,13 @@ export type FieldConfig<T> = Base<T> &
 
 type RawValue = string | boolean | File | null;
 type RawValues = Record<string, RawValue>;
+
+/** Cross-field rules checked after the per-field rules pass: field name → message. */
+export type FormDialogValidate<T> = (values: T) => Partial<Record<keyof T & string, string>> | null | undefined;
+
+function shownFor<T>(fields: FieldConfig<T>[], raw: RawValues): FieldConfig<T>[] {
+  return fields.filter((f) => !f.visibleWhen || f.visibleWhen(raw));
+}
 
 function initial<T>(f: FieldConfig<T>, dv: unknown): RawValue {
   if (f.kind === 'boolean') return Boolean(dv);
@@ -156,6 +170,8 @@ export interface FormDialogProps<T> {
   maxWidth?: 'xs' | 'sm' | 'md';
   children?: ReactNode;
   onClose: () => void;
+  /** Cross-field validation (date order, "required when …"); messages appear under the fields. */
+  validate?: FormDialogValidate<T>;
   /**
    * Performs the action. `transfer` carries an AbortSignal and an upload-progress callback:
    * pass it to `api.postForm` for forms with a file field so the upload shows progress and can be cancelled.
@@ -181,13 +197,21 @@ export function FormDialog<T>({ open, onClose, maxWidth = 'sm', ...body }: FormD
 
 type BodyProps<T> = Omit<FormDialogProps<T>, 'open' | 'maxWidth'> & { onSubmittingChange: (busy: boolean) => void };
 
-function FormDialogBody<T>({ title, description, fields, defaultValues, submitLabel, destructive, children, onClose, onSubmit, onSubmittingChange }: BodyProps<T>) {
+function FormDialogBody<T>({ title, description, fields, defaultValues, submitLabel, destructive, children, onClose, onSubmit, validate, onSubmittingChange }: BodyProps<T>) {
   const { t } = useTranslation();
   const fileProblem = useFileProblemText();
   // Fields stay live (select options may arrive while the dialog is open);
   // defaults are captured once per opening — the body remounts every time the dialog opens.
   const visible = useMemo(() => fields.filter((f) => !f.hidden), [fields]);
-  const schema = useMemo(() => buildSchema(visible, t, fileProblem), [visible, t, fileProblem]);
+  const dynamic = visible.some((f) => f.visibleWhen);
+  // The schema depends on which conditional fields are shown, so it is built per validation from
+  // the values being validated; the ref keeps the resolver stable while fields stay live.
+  const schemaFor = useRef<(raw: RawValues) => z.ZodTypeAny>(() => z.object({}));
+  schemaFor.current = (raw) => buildSchema(shownFor(visible, raw), t, fileProblem);
+  const [resolver] = useState(() => {
+    const r: Resolver<RawValues> = (values, context, options) => zodResolver(schemaFor.current(values))(values, context, options);
+    return r;
+  });
   const [defaults] = useState(() => {
     const d: RawValues = {};
     fields.forEach((f) => {
@@ -196,10 +220,10 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
     return d;
   });
 
-  const { control, handleSubmit, setError, formState, getValues } = useForm<RawValues>({
-    resolver: zodResolver(schema),
-    defaultValues: defaults,
-  });
+  const { control, handleSubmit, setError, formState, getValues } = useForm<RawValues>({ resolver, defaultValues: defaults });
+  // Re-render on value changes only when some field depends on them.
+  const watched = useWatch({ control, disabled: !dynamic }) as RawValues;
+  const shown = dynamic ? shownFor(visible, { ...defaults, ...watched }) : visible;
   const { serverError, handleServerError, clearServerError } = useFormServerError(
     (field, message) => setError(field, { type: 'server', message }),
     visible.map((f) => f.name),
@@ -213,15 +237,22 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
 
   const submit = handleSubmit(async (raw) => {
     if (inFlight.current) return;
+    const active = shownFor(visible, raw);
+    const values = convert(active, raw);
+    const problems = Object.entries(validate?.(values) ?? {}).filter((e): e is [string, string] => !!e[1]);
+    if (problems.length > 0) {
+      problems.forEach(([field, message]) => setError(field, { type: 'validate', message }, { shouldFocus: true }));
+      return;
+    }
     inFlight.current = true;
     clearServerError();
     onSubmittingChange(true);
-    const hasFile = visible.some((f) => f.kind === 'file' && getValues(f.name) instanceof File);
+    const hasFile = active.some((f) => f.kind === 'file' && getValues(f.name) instanceof File);
     const ctrl = new AbortController();
     controller.current = ctrl;
     if (hasFile) setProgress(0);
     try {
-      await onSubmit(convert(visible, raw), {
+      await onSubmit(values, {
         signal: ctrl.signal,
         onUploadProgress: hasFile ? (e) => setProgress(e.total ? Math.round((e.loaded * 100) / e.total) : null) : undefined,
       });
@@ -249,7 +280,7 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
           {children}
           <FormErrorAlert value={serverError} />
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
-            {visible.map((f) => (
+            {shown.map((f) => (
               <Box key={f.name} sx={{ gridColumn: f.half ? undefined : '1 / -1' }}>
                 <Controller
                   name={f.name}
@@ -261,7 +292,7 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
                       return (
                         <>
                           <FormControlLabel
-                            control={<Checkbox checked={Boolean(field.value)} onChange={(e) => field.onChange(e.target.checked)} />}
+                            control={<Checkbox checked={Boolean(field.value)} disabled={f.disabled} onChange={(e) => field.onChange(e.target.checked)} />}
                             label={f.label}
                           />
                           {help && <FormHelperText error={!!err}>{help}</FormHelperText>}
@@ -277,7 +308,7 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
                           accept={f.accept}
                           maxSizeMb={f.maxSizeMb}
                           required={f.required}
-                          disabled={formState.isSubmitting}
+                          disabled={formState.isSubmitting || f.disabled}
                           error={err}
                           helperText={f.helperText}
                         />
@@ -289,6 +320,7 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
                         value={(field.value as string) ?? ''}
                         label={f.label}
                         required={f.required}
+                        disabled={f.disabled}
                         error={!!err}
                         helperText={help}
                         select={f.kind === 'select'}

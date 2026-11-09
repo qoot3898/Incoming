@@ -1,4 +1,4 @@
-import { api } from '@/services/api/client';
+import { api, type TransferOptions } from '@/services/api/client';
 import type { S } from '@/types/api';
 
 export const authApi = {
@@ -7,4 +7,6 @@ export const authApi = {
   me: () => api.get<S<'CurrentUserResponse'>>('/auth/me'),
   changePassword: (body: S<'ChangePasswordRequest'>) => api.post('/auth/change-password', body),
   setLanguage: (body: S<'SetPreferredLanguageRequest'>) => api.put('/auth/me/language', body),
+  /** TL-N3: uploads (or replaces, until approved) the user's assignment letter — PDF in field `file`. */
+  submitAssignment: (file: File, transfer?: TransferOptions) => api.postForm('/auth/me/assignment', { file }, transfer),
 };

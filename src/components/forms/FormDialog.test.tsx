@@ -64,4 +64,56 @@ describe('FormDialog', () => {
     expect(onClose).not.toHaveBeenCalled();
     expect((screen.getByLabelText(/Note/) as HTMLInputElement).value).toBe('ok');
   });
+
+  it('shows a conditional field only when its condition holds, and submits it only then', async () => {
+    type D = { kind: string | null; issuedOn: string | null };
+    const conditional: FieldConfig<D>[] = [
+      { name: 'kind', kind: 'select', label: 'Kind', required: true, options: [{ value: 'A', label: 'A' }, { value: 'HC', label: 'HC' }] },
+      { name: 'issuedOn', kind: 'date', label: 'Issued', required: true, visibleWhen: (v) => v.kind === 'HC' },
+    ];
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<FormDialog<D> open title="T" fields={conditional} defaultValues={{ kind: 'A' }} onClose={() => undefined} onSubmit={onSubmit} />);
+    expect(screen.queryByLabelText(/Issued/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'حفظ' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    // The hidden required field neither blocks the submit nor is sent.
+    expect(onSubmit.mock.calls[0][0]).toEqual({ kind: 'A' });
+  });
+
+  it('runs cross-field validation before submitting', async () => {
+    type D = { from: string | null; to: string | null };
+    const range: FieldConfig<D>[] = [
+      { name: 'from', kind: 'date', label: 'From' },
+      { name: 'to', kind: 'date', label: 'To' },
+    ];
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <FormDialog<D>
+        open
+        title="T"
+        fields={range}
+        defaultValues={{ from: '2026-11-09', to: '2026-11-01' }}
+        validate={(v) => (v.from && v.to && v.to <= v.from ? { to: 'After from' } : null)}
+        onClose={() => undefined}
+        onSubmit={onSubmit}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'حفظ' }));
+    await screen.findByText('After from');
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('renders disabled fields read-only but still submits their value', async () => {
+    type D = { number: number | null; name: string | null };
+    const locked: FieldConfig<D>[] = [
+      { name: 'number', kind: 'number', label: 'Number', disabled: true },
+      { name: 'name', kind: 'text', label: 'Name' },
+    ];
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<FormDialog<D> open title="T" fields={locked} defaultValues={{ number: 60, name: 'x' }} onClose={() => undefined} onSubmit={onSubmit} />);
+    expect((screen.getByLabelText(/Number/) as HTMLInputElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'حفظ' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0][0]).toEqual({ number: 60, name: 'x' });
+  });
 });

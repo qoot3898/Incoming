@@ -21,14 +21,16 @@ import { col } from '@/components/tables/columns';
 import { useEnumLabel, useEnumOptions } from '@/hooks/useEnumLabel';
 import { useApiMutation } from '@/hooks/useApiMutation';
 import { ENUMS } from '@/constants/enums';
-import { formatDate, formatMoney, formatBytes, formatDateTime } from '@/utils/format';
+import { formatDate, formatMoney, formatBytes, formatDateTime, todayIso } from '@/utils/format';
+import { penaltiesApi, penaltiesKeys } from '@/features/penalties/api';
+import { usePenaltyDecisionTypes } from '@/features/penalties/decisionTypes';
 import { useTabParam } from '@/hooks/useTabParam';
 import type { S } from '@/types/api';
 import type { UploadVars } from '@/services/api/client';
 
 type Worker = S<'LaborWorkerDetails'>;
 
-const PROFILE_TABS = ['overview', 'timeline', 'leaves', 'attachments'] as const;
+const PROFILE_TABS = ['overview', 'timeline', 'leaves', 'penalties', 'attachments'] as const;
 
 export default function WorkerProfilePage() {
   const { t } = useTranslation();
@@ -61,6 +63,7 @@ export default function WorkerProfilePage() {
           {tab === 'overview' && <Overview w={w} />}
           {tab === 'timeline' && <Timeline w={w} />}
           {tab === 'leaves' && <WorkerLeaves employeeId={employeeId} />}
+          {tab === 'penalties' && <WorkerPenalties employeeId={employeeId} />}
           {tab === 'attachments' && <Attachments employeeId={employeeId} />}
         </Box>
       )}
@@ -125,15 +128,23 @@ function Overview({ w }: { w: Worker }) {
                 { label: t('fields.gender'), value: label('Gender', w.gender) },
                 { label: t('fields.nationality'), value: w.nationalityName },
                 { label: t('fields.passportNumber'), value: w.passportNumber },
+                { label: t('fields.passportIssueDate'), value: formatDate(w.passportIssueDate) },
+                { label: t('fields.passportExpiryDate'), value: formatDate(w.passportExpiryDate) },
                 { label: t('fields.nationalNumber'), value: w.nationalNumber },
                 { label: t('fields.idCardNumber'), value: w.idCardNumber },
                 { label: t('fields.birthDate'), value: formatDate(w.birthDate) },
                 { label: t('fields.phone'), value: w.phoneNumber },
                 { label: t('fields.management'), value: w.managementName },
                 { label: t('fields.department'), value: w.departmentName },
+                { label: t('fields.healthCertificateIssueDate'), value: formatDate(w.healthCertificateIssueDate) },
                 { label: t('fields.healthCertificateExpiry'), value: formatDate(w.healthCertificateExpiryDate) },
               ]}
             />
+            {w.passportWaiverReason && (
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                {t('workers.registeredWithoutPassport', { reason: w.passportWaiverReason })}
+              </Alert>
+            )}
           </SectionCard>
           <SectionCard title={t('workers.file')}>
             <InfoGrid
@@ -263,6 +274,7 @@ function IdentityDialog({ worker: w, open, onClose }: { worker: Worker; open: bo
   const toOpt = (x: { id: number; name: string | null }) => ({ value: x.id, label: x.name ?? String(x.id) });
   const nationalityId = o?.nationalities.find((n) => n.name === w.nationalityName)?.id;
   const departmentId = o?.departments.find((d) => d.name === w.departmentName)?.id;
+  const libyanIds = new Set(o?.libyanNationalityIds ?? []);
   const fields: FieldConfig<S<'UpdateEmployeeIdentityRequest'>>[] = [
     { name: 'name', kind: 'text', label: t('fields.name'), required: true, maxLength: 200 },
     { name: 'gender', kind: 'select', label: t('fields.gender'), required: true, half: true, options: enumOptions('Gender', ENUMS.Gender) },
@@ -273,6 +285,8 @@ function IdentityDialog({ worker: w, open, onClose }: { worker: Worker; open: bo
     { name: 'departmentId', kind: 'select', label: t('fields.department'), half: true, options: (o?.departments ?? []).map(toOpt) },
     { name: 'passportNumber', kind: 'text', label: t('fields.passportNumber'), half: true },
     { name: 'nationalNumber', kind: 'number', label: t('fields.nationalNumber'), half: true },
+    { name: 'passportIssueDate', kind: 'date', label: t('fields.passportIssueDate'), half: true, max: todayIso() },
+    { name: 'passportExpiryDate', kind: 'date', label: t('fields.passportExpiryDate'), half: true },
     { name: 'idCardNumber', kind: 'text', label: t('fields.idCardNumber'), half: true },
     { name: 'phoneNumber', kind: 'text', label: t('fields.phone'), half: true },
   ];
@@ -290,13 +304,73 @@ function IdentityDialog({ worker: w, open, onClose }: { worker: Worker; open: bo
         nationalityId,
         departmentId,
         passportNumber: w.passportNumber,
+        // TL-N4: the request replaces the identity, so the recorded passport dates are always sent back.
+        passportIssueDate: w.passportIssueDate,
+        passportExpiryDate: w.passportExpiryDate,
         nationalNumber: w.nationalNumber,
         idCardNumber: w.idCardNumber,
         phoneNumber: w.phoneNumber,
         birthDate: w.birthDate,
       }}
+      validate={(v) => {
+        const errors: Partial<Record<keyof S<'UpdateEmployeeIdentityRequest'>, string>> = {};
+        const required = t('validation.required');
+        const passportChanged = (v.passportNumber ?? '') !== (w.passportNumber ?? '');
+        if (v.passportNumber) {
+          // A new or changed passport needs both dates; recorded dates are never blanked.
+          if (!v.passportIssueDate && (passportChanged || w.passportIssueDate)) errors.passportIssueDate = required;
+          if (!v.passportExpiryDate && (passportChanged || w.passportExpiryDate)) errors.passportExpiryDate = required;
+          if (v.passportIssueDate && v.passportExpiryDate && v.passportExpiryDate <= v.passportIssueDate) errors.passportExpiryDate = t('validation.expiryAfterIssue');
+        } else {
+          if (v.passportIssueDate || v.passportExpiryDate) errors.passportNumber = t('workers.datesNeedPassport');
+          // A foreigner's passport is dropped only with the waiver permission (TL-N2).
+          const foreign = v.nationalityId !== null && !libyanIds.has(Number(v.nationalityId));
+          if (w.passportNumber && foreign && !o?.canRegisterWithoutPassport) errors.passportNumber = t('workers.passportRemovalNotAllowed');
+        }
+        if (w.passportIssueDate && !v.passportIssueDate) errors.passportIssueDate = t('workers.recordedDateKept');
+        if (w.passportExpiryDate && !v.passportExpiryDate) errors.passportExpiryDate = t('workers.recordedDateKept');
+        return errors;
+      }}
       onSubmit={(v) => mutation.mutateAsync(v)}
     />
+  );
+}
+
+/** The worker's penalties (TL-N5 `employeeId` filter), newest first as listed by the API. */
+function WorkerPenalties({ employeeId }: { employeeId: number }) {
+  const { t } = useTranslation();
+  const label = useEnumLabel();
+  const navigate = useNavigate();
+  const decisions = usePenaltyDecisionTypes();
+  const params = { EmployeeId: employeeId, PageSize: 100 };
+  const q = useQuery({ queryKey: penaltiesKeys.list(params), queryFn: ({ signal }) => penaltiesApi.list(params, signal) });
+  if (q.isLoading) return <LoadingState />;
+  if (q.error) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
+  const rows = q.data?.page.items ?? [];
+  type Row = S<'PenaltyListItem'>;
+  return (
+    <Stack spacing={1.5}>
+      <Box>
+        <Button component={RouterLink} to={`/penalties?EmployeeId=${employeeId}`} size="small">
+          {t('workers.openInPenalties')}
+        </Button>
+      </Box>
+      <LocalDataGrid<Row>
+        rows={rows}
+        getRowId={(r) => r.penaltyId}
+        onRowClick={(r) => navigate(`/penalties/${r.penaltyId}`)}
+        emptyText={t('workers.noPenalties')}
+        columns={[
+          { field: 'violation', headerName: t('penalties.violation'), width: 170, valueFormatter: (v: string) => label('PenaltyViolation', v) },
+          col.text<Row>('violationDates', t('penalties.violationDates')),
+          col.text<Row>('issuedBy', t('penalties.issuedBy')),
+          col.date<Row>('issuedOn', t('penalties.issuedOn')),
+          { field: 'decision', headerName: t('penalties.decision'), width: 150, valueFormatter: (v: unknown) => decisions.label(v) },
+          col.num<Row>('deductedDays', t('penalties.deductedDays')),
+          col.status<Row>('status', t('fields.status'), 'PenaltyStatus', { width: 130 }),
+        ]}
+      />
+    </Stack>
   );
 }
 

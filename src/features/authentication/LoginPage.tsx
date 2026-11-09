@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Alert, Box, Button, IconButton, InputAdornment, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, IconButton, InputAdornment, Link, Paper, Stack, TextField, Typography } from '@mui/material';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link as RouterLink, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/app/providers/authContext';
 import { toApiError } from '@/services/api/errors';
@@ -140,6 +140,11 @@ export default function LoginPage() {
             </Stack>
           </form>
         </Paper>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          <Link component={RouterLink} to="/complaint">
+            {t('complaints.publicLink')}
+          </Link>
+        </Typography>
       </Stack>
     </Box>
   );

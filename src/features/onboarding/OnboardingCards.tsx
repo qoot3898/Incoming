@@ -25,6 +25,7 @@ import { useOnboardingInvalidation } from './invalidation';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { onboardingApi, onboardingKeys } from './api';
+import { workersApi, workersKeys } from '@/features/workers/api';
 import { payrollApi } from '@/features/payroll/api';
 import { SectionCard } from '@/components/common/SectionCard';
 import { InfoGrid } from '@/components/common/InfoGrid';
@@ -43,6 +44,18 @@ import type { LaborParty, S } from '@/types/api';
 import type { UploadVars } from '@/services/api/client';
 
 type Rec = S<'OnboardingRecord'>;
+
+interface DocumentForm {
+  kind: string | null;
+  receivedOn: string | null;
+  issuedOn: string | null;
+  expiresOn: string | null;
+  notes: string | null;
+  scan: File | null;
+}
+
+/** TL-N4: a health certificate carries its issue and expiry dates; other documents carry none. */
+const isHealthCertificate = (v: Record<string, unknown>) => v.kind === 'HealthCertificate';
 
 
 export function StartRecordCard({ r }: { r: Rec }) {
@@ -93,18 +106,26 @@ export function ChecklistCard({ r }: { r: Rec }) {
       subheader={r.documentsDueDate ? t('onboarding.dueOn', { date: formatDate(r.documentsDueDate) }) : undefined}
       action={
         r.canManage && (
-          <ActionFormButton<{ kind: string; receivedOn: string; expiresOn: string | null; notes: string | null; scan: File | null }>
+          <ActionFormButton<DocumentForm>
             label={t('onboarding.receiveDocument')}
             size="small"
             fields={[
               { name: 'kind', kind: 'select', label: t('onboarding.documentKind'), required: true, half: true, options: enumOptions('LaborDocumentKind', ENUMS.LaborDocumentKind) },
-              { name: 'receivedOn', kind: 'date', label: t('onboarding.receivedOn'), required: true, half: true },
-              { name: 'expiresOn', kind: 'date', label: t('onboarding.expiresOn'), half: true, helperText: t('onboarding.expiresOnHint') },
+              { name: 'receivedOn', kind: 'date', label: t('onboarding.receivedOn'), required: true, half: true, max: todayIso() },
+              { name: 'issuedOn', kind: 'date', label: t('onboarding.issuedOn'), required: true, half: true, visibleWhen: isHealthCertificate },
+              { name: 'expiresOn', kind: 'date', label: t('onboarding.expiresOn'), required: true, half: true, helperText: t('onboarding.expiresOnHint'), visibleWhen: isHealthCertificate },
               { name: 'notes', kind: 'textarea', label: t('common.notes'), maxLength: 500 },
               { name: 'scan', kind: 'file', label: t('attachments.scan') },
             ]}
             defaultValues={{ receivedOn: todayIso() }}
-            onSubmit={(values, transfer) => receive.mutateAsync({ values, transfer })}
+            validate={(v) => {
+              if (v.kind !== 'HealthCertificate' || !v.issuedOn) return null;
+              // The issue date is neither after the receipt nor after the expiry.
+              if (v.receivedOn && v.issuedOn > v.receivedOn) return { issuedOn: t('onboarding.issuedAfterReceipt') };
+              if (v.expiresOn && v.expiresOn <= v.issuedOn) return { expiresOn: t('validation.expiryAfterIssue') };
+              return null;
+            }}
+            onSubmit={(values, transfer) => receive.mutateAsync({ values: { ...values }, transfer })}
           />
         )
       }
@@ -132,6 +153,7 @@ export function ChecklistCard({ r }: { r: Rec }) {
                 <TableRow>
                   <TableCell>{t('onboarding.documentKind')}</TableCell>
                   <TableCell>{t('onboarding.receivedOn')}</TableCell>
+                  <TableCell>{t('onboarding.issuedOn')}</TableCell>
                   <TableCell>{t('onboarding.expiresOn')}</TableCell>
                   <TableCell>{t('onboarding.receivedBy')}</TableCell>
                   <TableCell />
@@ -142,6 +164,7 @@ export function ChecklistCard({ r }: { r: Rec }) {
                   <TableRow key={d.id}>
                     <TableCell>{label('LaborDocumentKind', d.kind)}</TableCell>
                     <TableCell>{formatDate(d.receivedOn)}</TableCell>
+                    <TableCell>{formatDate(d.issuedOn)}</TableCell>
                     <TableCell>{formatDate(d.expiresOn)}</TableCell>
                     <TableCell>{d.receivedBy ?? '—'}</TableCell>
                     <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
@@ -181,6 +204,11 @@ export function PassportCard({ r }: { r: Rec }) {
   const receive = useApiMutation(({ values, transfer }: UploadVars) => onboardingApi.receivePassport(r.employeeId, values, transfer), { invalidate, rethrow: true });
   const relocate = useApiMutation((v: S<'RelocatePassportRequest'>) => onboardingApi.relocatePassport(r.employeeId, v), { invalidate, rethrow: true });
   const p = r.passport;
+  // Recorded passport dates (TL-N4) live on the worker file: custody fills them when empty and refuses different ones.
+  const worker = useQuery({ queryKey: workersKeys.detail(r.employeeId), queryFn: () => workersApi.get(r.employeeId), enabled: r.canManage && !p, staleTime: 60_000 });
+  const recordedIssue = worker.data?.passportIssueDate ?? null;
+  const recordedExpiry = worker.data?.passportExpiryDate ?? null;
+  const datesRequired = !r.libyan && !(recordedIssue && recordedExpiry);
   return (
     <SectionCard
       title={t('onboarding.passportCustody')}
@@ -191,17 +219,44 @@ export function PassportCard({ r }: { r: Rec }) {
               <ActionFormButton<Record<string, unknown>>
                 label={t('onboarding.receivePassport')}
                 size="small"
+                disabled={worker.isLoading}
                 description={r.libyan ? t('onboarding.libyanPassportHint') : undefined}
                 fields={[
                   { name: 'passportNumber', kind: 'text', label: t('fields.passportNumber'), half: true, maxLength: 50 },
                   { name: 'location', kind: 'text', label: t('onboarding.passportLocation'), half: true, maxLength: 200 },
+                  {
+                    name: 'issuedOn',
+                    kind: 'date',
+                    label: t('fields.passportIssueDate'),
+                    half: true,
+                    required: datesRequired,
+                    max: todayIso(),
+                    disabled: !!recordedIssue,
+                    helperText: recordedIssue ? t('onboarding.recordedDate') : undefined,
+                  },
+                  {
+                    name: 'expiresOn',
+                    kind: 'date',
+                    label: t('fields.passportExpiryDate'),
+                    half: true,
+                    required: datesRequired,
+                    disabled: !!recordedExpiry,
+                    helperText: recordedExpiry ? t('onboarding.recordedDate') : undefined,
+                  },
                   { name: 'receivedOn', kind: 'date', label: t('onboarding.receivedOn'), required: true, half: true },
                   { name: 'handedBy', kind: 'text', label: t('onboarding.handedBy'), half: true, maxLength: 200 },
                   { name: 'receivedBy', kind: 'text', label: t('onboarding.receivedBy'), half: true, maxLength: 200 },
                   { name: 'notes', kind: 'textarea', label: t('common.notes'), maxLength: 500 },
                   { name: 'scan', kind: 'file', label: t('attachments.scan') },
                 ]}
-                defaultValues={{ passportNumber: r.passportNumber, receivedOn: todayIso(), handedBy: r.name }}
+                defaultValues={{ passportNumber: r.passportNumber, receivedOn: todayIso(), handedBy: r.name, issuedOn: recordedIssue, expiresOn: recordedExpiry }}
+                validate={(v) => {
+                  const issued = v.issuedOn as string | null;
+                  const expires = v.expiresOn as string | null;
+                  if (issued && expires && expires <= issued) return { expiresOn: t('validation.expiryAfterIssue') };
+                  if (!!issued !== !!expires) return issued ? { expiresOn: t('validation.required') } : { issuedOn: t('validation.required') };
+                  return null;
+                }}
                 onSubmit={(values, transfer) => receive.mutateAsync({ values, transfer })}
               />
             )}

@@ -27,4 +27,9 @@ describe('server error handling', () => {
     expect(set).toHaveBeenCalledWith('toDate', 'Too early');
     expect(unmatched).toEqual(['Unknown rule']);
   });
+
+  it('keeps the stable error code and correlation id (RFC 9457)', async () => {
+    const err = await toApiError(axiosError(409, { title: 'Conflict', code: 'CONCURRENCY_CONFLICT', correlationId: 'abc-1' }), 'fallback');
+    expect(err).toMatchObject({ status: 409, code: 'CONCURRENCY_CONFLICT', correlationId: 'abc-1' });
+  });
 });

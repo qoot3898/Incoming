@@ -74,7 +74,43 @@
     "ip": "عنوان IP",
     "occurredAt": "الوقت",
     "outcome": "النتيجة",
-    "summary": "الملخص"
+    "summary": "الملخص",
+    "search": "نص في الإجراء أو السجل أو الملخص أو اسم المنفذ",
+    "actions": "الإجراءات",
+    "actionCode": "رمز الإجراء",
+    "module": "الوحدة",
+    "entityType": "نوع السجل",
+    "entityId": "معرّف السجل",
+    "ipPrefix": "عنوان IP أو بدايته",
+    "correlationId": "رقم متابعة الطلب",
+    "userAgent": "المتصفح أو التطبيق",
+    "includeChanges": "إظهار القيم السابقة والجديدة",
+    "changes": "التغييرات",
+    "changedEntities_one": "سجل واحد",
+    "changedEntities_other": "{{count}} سجلات",
+    "noChanges": "لا توجد قيم مسجلة لهذا القيد",
+    "noFieldValues": "لا قيم حقول",
+    "field": "الحقل",
+    "oldValue": "القيمة السابقة",
+    "newValue": "القيمة الجديدة",
+    "operation": {
+      "Created": "إنشاء",
+      "Updated": "تعديل",
+      "Deleted": "حذف"
+    },
+    "presets": "عروض سريعة",
+    "preset": {
+      "signIns": "الدخول والخروج",
+      "failedSignIns": "محاولات الدخول الفاشلة",
+      "denied": "رفض الوصول"
+    },
+    "userActivity": "حركة المستخدم",
+    "accountHistory": "تاريخ الحساب",
+    "recordHistory": "تاريخ السجل",
+    "sameRequest": "قيود الطلب نفسه",
+    "history": "السجل التاريخي",
+    "showRaw": "عرض البيانات الخام",
+    "hideRaw": "إخفاء البيانات الخام"
   },
   "auth": {
     "changePassword": "تغيير كلمة المرور",
@@ -185,7 +221,10 @@
     "to": "إلى",
     "worker": "العامل",
     "yes": "نعم",
-    "clear": "مسح"
+    "clear": "مسح",
+    "close": "إغلاق",
+    "noOptions": "لا توجد خيارات",
+    "optional": "اختياري"
   },
   "directories": {
     "active": "نشط",
@@ -208,8 +247,17 @@
       "jobs": "المهن",
       "nationalities": "الجنسيات",
       "departments": "الأقسام",
-      "cities": "المدن"
-    }
+      "cities": "المدن",
+      "labor-penalty-decisions": "أنواع العقوبات",
+      "labor-leave-types": "أنواع الإجازات",
+      "labor-termination-reasons": "أسباب إنهاء الخدمة"
+    },
+    "search": "الرقم أو كلمات في الاسم",
+    "state": "الحالة",
+    "baseEntry": "نوع أساسي: يُعدّل ويُوقف ولا يُحذف",
+    "lockedForBase": "لا يتغير للأنواع الأساسية",
+    "numberFixed": "الرقم لا يتغير بعد الإضافة",
+    "baseEntriesHint": "الأنواع الأساسية ({{numbers}}) تُعدّل أسماؤها وتُوقف ولا تُحذف، ولا يتغير سلوكها. والنوع المستخدم يُوقف بدل حذفه."
   },
   "enums": {
     "AbsenceIncidentListStatus": {
@@ -660,6 +708,22 @@
       "All": "الكل",
       "Inactive": "الموقوفون",
       "Locked": "المقفلون"
+    },
+    "PenaltySource": {
+      "Direct": "مخالفة مباشرة",
+      "AbsenceIncident": "واقعة غياب",
+      "Evaluation": "تقييم"
+    },
+    "ComplaintStatus": {
+      "New": "جديدة",
+      "Reviewed": "تمت مراجعتها"
+    },
+    "AssignmentState": {
+      "NotRequired": "غير مطلوب",
+      "Required": "مطلوب",
+      "PendingReview": "بانتظار الاعتماد",
+      "Returned": "أُعيد للتصحيح",
+      "Approved": "معتمد"
     }
   },
   "errors": {
@@ -670,7 +734,8 @@
     "notFound": "السجل المطلوب غير موجود أو خارج نطاقك.",
     "notFoundTitle": "غير موجود",
     "pageNotFound": "الرابط غير صحيح أو أن الصفحة نُقلت.",
-    "pageNotFoundTitle": "الصفحة غير موجودة"
+    "pageNotFoundTitle": "الصفحة غير موجودة",
+    "assignmentRequired": "لا يمكن العمل على النظام قبل اعتماد ملف التكليف."
   },
   "evaluations": {
     "criterion": "البند",
@@ -731,7 +796,10 @@
     "status": "الحالة",
     "statusDate": "تاريخ الحالة",
     "track": "المسار",
-    "workSite": "الموقع"
+    "workSite": "الموقع",
+    "passportIssueDate": "تاريخ إصدار الجواز",
+    "passportExpiryDate": "تاريخ انتهاء الجواز",
+    "healthCertificateIssueDate": "تاريخ إصدار الشهادة الصحية"
   },
   "files": {
     "acceptHint": "{{types}} · حتى {{max}} ميغابايت",
@@ -752,7 +820,8 @@
     "tooLarge": "حجم الملف أكبر من {{max}} ميغابايت",
     "uploadCancelled": "تم إلغاء الرفع. البيانات المدخلة محفوظة ويمكنك الإرسال مرة أخرى.",
     "uploading": "جارٍ الرفع… {{percent}}٪",
-    "wrongType": "نوع الملف غير مقبول"
+    "wrongType": "نوع الملف غير مقبول",
+    "pdfOnly": "PDF فقط"
   },
   "filters": {
     "active": "عوامل التصفية المطبقة",
@@ -910,7 +979,9 @@
       "terminations": "إنهاء الخدمة",
       "transfers": "النقل بين المواقع",
       "users": "المستخدمون",
-      "workers": "ملفات العمال"
+      "workers": "ملفات العمال",
+      "complaints": "الشكاوى",
+      "assignments": "ملفات التكليف"
     },
     "main": "القائمة الرئيسية",
     "sections": {
@@ -920,7 +991,8 @@
       "general": "عام",
       "onboarding": "الالتحاق",
       "recruitment": "الاستقطاب والتسجيل",
-      "reporting": "التقارير"
+      "reporting": "التقارير",
+      "feedback": "الشكاوى"
     },
     "collapse": "طي القائمة الجانبية",
     "collapseGroup": "طي {{name}}",
@@ -992,7 +1064,10 @@
     "technicalWorkerNo": "لا — لا ينطبق",
     "technicalWorkerYes": "نعم — عامل فني",
     "withdrawConfirm": "سيُسحب بلاغ بدء العمل. متابعة؟",
-    "withdrawReport": "سحب البلاغ"
+    "withdrawReport": "سحب البلاغ",
+    "issuedOn": "تاريخ الإصدار",
+    "issuedAfterReceipt": "لا يكون تاريخ الإصدار بعد تاريخ الاستلام",
+    "recordedDate": "مسجل في ملف العامل"
   },
   "payroll": {
     "confirmReceipt": "تأكيد الاستلام",
@@ -1021,8 +1096,7 @@
     "decideHint": "لا يعتمد قرار الجزاء إلا مدير قسم العمالة المؤقتة (⁦AC-36⁩).",
     "decision": "القرار",
     "deductedDays": "أيام الخصم",
-    "deductedDaysHint": "عند قرار الخصم",
-    "deductedDaysRequired": "حدد أيام الخصم",
+    "deductedDaysHint": "من 1 إلى {{max}} يومًا",
     "description": "وصف المخالفة",
     "detailsTitle": "جزاء — {{name}}",
     "dismiss": "حفظ دون جزاء",
@@ -1052,7 +1126,20 @@
     "witnessHint": "مطلوب عند رفض العامل التوقيع",
     "witnessName": "اسم الشاهد",
     "witnessRequired": "اسم الشاهد مطلوب عند رفض العامل",
-    "workerRefused": "رفض العامل التوقيع"
+    "workerRefused": "رفض العامل التوقيع",
+    "sections": {
+      "issuance": "القيام بالجزاء"
+    },
+    "issuedBy": "من قام بالجزاء",
+    "issuedByHint": "وليس من يُدخل الجزاء في النظام",
+    "issuedOn": "تاريخ القيام بالجزاء",
+    "issuedFrom": "القيام بالجزاء من",
+    "issuedTo": "القيام بالجزاء حتى",
+    "enteredAt": "وقت الإدخال",
+    "enteredFrom": "أُدخل من",
+    "enteredTo": "أُدخل حتى",
+    "searchHint": "الرقم الوظيفي أو رقم الجزاء أو اسم العامل",
+    "ofWorker": "جزاءات العامل: {{name}}"
   },
   "permits": {
     "activeWithoutPermit": "{{count}} عامل على رأس العمل بلا إذن دخول.",
@@ -1091,7 +1178,12 @@
       "nationalNumber": "الرقم الوطني",
       "nationalityId": "الجنسية",
       "passportNumber": "رقم الجواز",
-      "phoneNumber": "الهاتف"
+      "phoneNumber": "الهاتف",
+      "passportIssueDate": "إصدار الجواز",
+      "passportExpiryDate": "انتهاء الجواز",
+      "passportWaived": "دون جواز",
+      "passportWaiverReason": "سبب التسجيل دون جواز",
+      "healthCertificateIssueDate": "إصدار الشهادة الصحية"
     },
     "confirmDuplicates": "تأكيد التسجيل رغم تكرار الجواز",
     "done": "تم تسجيل العمال وإصدار أرقامهم الوظيفية",
@@ -1102,7 +1194,27 @@
     "queue": "المرشحون المعتمدون بانتظار التسجيل",
     "registerSelected": "تسجيل المحددين ({{count}})",
     "resultTitle": "تم تسجيل {{count}} عامل:",
-    "submit": "تسجيل {{count}} عامل"
+    "submit": "تسجيل {{count}} عامل",
+    "groups": {
+      "identity": "الهوية",
+      "passport": "جواز السفر",
+      "health": "الشهادة الصحية",
+      "placement": "التسكين"
+    },
+    "issues": {
+      "digits": "أرقام فقط",
+      "maxLength": "الحد الأقصى {{max}} حرفًا",
+      "notAfterToday": "لا يكون بعد اليوم",
+      "expiryAfterIssue": "يجب أن يكون بعد تاريخ الإصدار",
+      "expiredOnRegistration": "منتهية الصلاحية في يوم التسجيل",
+      "datesNeedPassport": "لا يُدخل التاريخ دون رقم الجواز",
+      "waiverWithoutPassport": "لا يُدخل رقم جواز مع التسجيل دون جواز",
+      "waiverNotAllowed": "لا تملك صلاحية التسجيل دون جواز"
+    },
+    "rulesHint": "غير الليبي يُسجَّل برقم جوازه وتاريخيه، والليبي برقمه الوطني. الشهادة الصحية بتاريخيها مطلوبة وغير منتهية في يوم التسجيل، والهاتف اختياري.",
+    "waiverHint": "لديك صلاحية تسجيل غير الليبي دون جواز سفر مع ذكر السبب؛ ويبقى الجواز بندًا ناقصًا حتى يُستلم في العهدة.",
+    "withoutPassport": "دون جواز",
+    "rowsInvalid": "راجع البيانات في {{count}} صف قبل التسجيل."
   },
   "reports": {
     "candidateResult": "نتيجة المرشح",
@@ -1363,7 +1475,8 @@
     "tempPasswordTitle": "كلمة المرور المؤقتة",
     "unlock": "فك القفل",
     "unsavedRoles": "لم تُحفظ تغييرات الأدوار بعد",
-    "userName": "اسم الدخول"
+    "userName": "اسم الدخول",
+    "status": "الحساب"
   },
   "validation": {
     "dateMax": "يجب ألا يتجاوز التاريخ {{date}}",
@@ -1376,7 +1489,9 @@
     "min": "القيمة الدنيا {{min}}",
     "number": "أدخل رقمًا صحيحًا",
     "passwordMismatch": "كلمتا المرور غير متطابقتين",
-    "required": "هذا الحقل مطلوب"
+    "required": "هذا الحقل مطلوب",
+    "expiryAfterIssue": "يجب أن يكون تاريخ الانتهاء بعد تاريخ الإصدار",
+    "notAfterToday": "لا يكون التاريخ بعد اليوم"
   },
   "workers": {
     "approvedSalary": "المرتب المعتمد",
@@ -1409,8 +1524,15 @@
       "attachments": "المرفقات",
       "leaves": "الإجازات",
       "overview": "نظرة عامة",
-      "timeline": "السجل الزمني"
-    }
+      "timeline": "السجل الزمني",
+      "penalties": "الجزاءات"
+    },
+    "registeredWithoutPassport": "سُجّل دون جواز سفر: {{reason}}. يبقى الجواز بندًا ناقصًا حتى يُستلم في العهدة.",
+    "datesNeedPassport": "أدخل رقم الجواز مع تاريخيه",
+    "passportRemovalNotAllowed": "لا يُحذف جواز غير الليبي دون صلاحية التسجيل دون جواز",
+    "recordedDateKept": "لا يُحذف تاريخ مسجل",
+    "openInPenalties": "فتح في قائمة الجزاءات",
+    "noPenalties": "لا جزاءات لهذا العامل"
   },
   "workflow": {
     "approvals": "الاعتمادات",
@@ -1431,5 +1553,82 @@
     "round": "الجولة {{n}}",
     "since": "منذ {{date}}",
     "waitingFor": "بانتظار"
+  },
+  "assignment": {
+    "title": "ملف التكليف",
+    "open": "الانتقال إلى ملف التكليف",
+    "requiredHint": "ارفع خطاب تكليفك الموقّع بصيغة PDF. يُتاح لك العمل على النظام بعد أن يعتمده مستخدم مخوّل.",
+    "returnedTitle": "أُعيد ملف التكليف للتصحيح",
+    "returnedNoReason": "لم يُذكر سبب. ارفع ملفًا جديدًا.",
+    "pendingTitle": "بانتظار الاعتماد",
+    "pendingHint": "يُفتح النظام فور اعتماد الملف دون دخول جديد. يمكنك استبدال الملف قبل اعتماده.",
+    "checkStatus": "تحقق من الحالة",
+    "fileName": "اسم الملف",
+    "submittedAt": "وقت الرفع",
+    "reviewedAt": "وقت القرار",
+    "reviewedBy": "المراجع",
+    "size": "الحجم",
+    "uploadTitle": "رفع ملف التكليف",
+    "replaceTitle": "استبدال الملف المرفوع",
+    "file": "خطاب التكليف (PDF)",
+    "fileHint": "ملف PDF واحد ضمن الحجم المسموح في النظام",
+    "submit": "رفع الملف",
+    "uploaded": "تم رفع ملف التكليف",
+    "searchUsers": "الاسم أو اسم الدخول أو الرقم الوظيفي",
+    "emptyList": "لا يوجد مستخدمون في هذا التبويب",
+    "reviewTitle": "ملف تكليف — {{name}}",
+    "openFile": "فتح الملف",
+    "reviewNote": "ملاحظة المراجعة",
+    "noteHint": "مطلوبة عند الإعادة للتصحيح",
+    "returnReasonRequired": "اذكر سبب الإعادة",
+    "replacedMeanwhile": "استبدل المستخدم الملف بعد عرضه. أُعيد تحميل القائمة؛ افتح الملف الجديد قبل القرار.",
+    "approve": "اعتماد",
+    "return": "إعادة للتصحيح",
+    "approvedToast": "تم اعتماد ملف التكليف",
+    "returnedToast": "أُعيد ملف التكليف للتصحيح"
+  },
+  "complaints": {
+    "publicTitle": "تقديم شكوى",
+    "publicLink": "تقديم شكوى دون تسجيل دخول",
+    "staffSignIn": "دخول الموظفين",
+    "sections": {
+      "complainant": "مقدم الشكوى",
+      "complaint": "الشكوى"
+    },
+    "complainantName": "اسم مقدم الشكوى",
+    "complainantPhone": "رقم هاتف مقدم الشكوى",
+    "phoneHint": "من 7 إلى 15 رقمًا، ويجوز + في أوله",
+    "phone": {
+      "characters": "أرقام فقط، ويجوز + في أوله والفراغات والشرطات والأقواس",
+      "tooShort": "الرقم أقصر من {{min}} أرقام",
+      "tooLong": "الرقم أطول من {{max}} رقمًا"
+    },
+    "respondentName": "اسم المشكو فيه",
+    "location": "الموقع",
+    "details": "تفاصيل الشكوى",
+    "submit": "إرسال الشكوى",
+    "submittedTitle": "تم استلام شكواك",
+    "yourNumber": "رقم شكواك",
+    "keepNumber": "احتفظ بهذا الرقم للمتابعة.",
+    "submitAnother": "تقديم شكوى أخرى",
+    "rateLimitedTitle": "أُرسلت شكاوى كثيرة من هذا الجهاز",
+    "rateLimited": "انتظر دقيقة ثم أعد الإرسال.",
+    "tooLargeTitle": "الشكوى أطول من المسموح",
+    "tooLarge": "اختصر التفاصيل ثم أعد الإرسال.",
+    "search": "رقم الشكوى أو الهاتف أو كلمات في الشكوى",
+    "submittedFrom": "مقدمة من",
+    "submittedTo": "مقدمة حتى",
+    "number": "الرقم",
+    "submittedAt": "وقت التقديم",
+    "reviewedAt": "وقت المراجعة",
+    "reviewedBy": "راجعها",
+    "noNew": "لا توجد شكاوى جديدة",
+    "detailsTitle": "شكوى رقم {{id}}",
+    "recordReview": "تسجيل المراجعة",
+    "reviewNote": "ملاحظة المراجعة",
+    "reviewNoteHint": "ما اتُّخذ في الشكوى؛ تُسجل المراجعة مرة واحدة",
+    "reviewed": "تم تسجيل المراجعة",
+    "review": "المراجعة",
+    "notReviewed": "لم تُراجع بعد"
   }
 }

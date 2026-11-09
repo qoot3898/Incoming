@@ -74,7 +74,43 @@
     "ip": "IP address",
     "occurredAt": "Time",
     "outcome": "Outcome",
-    "summary": "Summary"
+    "summary": "Summary",
+    "search": "Text in the action, record, summary or user name",
+    "actions": "Actions",
+    "actionCode": "Action code",
+    "module": "Module",
+    "entityType": "Record type",
+    "entityId": "Record id",
+    "ipPrefix": "IP address or prefix",
+    "correlationId": "Request id",
+    "userAgent": "Browser or app",
+    "includeChanges": "Show old and new values",
+    "changes": "Changes",
+    "changedEntities_one": "1 record",
+    "changedEntities_other": "{{count}} records",
+    "noChanges": "No values recorded for this entry",
+    "noFieldValues": "No field values",
+    "field": "Field",
+    "oldValue": "Old value",
+    "newValue": "New value",
+    "operation": {
+      "Created": "Created",
+      "Updated": "Updated",
+      "Deleted": "Deleted"
+    },
+    "presets": "Quick views",
+    "preset": {
+      "signIns": "Sign-ins and sign-outs",
+      "failedSignIns": "Failed sign-ins",
+      "denied": "Access denied"
+    },
+    "userActivity": "User activity",
+    "accountHistory": "Account history",
+    "recordHistory": "Record history",
+    "sameRequest": "Entries of this request",
+    "history": "History",
+    "showRaw": "Show raw data",
+    "hideRaw": "Hide raw data"
   },
   "auth": {
     "changePassword": "Change password",
@@ -185,7 +221,10 @@
     "to": "To",
     "worker": "Worker",
     "yes": "Yes",
-    "clear": "Clear"
+    "clear": "Clear",
+    "close": "Close",
+    "noOptions": "No options",
+    "optional": "Optional"
   },
   "directories": {
     "active": "Active",
@@ -208,8 +247,17 @@
       "jobs": "Jobs",
       "nationalities": "Nationalities",
       "departments": "Sections",
-      "cities": "Cities"
-    }
+      "cities": "Cities",
+      "labor-penalty-decisions": "Punishment types",
+      "labor-leave-types": "Leave types",
+      "labor-termination-reasons": "Termination reasons"
+    },
+    "search": "Number or words in the name",
+    "state": "State",
+    "baseEntry": "Base type: renamed and stopped, never deleted",
+    "lockedForBase": "Fixed for base types",
+    "numberFixed": "The number cannot change once added",
+    "baseEntriesHint": "Base types ({{numbers}}) can be renamed and stopped but not deleted, and their behavior never changes. A type in use is stopped instead of deleted."
   },
   "enums": {
     "AbsenceIncidentListStatus": {
@@ -660,6 +708,22 @@
       "All": "All",
       "Inactive": "Inactive",
       "Locked": "Locked"
+    },
+    "PenaltySource": {
+      "Direct": "Direct violation",
+      "AbsenceIncident": "Absence incident",
+      "Evaluation": "Evaluation"
+    },
+    "ComplaintStatus": {
+      "New": "New",
+      "Reviewed": "Reviewed"
+    },
+    "AssignmentState": {
+      "NotRequired": "Not required",
+      "Required": "Required",
+      "PendingReview": "Pending approval",
+      "Returned": "Returned",
+      "Approved": "Approved"
     }
   },
   "errors": {
@@ -670,7 +734,8 @@
     "notFound": "The requested record does not exist or is outside your scope.",
     "notFoundTitle": "Not found",
     "pageNotFound": "The link is incorrect or the page has moved.",
-    "pageNotFoundTitle": "Page not found"
+    "pageNotFoundTitle": "Page not found",
+    "assignmentRequired": "You cannot work on the system until your assignment letter is approved."
   },
   "evaluations": {
     "criterion": "Criterion",
@@ -731,7 +796,10 @@
     "status": "Status",
     "statusDate": "Status date",
     "track": "Track",
-    "workSite": "Work site"
+    "workSite": "Work site",
+    "passportIssueDate": "Passport issue date",
+    "passportExpiryDate": "Passport expiry date",
+    "healthCertificateIssueDate": "Health certificate issue date"
   },
   "files": {
     "acceptHint": "{{types}} · up to {{max}} MB",
@@ -752,7 +820,8 @@
     "tooLarge": "File is larger than {{max}} MB",
     "uploadCancelled": "Upload cancelled. Your entries are kept — you can submit again.",
     "uploading": "Uploading… {{percent}}%",
-    "wrongType": "This file type is not accepted"
+    "wrongType": "This file type is not accepted",
+    "pdfOnly": "PDF only"
   },
   "filters": {
     "active": "Active filters",
@@ -910,7 +979,9 @@
       "terminations": "Terminations",
       "transfers": "Transfers",
       "users": "Users",
-      "workers": "Worker files"
+      "workers": "Worker files",
+      "complaints": "Complaints",
+      "assignments": "Assignment letters"
     },
     "main": "Main navigation",
     "sections": {
@@ -920,7 +991,8 @@
       "general": "General",
       "onboarding": "Onboarding",
       "recruitment": "Recruitment",
-      "reporting": "Reporting"
+      "reporting": "Reporting",
+      "feedback": "Complaints"
     },
     "collapse": "Collapse sidebar",
     "collapseGroup": "Collapse {{name}}",
@@ -992,7 +1064,10 @@
     "technicalWorkerNo": "No — not applicable",
     "technicalWorkerYes": "Yes — technical worker",
     "withdrawConfirm": "The start report will be withdrawn. Continue?",
-    "withdrawReport": "Withdraw report"
+    "withdrawReport": "Withdraw report",
+    "issuedOn": "Issue date",
+    "issuedAfterReceipt": "The issue date cannot be after the receipt date",
+    "recordedDate": "Recorded on the worker file"
   },
   "payroll": {
     "confirmReceipt": "Confirm receipt",
@@ -1021,8 +1096,7 @@
     "decideHint": "Only the temporary labor section manager can decide (AC-36).",
     "decision": "Decision",
     "deductedDays": "Deducted days",
-    "deductedDaysHint": "For a deduction decision",
-    "deductedDaysRequired": "Enter the deducted days",
+    "deductedDaysHint": "1 to {{max}} days",
     "description": "Violation description",
     "detailsTitle": "Penalty — {{name}}",
     "dismiss": "File without penalty",
@@ -1052,7 +1126,20 @@
     "witnessHint": "Required when the worker refuses to sign",
     "witnessName": "Witness name",
     "witnessRequired": "Witness name is required when the worker refuses",
-    "workerRefused": "Worker refused to sign"
+    "workerRefused": "Worker refused to sign",
+    "sections": {
+      "issuance": "Issuance"
+    },
+    "issuedBy": "Issued by",
+    "issuedByHint": "Not the person entering it in the system",
+    "issuedOn": "Issue date",
+    "issuedFrom": "Issued from",
+    "issuedTo": "Issued to",
+    "enteredAt": "Entered at",
+    "enteredFrom": "Entered from",
+    "enteredTo": "Entered to",
+    "searchHint": "Employee no., penalty no. or worker name",
+    "ofWorker": "Penalties of {{name}}"
   },
   "permits": {
     "activeWithoutPermit": "{{count}} active worker(s) have no entry permit.",
@@ -1091,7 +1178,12 @@
       "nationalNumber": "National no.",
       "nationalityId": "Nationality",
       "passportNumber": "Passport no.",
-      "phoneNumber": "Phone"
+      "phoneNumber": "Phone",
+      "passportIssueDate": "Passport issued",
+      "passportExpiryDate": "Passport expires",
+      "passportWaived": "No passport",
+      "passportWaiverReason": "Reason for registering without a passport",
+      "healthCertificateIssueDate": "Health certificate issued"
     },
     "confirmDuplicates": "Register despite duplicate passport",
     "done": "Workers registered and employee numbers issued",
@@ -1102,7 +1194,27 @@
     "queue": "Approved candidates awaiting registration",
     "registerSelected": "Register selected ({{count}})",
     "resultTitle": "{{count}} worker(s) registered:",
-    "submit": "Register {{count}} worker(s)"
+    "submit": "Register {{count}} worker(s)",
+    "groups": {
+      "identity": "Identity",
+      "passport": "Passport",
+      "health": "Health certificate",
+      "placement": "Placement"
+    },
+    "issues": {
+      "digits": "Digits only",
+      "maxLength": "At most {{max}} characters",
+      "notAfterToday": "Cannot be after today",
+      "expiryAfterIssue": "Must be after the issue date",
+      "expiredOnRegistration": "Expired on the registration day",
+      "datesNeedPassport": "Passport dates need a passport number",
+      "waiverWithoutPassport": "No passport number when registering without a passport",
+      "waiverNotAllowed": "You may not register without a passport"
+    },
+    "rulesHint": "Non-Libyans register with their passport number and its dates; Libyans with their national number. The health certificate and its dates are required and must be valid on the registration day; the phone is optional.",
+    "waiverHint": "You may register a non-Libyan without a passport by giving the reason; the passport then stays missing on the checklist until it is taken into custody.",
+    "withoutPassport": "No passport",
+    "rowsInvalid": "Check the data in {{count}} row(s) before registering."
   },
   "reports": {
     "candidateResult": "Candidate result",
@@ -1363,7 +1475,8 @@
     "tempPasswordTitle": "Temporary password",
     "unlock": "Unlock",
     "unsavedRoles": "Role changes are not saved yet",
-    "userName": "User name"
+    "userName": "User name",
+    "status": "Account"
   },
   "validation": {
     "dateMax": "Date must be on or before {{date}}",
@@ -1376,7 +1489,9 @@
     "min": "Minimum is {{min}}",
     "number": "Enter a valid number",
     "passwordMismatch": "Passwords do not match",
-    "required": "This field is required"
+    "required": "This field is required",
+    "expiryAfterIssue": "The expiry date must be after the issue date",
+    "notAfterToday": "The date cannot be after today"
   },
   "workers": {
     "approvedSalary": "Approved salary",
@@ -1409,8 +1524,15 @@
       "attachments": "Attachments",
       "leaves": "Leaves",
       "overview": "Overview",
-      "timeline": "Timeline"
-    }
+      "timeline": "Timeline",
+      "penalties": "Penalties"
+    },
+    "registeredWithoutPassport": "Registered without a passport: {{reason}}. The passport stays missing until it is taken into custody.",
+    "datesNeedPassport": "Enter the passport number with its dates",
+    "passportRemovalNotAllowed": "A non-Libyan's passport cannot be removed without the register-without-passport permission",
+    "recordedDateKept": "A recorded date cannot be removed",
+    "openInPenalties": "Open in the penalties list",
+    "noPenalties": "No penalties for this worker"
   },
   "workflow": {
     "approvals": "Approvals",
@@ -1431,5 +1553,82 @@
     "round": "Round {{n}}",
     "since": "since {{date}}",
     "waitingFor": "Waiting for"
+  },
+  "assignment": {
+    "title": "Assignment letter",
+    "open": "Go to the assignment letter",
+    "requiredHint": "Upload your signed assignment letter as a PDF. You can work on the system once an authorized user approves it.",
+    "returnedTitle": "Your assignment letter was returned",
+    "returnedNoReason": "No reason was given. Upload a new file.",
+    "pendingTitle": "Pending approval",
+    "pendingHint": "The system opens as soon as the letter is approved — no new sign-in needed. You can replace the file until then.",
+    "checkStatus": "Check status",
+    "fileName": "File name",
+    "submittedAt": "Uploaded at",
+    "reviewedAt": "Decided at",
+    "reviewedBy": "Reviewer",
+    "size": "Size",
+    "uploadTitle": "Upload the assignment letter",
+    "replaceTitle": "Replace the uploaded file",
+    "file": "Assignment letter (PDF)",
+    "fileHint": "One PDF file within the size the system allows",
+    "submit": "Upload",
+    "uploaded": "Assignment letter uploaded",
+    "searchUsers": "Name, user name or employee no.",
+    "emptyList": "No users in this tab",
+    "reviewTitle": "Assignment letter — {{name}}",
+    "openFile": "Open file",
+    "reviewNote": "Review note",
+    "noteHint": "Required when returning the letter",
+    "returnReasonRequired": "Give the reason for returning it",
+    "replacedMeanwhile": "The user replaced the file after it was listed. The list was reloaded; open the new file before deciding.",
+    "approve": "Approve",
+    "return": "Return for correction",
+    "approvedToast": "Assignment letter approved",
+    "returnedToast": "Assignment letter returned"
+  },
+  "complaints": {
+    "publicTitle": "Submit a complaint",
+    "publicLink": "Submit a complaint without signing in",
+    "staffSignIn": "Staff sign-in",
+    "sections": {
+      "complainant": "Complainant",
+      "complaint": "Complaint"
+    },
+    "complainantName": "Complainant name",
+    "complainantPhone": "Complainant phone",
+    "phoneHint": "7 to 15 digits; may start with +",
+    "phone": {
+      "characters": "Digits only; + at the start, spaces, dashes and brackets are allowed",
+      "tooShort": "The number has fewer than {{min}} digits",
+      "tooLong": "The number has more than {{max}} digits"
+    },
+    "respondentName": "Person complained about",
+    "location": "Location",
+    "details": "Complaint details",
+    "submit": "Send complaint",
+    "submittedTitle": "Your complaint was received",
+    "yourNumber": "Your complaint number",
+    "keepNumber": "Keep this number to follow up.",
+    "submitAnother": "Submit another complaint",
+    "rateLimitedTitle": "Too many complaints from this device",
+    "rateLimited": "Wait a minute, then send again.",
+    "tooLargeTitle": "The complaint is too long",
+    "tooLarge": "Shorten the details, then send again.",
+    "search": "Complaint no., phone or words in the complaint",
+    "submittedFrom": "Submitted from",
+    "submittedTo": "Submitted to",
+    "number": "No.",
+    "submittedAt": "Submitted at",
+    "reviewedAt": "Reviewed at",
+    "reviewedBy": "Reviewed by",
+    "noNew": "No new complaints",
+    "detailsTitle": "Complaint no. {{id}}",
+    "recordReview": "Record review",
+    "reviewNote": "Review note",
+    "reviewNoteHint": "What was done about the complaint; a review is recorded once",
+    "reviewed": "Review recorded",
+    "review": "Review",
+    "notReviewed": "Not reviewed yet"
   }
 }

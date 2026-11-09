@@ -1,11 +1,15 @@
 import { useMemo } from 'react';
 import { Button, Chip, Stack } from '@mui/material';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import AddIcon from '@mui/icons-material/Add';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { penaltiesApi, penaltiesKeys } from './api';
+import { decisionNumber, decisionValue, usePenaltyDecisionTypes } from './decisionTypes';
+import { penaltySource } from './source';
+import { workersApi, workersKeys } from '@/features/workers/api';
 import { PageHeader } from '@/components/common/PageHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { FilterPanel } from '@/components/tables/FilterPanel';
@@ -25,20 +29,46 @@ export default function PenaltiesListPage() {
   const navigate = useNavigate();
   const label = useEnumLabel();
   const enumOptions = useEnumOptions();
-  const opts = useScopeOptions();
-  const list = useListState({ Status: '', Violation: '', Decision: '', WorkSiteId: '', From: '', To: '', Search: '' });
-  const params = list.params as unknown as Q<'ListPenalties'>;
+  const decisions = usePenaltyDecisionTypes();
+  const list = useListState({
+    Status: '',
+    Violation: '',
+    Decision: '',
+    Source: '',
+    TrackId: '',
+    WorkSiteId: '',
+    IssuedBy: '',
+    IssuedFrom: '',
+    IssuedTo: '',
+    From: '',
+    To: '',
+    Search: '',
+    // Scope to one worker (from the worker file); shown as a chip, kept when the panel's filters are cleared.
+    EmployeeId: '',
+  });
+  const opts = useScopeOptions(list.filters.TrackId);
+  // Decision is stored by type number in the URL; base types are sent by name, others by number (TL-N5).
+  const decisionNo = decisionNumber(list.filters.Decision);
+  const params = { ...list.params, Decision: decisionNo === null ? undefined : decisionValue(decisionNo) } as unknown as Q<'ListPenalties'>;
   const query = useQuery({ queryKey: penaltiesKeys.list(params), queryFn: ({ signal }) => penaltiesApi.list(params, signal), placeholderData: keepPreviousData });
+  const employeeId = Number(list.filters.EmployeeId) || null;
+  const worker = useQuery({ queryKey: workersKeys.detail(employeeId ?? 0), queryFn: () => workersApi.get(employeeId!), enabled: !!employeeId, staleTime: 60_000 });
   const filters: FilterDef<typeof list.filters>[] = [
-    { key: 'Search', kind: 'search', label: t('common.search') },
+    { key: 'Search', kind: 'search', label: t('penalties.searchHint') },
     { key: 'Status', kind: 'select', label: t('fields.status'), options: enumOptions('PenaltyStatus', ENUMS.PenaltyStatus) },
     { key: 'Violation', kind: 'select', label: t('penalties.violation'), options: enumOptions('PenaltyViolation', ENUMS.PenaltyViolation) },
-    { key: 'Decision', kind: 'select', label: t('penalties.decision'), options: enumOptions('PenaltyDecision', ENUMS.PenaltyDecision) },
+    { key: 'Decision', kind: 'select', label: t('penalties.decision'), options: decisions.options(true) },
+    { key: 'Source', kind: 'select', label: t('penalties.source'), options: enumOptions('PenaltySource', ENUMS.PenaltySource) },
+    { key: 'TrackId', kind: 'select', label: t('fields.track'), options: opts.tracks, clears: ['WorkSiteId'] },
     { key: 'WorkSiteId', kind: 'select', label: t('fields.workSite'), options: opts.sites },
-    { key: 'From', kind: 'date', label: t('common.from') },
-    { key: 'To', kind: 'date', label: t('common.to') },
+    { key: 'IssuedBy', kind: 'search', label: t('penalties.issuedBy') },
+    { key: 'IssuedFrom', kind: 'date', label: t('penalties.issuedFrom') },
+    { key: 'IssuedTo', kind: 'date', label: t('penalties.issuedTo') },
+    { key: 'From', kind: 'date', label: t('penalties.enteredFrom') },
+    { key: 'To', kind: 'date', label: t('penalties.enteredTo') },
   ];
   const d = query.data;
+  const workerName = worker.data ? `${worker.data.employeeNumber} — ${worker.data.name ?? ''}` : (d?.page.items[0]?.name ?? String(employeeId ?? ''));
 
   const columns = useMemo<GridColDef<Row>[]>(
     () => [
@@ -47,12 +77,15 @@ export default function PenaltiesListPage() {
       col.text<Row>('workSiteName', t('fields.workSite')),
       { field: 'violation', headerName: t('penalties.violation'), width: 170, valueFormatter: (v: string) => label('PenaltyViolation', v) },
       col.text<Row>('violationDates', t('penalties.violationDates')),
-      { field: 'decision', headerName: t('penalties.decision'), width: 140, valueFormatter: (v: string | null) => label('PenaltyDecision', v) },
+      col.text<Row>('issuedBy', t('penalties.issuedBy')),
+      col.date<Row>('issuedOn', t('penalties.issuedOn')),
+      { field: 'source', headerName: t('penalties.source'), width: 130, valueGetter: (_: unknown, r: Row) => label('PenaltySource', penaltySource(r)) },
+      { field: 'decision', headerName: t('penalties.decision'), width: 150, valueFormatter: (v: unknown) => decisions.label(v) },
       col.num<Row>('deductedDays', t('penalties.deductedDays')),
       col.status<Row>('status', t('fields.status'), 'PenaltyStatus', { width: 130 }),
-      col.dateTime<Row>('createdAt', t('common.createdAt')),
+      col.dateTime<Row>('createdAt', t('penalties.enteredAt')),
     ],
-    [label, t],
+    [label, decisions, t],
   );
 
   return (
@@ -82,6 +115,16 @@ export default function PenaltiesListPage() {
             />
           ))}
         </Stack>
+      )}
+      {employeeId !== null && (
+        <Chip
+          icon={<PersonOutlineIcon />}
+          color="primary"
+          variant="outlined"
+          label={t('penalties.ofWorker', { name: workerName })}
+          onDelete={() => list.clearFilter('EmployeeId')}
+          sx={{ mb: 2, maxWidth: '100%' }}
+        />
       )}
       <FilterPanel list={list} filters={filters} />
       <ServerDataGrid<Row>

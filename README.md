@@ -6,6 +6,7 @@ Web frontend for **نظام إدارة العمالة المؤقتة** (TL-SRS v
 - Analysis: [`PROJECT_ANALYSIS.md`](PROJECT_ANALYSIS.md)
 - Endpoint ↔ screen mapping: [`API_MAPPING.md`](API_MAPPING.md)
 - Plan & architecture: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
+- Requirements of 2026-11-08 (complaints, assignment letter, document dates, penalties, user activity): [`REQUIREMENTS_2026-11-08.md`](REQUIREMENTS_2026-11-08.md)
 
 ## Stack
 
@@ -52,8 +53,8 @@ The app uses client-side routing: configure the web server to fall back to `inde
 | `npm run check` | typecheck + lint + i18n check + tests |
 | `npm run gen:api` | Regenerate `src/types/api.generated.ts` from `openapi/openapi.json` |
 
-To refresh the API contract: download `http://qoottemporarylabor.runasp.net/openapi/v1.json` to
-`openapi/openapi.json`, then run `npm run gen:api` and `npm run typecheck`.
+To refresh the API contract: download `https://qoottemporarylabor.runasp.net/openapi/v1.json` to
+`openapi/openapi.json`, then run `npm run gen:api` and `npm run typecheck`. (The reference UI is at `/scalar`.)
 `scripts/normalize-openapi.mjs` corrects ASP.NET OpenAPI quirks (untyped nullable strings,
 `integer|string` numbers) before generation.
 

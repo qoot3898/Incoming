@@ -2068,7 +2068,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** عنصر دليل واحد */
+        get: operations["GetDirectoryEntry"];
         /** تعديل عنصر دليل */
         put: operations["UpdateDirectoryEntry"];
         post?: never;
@@ -2327,7 +2328,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** البحث في سجل التدقيق */
+        /** حركة المستخدمين على النظام (البحث في سجل التدقيق) */
         get: operations["SearchAudit"];
         put?: never;
         post?: never;
@@ -2560,6 +2561,159 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** قوائم تصفية حركة المستخدمين */
+        get: operations["GetAuditOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/complaints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** تقديم شكوى من النموذج العام (دون دخول) */
+        post: operations["SubmitComplaint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/complaints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** قائمة الشكاوى */
+        get: operations["ListComplaints"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/complaints/{complaintId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** شكوى واحدة */
+        get: operations["GetComplaint"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/complaints/{complaintId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** تسجيل مراجعة شكوى */
+        post: operations["ReviewComplaint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/me/assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** إرفاق ملف التكليف */
+        post: operations["SubmitAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** ملفات تكليف المستخدمين */
+        get: operations["ListAssignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{userId}/assignment/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** فتح ملف تكليف مستخدم */
+        get: operations["OpenAssignment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{userId}/assignment/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** اعتماد ملف تكليف مستخدم أو إعادته */
+        post: operations["DecideAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2736,6 +2890,82 @@ export interface components {
             /** @description دور المسؤول الأعلى. */
             isSuperAdmin: boolean;
         };
+        /** @description «ملفات التكليف»: صفحة واحدة من المستخدمين المطابقين للمعايير، وعدد كل موضع منهم (عدّادات التبويبات). */
+        AssignmentList: {
+            /** @description صفحة التبويب المعروض. */
+            page: components["schemas"]["PagedResultOfAssignmentListItem"];
+            /**
+             * Format: int32
+             * @description لم يرفعوا ملفًا بعد.
+             */
+            required: number;
+            /**
+             * Format: int32
+             * @description ملفاتهم قيد المراجعة.
+             */
+            pendingReview: number;
+            /**
+             * Format: int32
+             * @description أُعيدت ملفاتهم للتصحيح.
+             */
+            returned: number;
+            /**
+             * Format: int32
+             * @description اعتُمدت ملفاتهم.
+             */
+            approved: number;
+        };
+        /** @description مستخدم في «ملفات التكليف» وموضعه من ملفه. */
+        AssignmentListItem: {
+            /**
+             * Format: int32
+             * @description المستخدم.
+             */
+            userId: number;
+            /** @description اسم الدخول. */
+            userName: string | null;
+            /** @description الاسم الكامل. */
+            fullName: string | null;
+            /** @description الرقم الوظيفي. */
+            employeeNo: string | null;
+            /** @description المسمى الوظيفي. */
+            jobTitle: string | null;
+            /** @description حساب نشط. */
+            isActive: boolean;
+            /** @description موضعه من ملف التكليف. */
+            status: components["schemas"]["AssignmentState"];
+            /** @description اسم الملف المرفوع. */
+            fileName: string | null;
+            /**
+             * Format: int32
+             * @description حجمه بالبايت.
+             */
+            size: null | number;
+            /**
+             * Format: date-time
+             * @description وقت رفعه.
+             */
+            submittedAt: string | null;
+            /** @description الاسم الكامل لمن بتّ فيه. */
+            reviewedBy: string | null;
+            /**
+             * Format: date-time
+             * @description وقت القرار.
+             */
+            reviewedAt: string | null;
+            /** @description ملاحظة المراجع أو سبب الإعادة. */
+            reviewNote: string | null;
+            /**
+             * Format: byte
+             * @description رمز التزامن للملف المعروض؛ يُرسل مع القرار كي لا يُعتمد ملف استُبدل بعد عرضه.
+             */
+            rowVersion: null | string;
+        };
+        /**
+         * @description موضع المستخدم من ملف التكليف (القرار TL-N3)، كما تعرضه الواجهة.
+         * @enum {unknown}
+         */
+        AssignmentState: "NotRequired" | "Required" | "PendingReview" | "Returned" | "Approved";
         /**
          * @description ما يكونه يوم العامل في كشف الحضور (TL-F06 B).
          * @enum {unknown}
@@ -3021,7 +3251,30 @@ export interface components {
              */
             rest: number;
         };
-        /** @description مدخل تدقيق في قائمة التدقيق. */
+        /** @description إجراء يُختار في تصفية حركة المستخدمين. */
+        AuditActionChoice: {
+            /** @description رمز الإجراء. */
+            code: string | null;
+            /** @description اسمه بلغة الطلب. */
+            name: string | null;
+            /** @description وحدته: الجزء قبل النقطة في رمزه. */
+            module: string | null;
+        };
+        /** @description مستخدم يُختار في تصفية حركة المستخدمين. */
+        AuditActorChoice: {
+            /**
+             * Format: int32
+             * @description المعرّف (قيمة `actorUserId`).
+             */
+            id: number;
+            /** @description اسم الدخول. */
+            userName: string | null;
+            /** @description الاسم الكامل. */
+            fullName: string | null;
+            /** @description حساب نشط. */
+            isActive: boolean;
+        };
+        /** @description مدخل تدقيق في قائمة التدقيق: حركة واحدة لمستخدم على النظام. */
         AuditLogItem: {
             /**
              * Format: int64
@@ -3049,6 +3302,29 @@ export interface components {
             outcome: components["schemas"]["AuditOutcome"];
             /** @description عنوان IP للعميل. */
             ipAddress: string | null;
+            /**
+             * Format: int32
+             * @description المنفِّذ.
+             */
+            actorUserId: null | number;
+            /** @description اسم دخول المنفِّذ. */
+            actorUserName: string | null;
+            /** @description وكيل مستخدم العميل (المتصفح أو التطبيق). */
+            userAgent: string | null;
+            /** @description رقم متابعة الطلب؛ تجمع قيود الطلب الواحد. */
+            correlationId: string | null;
+            changes: null | components["schemas"]["JsonElement"];
+        };
+        /** @description قوائم تصفية «حركة المستخدمين على النظام». */
+        AuditOptions: {
+            /** @description الإجراءات الدلالية بأسمائها (قيم `actionCodes`). */
+            actions: components["schemas"]["AuditActionChoice"][];
+            /** @description الوحدات (قيم `module`): وحدات الإجراءات الدلالية، وأنواع الكيانات التي تُسجَّل تغييراتها برمز عام مثل `WorkSite.Updated`. */
+            modules: string[];
+            /** @description أنواع الكيانات الواردة في السجل (قيم `entityType`). */
+            entityTypes: string[];
+            /** @description المستخدمون (قيم `actorUserId`). */
+            actors: components["schemas"]["AuditActorChoice"][];
         };
         /**
          * @description نتيجة عملية خاضعة للتدقيق.
@@ -3186,6 +3462,87 @@ export interface components {
             /** @description الاستثناء الموثَّق عند عدم تسليم جواز السفر عند الخروج. */
             passportException?: string | null;
         };
+        /** @description شكوى واحدة كما وردت من النموذج العام، ومراجعتها. */
+        ComplaintDetails: {
+            /**
+             * Format: int32
+             * @description رقم الشكوى.
+             */
+            id: number;
+            /** @description «اسم مقدم الشكوى». */
+            complainantName: string | null;
+            /** @description «رقم هاتف مقدم الشكوى». */
+            complainantPhone: string | null;
+            /** @description «اسم المشكو فيه». */
+            respondentName: string | null;
+            /** @description «تفاصيل الشكوى». */
+            details: string | null;
+            /** @description «الموقع». */
+            location: string | null;
+            /** @description «الحالة». */
+            status: components["schemas"]["ComplaintStatus"];
+            /**
+             * Format: date-time
+             * @description وقت تقديمها.
+             */
+            submittedAt: string | null;
+            /** @description الاسم الكامل للمستخدم الذي راجعها. */
+            reviewedBy: string | null;
+            /**
+             * Format: date-time
+             * @description وقت مراجعتها.
+             */
+            reviewedAt: string | null;
+            /** @description «ملاحظة المراجعة». */
+            reviewNote: string | null;
+            /** @description يجوز تسجيل مراجعتها الآن (لم تُراجع بعد). */
+            canReview: boolean;
+        };
+        /** @description «الشكاوى»: صفحة واحدة من الشكاوى المطابقة للمعايير، وعدد ما لم يُراجع منها (عدّاد التبويب). */
+        ComplaintList: {
+            /** @description صفحة التبويب المعروض. */
+            page: components["schemas"]["PagedResultOfComplaintListItem"];
+            /**
+             * Format: int32
+             * @description الشكاوى الجديدة المطابقة للمعايير.
+             */
+            newCount: number;
+        };
+        /** @description صف في «الشكاوى». */
+        ComplaintListItem: {
+            /**
+             * Format: int32
+             * @description رقم الشكوى.
+             */
+            id: number;
+            /** @description «اسم مقدم الشكوى». */
+            complainantName: string | null;
+            /** @description «رقم هاتف مقدم الشكوى». */
+            complainantPhone: string | null;
+            /** @description «اسم المشكو فيه». */
+            respondentName: string | null;
+            /** @description «الموقع». */
+            location: string | null;
+            /** @description «تفاصيل الشكوى». */
+            details: string | null;
+            /** @description «الحالة». */
+            status: components["schemas"]["ComplaintStatus"];
+            /**
+             * Format: date-time
+             * @description وقت تقديمها.
+             */
+            submittedAt: string | null;
+            /**
+             * Format: date-time
+             * @description وقت مراجعتها.
+             */
+            reviewedAt: string | null;
+        };
+        /**
+         * @description «حالة الشكوى».
+         * @enum {unknown}
+         */
+        ComplaintStatus: "New" | "Reviewed";
         /** @description طلب: تأكيد عودة العامل من الإجازة. */
         ConfirmLeaveReturnRequest: {
             /**
@@ -3246,6 +3603,25 @@ export interface components {
             /** @description الأدوار الممنوحة عند الإنشاء. */
             roleIds?: number[];
         };
+        /** @description ملف تكليف المستخدم الحالي (القرار TL-N3): ما تبني عليه الواجهة شاشة الإرفاق أو الانتظار بعد الدخول. */
+        CurrentUserAssignment: {
+            /** @description موضعه من ملف التكليف؛ ولا يعمل على النظام إلا «معتمد» أو «غير مطلوب». */
+            status: components["schemas"]["AssignmentState"];
+            /** @description اسم الملف المرفوع. */
+            fileName: string | null;
+            /**
+             * Format: date-time
+             * @description وقت رفعه.
+             */
+            submittedAt: string | null;
+            /**
+             * Format: date-time
+             * @description وقت القرار فيه.
+             */
+            reviewedAt: string | null;
+            /** @description ملاحظة المراجع، وهي سبب الإعادة عند «أُعيد للتصحيح». */
+            reviewNote: string | null;
+        };
         /** @description بيانات المستخدم الحالي وصلاحياته. */
         CurrentUserResponse: {
             /**
@@ -3267,6 +3643,8 @@ export interface components {
             permissions: string[];
             /** @description لغة الطلب الحالي، ومنها اتجاه الواجهة. */
             language: string | null;
+            /** @description ملف تكليفه؛ ولا تُستخدم صلاحياته قبل اعتماده. */
+            assignment: components["schemas"]["CurrentUserAssignment"];
         };
         /** @description نسخة كاملة من قاعدة البيانات كما يسجلها سجل النسخ في الخادم أو سجل التدقيق. */
         DatabaseBackupFile: {
@@ -3298,6 +3676,18 @@ export interface components {
             files: components["schemas"]["DatabaseBackupFile"][];
             /** @description القائمة من سجل النسخ في الخادم بأحجامها؛ وإلا فمن سجل التدقيق ولا حجم فيها. */
             serverHistory: boolean;
+        };
+        /** @description طلب: قرار المراجع في ملف تكليف. */
+        DecideAssignmentRequest: {
+            /** @description اعتماد؛ وإلا إعادة للتصحيح. */
+            approve: boolean;
+            /** @description ملاحظة؛ والسبب مطلوب عند الإعادة. */
+            note?: string | null;
+            /**
+             * Format: byte
+             * @description رمز التزامن للملف كما عُرض على المراجع (من «ملفات التكليف»)؛ فلا يُعتمد ملف استُبدل بعد عرضه.
+             */
+            rowVersion?: string;
         };
         /**
          * @description قرار المدير العام في مرشحي طلب احتياج واحد (SRS FR-07): اعتماد الأسماء المحددة و/أو استبعاد غيرها — باعتماد الجميع أو استبعاد بعضهم أو رفض
@@ -4142,6 +4532,7 @@ export interface components {
              */
             issuedOn: string;
         };
+        JsonElement: unknown;
         /** @description إجراء ينتظر المستخدم الحالي في «مهامي» (SRS FR-55، AC-54): يُقرأ من الإجراءات عند كل تحميل ولا يُخزَّن أبدًا. */
         LaborActionItem: {
             /** @description ما يتعلق به. */
@@ -4727,6 +5118,23 @@ export interface components {
             timeline: components["schemas"]["LaborWorkerEvent"][];
             /** @description في إجازة معتمدة اليوم. */
             onLeave: boolean;
+            /** @description سبب تسجيله دون جواز سفر بتجاوز (القرار TL-N2)؛ `null` لمن سُجّل بجوازه. */
+            passportWaiverReason: string | null;
+            /**
+             * Format: date
+             * @description «تاريخ إصدار الجواز» (القرار TL-N4).
+             */
+            passportIssueDate: null | string;
+            /**
+             * Format: date
+             * @description «تاريخ انتهاء الجواز» (القرار TL-N4).
+             */
+            passportExpiryDate: null | string;
+            /**
+             * Format: date
+             * @description «تاريخ إصدار الشهادة الصحية» (القرار TL-N4).
+             */
+            healthCertificateIssueDate: null | string;
         };
         /** @description حدث في «السجل الزمني» للعامل. */
         LaborWorkerEvent: {
@@ -5470,6 +5878,16 @@ export interface components {
             jobNumber?: number;
             /** @description «رقم الجواز». */
             passportNumber?: string | null;
+            /**
+             * Format: date
+             * @description «تاريخ إصدار الجواز» (اختياري في الترحيل؛ ويُدخل مع تاريخ انتهائه ورقمه).
+             */
+            passportIssueDate?: null | string;
+            /**
+             * Format: date
+             * @description «تاريخ انتهاء الجواز» (اختياري في الترحيل؛ ويُدخل مع تاريخ إصداره ورقمه).
+             */
+            passportExpiryDate?: null | string;
             /** @description «رقم الهوية». */
             idCardNumber?: string | null;
             /**
@@ -5484,6 +5902,11 @@ export interface components {
              * @description «تاريخ الميلاد».
              */
             birthDate?: null | string;
+            /**
+             * Format: date
+             * @description «تاريخ إصدار الشهادة الصحية» (اختياري في الترحيل؛ ويُدخل مع تاريخ انتهائها).
+             */
+            healthCertificateIssueDate?: null | string;
             /**
              * Format: date
              * @description «صلاحية الشهادة الصحية».
@@ -5538,6 +5961,11 @@ export interface components {
              * @description «تاريخ الاستلام».
              */
             receivedOn: string;
+            /**
+             * Format: date
+             * @description «تاريخ الإصدار» في شهادة صحية (القرار TL-N4).
+             */
+            issuedOn: null | string;
             /**
              * Format: date
              * @description «تاريخ الانتهاء» في شهادة صحية.
@@ -5964,6 +6392,26 @@ export interface components {
             pageSize: number;
         };
         /** @description صفحة واحدة من قائمة. */
+        PagedResultOfAssignmentListItem: {
+            /** @description عناصر الصفحة. */
+            items: components["schemas"]["AssignmentListItem"][];
+            /**
+             * Format: int32
+             * @description عدد العناصر في كل الصفحات.
+             */
+            total: number;
+            /**
+             * Format: int32
+             * @description رقم الصفحة (يبدأ من 1).
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description عدد العناصر في الصفحة.
+             */
+            pageSize: number;
+        };
+        /** @description صفحة واحدة من قائمة. */
         PagedResultOfAttendanceSheetListItem: {
             /** @description عناصر الصفحة. */
             items: components["schemas"]["AttendanceSheetListItem"][];
@@ -6007,6 +6455,26 @@ export interface components {
         PagedResultOfCandidateListItem: {
             /** @description عناصر الصفحة. */
             items: components["schemas"]["CandidateListItem"][];
+            /**
+             * Format: int32
+             * @description عدد العناصر في كل الصفحات.
+             */
+            total: number;
+            /**
+             * Format: int32
+             * @description رقم الصفحة (يبدأ من 1).
+             */
+            page: number;
+            /**
+             * Format: int32
+             * @description عدد العناصر في الصفحة.
+             */
+            pageSize: number;
+        };
+        /** @description صفحة واحدة من قائمة. */
+        PagedResultOfComplaintListItem: {
+            /** @description عناصر الصفحة. */
+            items: components["schemas"]["ComplaintListItem"][];
             /**
              * Format: int32
              * @description عدد العناصر في كل الصفحات.
@@ -6454,6 +6922,13 @@ export interface components {
             reportReference: string | null;
             /** @description «وصف المخالفة». */
             description: string | null;
+            /** @description «اسم من قام بالجزاء» (القرار TL-N5). */
+            issuedBy: string | null;
+            /**
+             * Format: date
+             * @description «تاريخ القيام بالجزاء» (القرار TL-N5).
+             */
+            issuedOn: null | string;
             /**
              * Format: int32
              * @description واقعة الغياب التي صدر عنها.
@@ -6640,6 +7115,13 @@ export interface components {
             fromAbsenceIncident: boolean;
             /** @description نشأ من تقييم. */
             fromEvaluation: boolean;
+            /** @description «اسم من قام بالجزاء» (القرار TL-N5). */
+            issuedBy: string | null;
+            /**
+             * Format: date
+             * @description «تاريخ القيام بالجزاء» (القرار TL-N5).
+             */
+            issuedOn: null | string;
         };
         /** @description إشعار الجزاء لجزاء تم البتّ فيه (RUL-24، FR-38): تسليمه من المشرف وتأكيد الرواتب. */
         PenaltyNoticeInfo: {
@@ -6699,7 +7181,16 @@ export interface components {
             reportReference?: string | null;
             /** @description «وصف المخالفة». */
             description?: string | null;
+            /** @description «اسم من قام بالجزاء» (مطلوب، القرار TL-N5)؛ وهو غير المستخدم الذي يُدخله. */
+            issuedBy?: string | null;
+            /**
+             * Format: date
+             * @description «تاريخ القيام بالجزاء» (مطلوب، ليس بعد اليوم، القرار TL-N5)؛ وهو غير وقت إدخاله.
+             */
+            issuedOn?: null | string;
         };
+        /** @enum {unknown} */
+        PenaltySource: "Direct" | "AbsenceIncident" | "Evaluation" | null;
         /**
          * @description «حالة الجزاء» (العملية P05.2، SRS FR-36..FR-38).
          * @enum {unknown}
@@ -6863,8 +7354,25 @@ export interface components {
              * @description «مكان الميلاد».
              */
             birthPlaceId?: null | number;
-            /** @description «رقم الجواز» (مطلوب ما لم يكن العامل ليبيًا، القرار TL-12). */
+            /** @description «رقم الجواز» (مطلوب ما لم يكن العامل ليبيًا، القرار TL-12، أو يُسجَّل دون جواز بتجاوز bool RegisterWorkerInput.PassportWaived). */
             passportNumber?: string | null;
+            /**
+             * Format: date
+             * @description «تاريخ إصدار الجواز»: مطلوب مع رقم الجواز (القرار TL-N4).
+             */
+            passportIssueDate?: null | string;
+            /**
+             * Format: date
+             * @description «تاريخ انتهاء الجواز»: مطلوب مع رقم الجواز، وبعد تاريخ إصداره (القرار TL-N4).
+             */
+            passportExpiryDate?: null | string;
+            /**
+             * @description تسجيل العامل غير الليبي دون جواز سفر (القرار TL-N2): لمن يملك صلاحية «تسجيل العامل دون جواز سفر»، مع string? RegisterWorkerInput.PassportWaiverReason،
+             *     ودون string? RegisterWorkerInput.PassportNumber.
+             */
+            passportWaived?: boolean;
+            /** @description سبب التسجيل دون جواز سفر (مطلوب مع bool RegisterWorkerInput.PassportWaived). */
+            passportWaiverReason?: string | null;
             /**
              * Format: int64
              * @description «الرقم الوطني» (مطلوب للليبي).
@@ -6872,11 +7380,16 @@ export interface components {
             nationalNumber?: null | number;
             /** @description «رقم الهوية». */
             idCardNumber?: string | null;
-            /** @description «رقم الهاتف». */
+            /** @description «رقم الهاتف» (اختياري). */
             phoneNumber?: string | null;
             /**
              * Format: date
-             * @description «صلاحية الشهادة الصحية» إن أحضرها العامل.
+             * @description «تاريخ إصدار الشهادة الصحية»: مطلوب (القرار TL-N4).
+             */
+            healthCertificateIssueDate?: null | string;
+            /**
+             * Format: date
+             * @description «صلاحية الشهادة الصحية» (تاريخ انتهائها): مطلوبة، وبعد تاريخ إصدارها، وغير منتهية في يوم التسجيل (القرار TL-N2؛ والمنتهية تُعد ناقصة، القرار TL-13).
              */
             healthCertificateExpiryDate?: null | string;
             /**
@@ -6970,6 +7483,8 @@ export interface components {
             managementDepartments: components["schemas"]["RegistrationManagementDefault"][];
             /** @description مكان ميلاد موظفي كل جنسية. */
             defaultBirthPlaces: components["schemas"]["RegistrationBirthPlaceDefault"][];
+            /** @description يملك المستخدم صلاحية تسجيل العامل غير الليبي دون جواز سفر (القرار TL-N2). */
+            canRegisterWithoutPassport: boolean;
         };
         /** @description مرشح اعتمده المدير العام، ينتظر أن تسجّله جهة الدخول في مساره (SRS FR-09). */
         RegistrationQueueItem: {
@@ -7146,6 +7661,11 @@ export interface components {
             receivedBy?: string | null;
             /** @description ملاحظات اختيارية. */
             notes?: string | null;
+        };
+        /** @description طلب: تسجيل مراجعة شكوى. */
+        ReviewComplaintRequest: {
+            /** @description «ملاحظة المراجعة»: ما اتُّخذ في الشكوى. */
+            note?: string | null;
         };
         /** @description طلب: تعديل مرتب مقترح. */
         ReviseSalaryRequest: {
@@ -7650,6 +8170,19 @@ export interface components {
              * @description «تاريخ الرفع».
              */
             submittedOn?: null | string;
+        };
+        /** @description «نموذج الشكوى» العام: يُرسل دون دخول. */
+        SubmitComplaintRequest: {
+            /** @description «اسم مقدم الشكوى». */
+            complainantName?: string | null;
+            /** @description «رقم هاتف مقدم الشكوى»: أرقام، ويجوز فيه «+» في أوله والفراغات والشرطات. */
+            complainantPhone?: string | null;
+            /** @description «اسم المشكو فيه». */
+            respondentName?: string | null;
+            /** @description «تفاصيل الشكوى». */
+            details?: string | null;
+            /** @description «الموقع» (اختياري). */
+            location?: string | null;
         };
         /**
          * @description «نتيجة الاستبيان الأمني» (SRS FR-18)؛ تُخزَّن مشفَّرة (القرار TL-31).
@@ -8741,6 +9274,16 @@ export interface components {
             maritalStatus?: components["schemas"]["MaritalStatus"];
             /** @description «رقم الجواز». */
             passportNumber?: string | null;
+            /**
+             * Format: date
+             * @description «تاريخ إصدار الجواز» (القرار TL-N4).
+             */
+            passportIssueDate?: null | string;
+            /**
+             * Format: date
+             * @description «تاريخ انتهاء الجواز» (القرار TL-N4).
+             */
+            passportExpiryDate?: null | string;
             /**
              * Format: date
              * @description «تاريخ الميلاد».
@@ -14834,6 +15377,18 @@ export interface operations {
                 Page?: number;
                 /** @description عدد الجزاءات في الصفحة. */
                 PageSize?: number;
+                /** @description «المسار» في ملف العامل. */
+                TrackId?: number;
+                /** @description جزاءات عامل واحد (معرّف الموظف). */
+                EmployeeId?: number;
+                /** @description مصدر الجزاء: مخالفة مباشرة، أو واقعة غياب، أو تقييم. */
+                Source?: components["schemas"]["PenaltySource"];
+                /** @description «من قام بالجزاء»: الاسم يحتوي على هذا النص. */
+                IssuedBy?: string;
+                /** @description «تاريخ القيام بالجزاء» في هذا اليوم أو بعده. */
+                IssuedFrom?: string;
+                /** @description «تاريخ القيام بالجزاء» في هذا اليوم أو قبله. */
+                IssuedTo?: string;
             };
             header?: never;
             path?: never;
@@ -16253,6 +16808,12 @@ export interface operations {
                 "multipart/form-data": {
                     passportNumber?: string | null;
                 } & {
+                    /** Format: date */
+                    issuedOn?: string;
+                } & {
+                    /** Format: date */
+                    expiresOn?: string;
+                } & {
                     location?: string | null;
                 } & {
                     /** Format: date */
@@ -16348,6 +16909,9 @@ export interface operations {
                 } & {
                     /** Format: date */
                     receivedOn: string;
+                } & {
+                    /** Format: date */
+                    issuedOn?: string;
                 } & {
                     /** Format: date */
                     expiresOn?: string;
@@ -19720,6 +20284,83 @@ export interface operations {
             };
         };
     };
+    GetDirectoryEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectoryEntryItem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     UpdateDirectoryEntry: {
         parameters: {
             query?: never;
@@ -19955,7 +20596,15 @@ export interface operations {
     };
     ListDirectoryEntries: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description بحث سريع: يُبحث بالرقم عن رقم العنصر (مطابقة تامة)، ويُبحث بأي نص آخر عن العناصر التي يحتوي اسمها أو حقولها الإضافية (كالاسم بالإنجليزية)
+                 *     على كل كلمة من كلماته، دون اعتبار لصور الألف والهمزة والتشكيل.
+                 */
+                Search?: string;
+                /** @description النشطة فقط (`true`) أو الموقوفة فقط (`false`)؛ الكل إن لم يُحدَّد. */
+                Active?: boolean;
+            };
             header?: never;
             path: {
                 slug: string;
@@ -21203,6 +21852,22 @@ export interface operations {
                 Page?: number;
                 /** @description عدد الصفوف في الصفحة. */
                 PageSize?: number;
+                /** @description حركة مستخدم واحد: ما نفّذه هو (ومنه محاولات دخوله الفاشلة). */
+                ActorUserId?: number;
+                /** @description رموز إجراءات بعينها (تتكرر في الاستعلام، مثل `actionCodes=Auth.LoginSucceeded&amp;actionCodes=Auth.Logout`). */
+                ActionCodes?: unknown[];
+                /** @description وحدة الإجراء: الجزء قبل النقطة في رمزه، مثل `Auth` أو `User` أو `TemporaryLabor` أو اسم كيان. */
+                Module?: string;
+                /** @description نوع الكيان الذي وقع عليه الإجراء، مثل `User` أو `LaborPenalty`. */
+                EntityType?: string;
+                /** @description معرّف الكيان (مع EntityType عادةً): كل ما جرى على سجل واحد. */
+                EntityId?: string;
+                /** @description عنوان IP للعميل أو بدايته (مثل `10.0.` لشبكة). */
+                IpAddress?: string;
+                /** @description رقم متابعة طلب واحد: كل ما سجّله ذلك الطلب. */
+                CorrelationId?: string;
+                /** @description إرفاق القيم السابقة والجديدة مع كل صف (وإلا تُقرأ من تفاصيل القيد). */
+                IncludeChanges?: boolean;
             };
             header?: never;
             path?: never;
@@ -22405,6 +23070,684 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["IdResponse"];
                 };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetAuditOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditOptions"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SubmitComplaint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitComplaintRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListComplaints: {
+        parameters: {
+            query?: {
+                /** @description «الحالة»، تبويب القائمة؛ و`null` لكل الشكاوى. */
+                Status?: components["schemas"]["ComplaintStatus"];
+                /**
+                 * @description بحث سريع: يُبحث بالرقم عن رقم الشكوى (مطابقة تامة) وعن أرقام الهواتف التي تحتويه، ويُبحث بأي نص آخر عن الشكاوى التي تحتوي على كل كلمة من
+                 *     كلماته في اسم المشتكي أو المشكو فيه أو الموقع أو التفاصيل.
+                 */
+                Search?: string;
+                /** @description المقدَّمة في هذا اليوم أو بعده. */
+                From?: string;
+                /** @description المقدَّمة في هذا اليوم أو قبله. */
+                To?: string;
+                /** @description الصفحة (تبدأ من 1). */
+                Page?: number;
+                /** @description عدد الشكاوى في الصفحة. */
+                PageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplaintList"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetComplaint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                complaintId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplaintDetails"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReviewComplaint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                complaintId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewComplaintRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SubmitAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    file?: components["schemas"]["IFormFile"];
+                };
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListAssignments: {
+        parameters: {
+            query?: {
+                /**
+                 * @description الموضع، تبويب القائمة: مطلوب (لم يُرفع ملف)، أو قيد المراجعة، أو أُعيد للتصحيح، أو معتمد؛ و`null` للكل. والمدير الأعلى لا يظهر
+                 *     لأن الملف لا يُطلب منه.
+                 */
+                Status?: components["schemas"]["AssignmentState"];
+                /** @description نص في الاسم أو اسم الدخول أو الرقم الوظيفي. */
+                Search?: string;
+                /** @description الصفحة (تبدأ من 1). */
+                Page?: number;
+                /** @description عدد المستخدمين في الصفحة. */
+                PageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentList"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OpenAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DecideAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideAssignmentRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Bad Request */
             400: {

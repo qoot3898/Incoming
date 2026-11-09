@@ -1,9 +1,31 @@
 import axios from 'axios';
 
+/** Stable `code` values of the API's ProblemDetails (RFC 9457), see frontend-guide.md. */
+export const API_ERROR_CODES = {
+  validationFailed: 'VALIDATION_FAILED',
+  unauthenticated: 'UNAUTHENTICATED',
+  passwordChangeRequired: 'PASSWORD_CHANGE_REQUIRED',
+  /** TL-N3: the user's assignment letter is not approved yet → send them to the assignment screen. */
+  assignmentApprovalRequired: 'ASSIGNMENT_APPROVAL_REQUIRED',
+  forbidden: 'FORBIDDEN',
+  notFound: 'NOT_FOUND',
+  concurrencyConflict: 'CONCURRENCY_CONFLICT',
+  invalidStateTransition: 'INVALID_STATE_TRANSITION',
+  confirmationRequired: 'CONFIRMATION_REQUIRED',
+  recordInUse: 'RECORD_IN_USE',
+  businessRuleViolated: 'BUSINESS_RULE_VIOLATED',
+} as const;
+
+export type ApiErrorCode = (typeof API_ERROR_CODES)[keyof typeof API_ERROR_CODES];
+
 export interface ApiError {
   status?: number;
   title: string;
   detail?: string;
+  /** Stable machine-readable code (`CONCURRENCY_CONFLICT`, …) when the API sent one. */
+  code?: string;
+  /** Request id to quote when reporting a problem (matches the audit log's correlation id). */
+  correlationId?: string;
   /** camelCase field name → messages */
   fieldErrors: Record<string, string[]>;
   /** The request was cancelled by the user (AbortController) — not a failure to report. */
@@ -14,7 +36,25 @@ interface ProblemLike {
   title?: string;
   detail?: string;
   status?: number;
+  code?: string;
+  correlationId?: string;
   errors?: Record<string, string[]>;
+}
+
+/** Text of a Blob body (error responses of file downloads); FileReader where `Blob.text` is missing. */
+export function blobText(blob: Blob): Promise<string> {
+  if (typeof blob.text === 'function') return blob.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
+  });
+}
+
+/** Reads the stable error code from a ProblemDetails body (already-parsed JSON only). */
+export function problemCode(data: unknown): string | undefined {
+  return data && typeof data === 'object' && 'code' in data && typeof (data as ProblemLike).code === 'string' ? (data as ProblemLike).code : undefined;
 }
 
 const camel = (key: string) =>
@@ -29,7 +69,7 @@ export async function toApiError(error: unknown, fallback: string): Promise<ApiE
     let data = error.response?.data as ProblemLike | Blob | undefined;
     if (data instanceof Blob) {
       try {
-        data = JSON.parse(await data.text()) as ProblemLike;
+        data = JSON.parse(await blobText(data)) as ProblemLike;
       } catch {
         data = undefined;
       }
@@ -43,6 +83,8 @@ export async function toApiError(error: unknown, fallback: string): Promise<ApiE
       status: error.response?.status,
       title: problem.title || (error.response ? fallback : error.message || fallback),
       detail: problem.detail,
+      code: problem.code,
+      correlationId: problem.correlationId,
       fieldErrors,
     };
   }
@@ -61,6 +103,8 @@ export function toApiErrorSync(error: unknown, fallback: string): ApiError {
       status: error.response?.status,
       title: (typeof problem === 'object' && problem.title) || fallback,
       detail: typeof problem === 'object' ? problem.detail : undefined,
+      code: typeof problem === 'object' ? problem.code : undefined,
+      correlationId: typeof problem === 'object' ? problem.correlationId : undefined,
       fieldErrors,
     };
   }
