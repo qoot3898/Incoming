@@ -4,6 +4,8 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import AddIcon from '@mui/icons-material/Add';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/app/providers/authContext';
+import { ACTION_PERMISSIONS } from '@/constants/permissions';
 import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { penaltiesApi, penaltiesKeys } from './api';
@@ -27,6 +29,7 @@ type Row = S<'PenaltyListItem'>;
 export default function PenaltiesListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { can } = useAuth();
   const label = useEnumLabel();
   const enumOptions = useEnumOptions();
   const decisions = usePenaltyDecisionTypes();
@@ -93,9 +96,11 @@ export default function PenaltiesListPage() {
       <PageHeader
         title={t('nav.items.penalties')}
         actions={
-          <Button component={RouterLink} to="/penalties/new" variant="contained" startIcon={<AddIcon />}>
-            {t('penalties.new')}
-          </Button>
+          can(ACTION_PERMISSIONS.createPenalty) && (
+            <Button component={RouterLink} to="/penalties/new" variant="contained" startIcon={<AddIcon />}>
+              {t('penalties.new')}
+            </Button>
+          )
         }
       />
       {d && (

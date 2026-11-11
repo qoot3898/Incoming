@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rowIssues, splitServerErrors, toInput, type RegistrationRow } from './registrationRow';
+import { missingScans, rowIssues, splitServerErrors, toInput, type RegistrationRow } from './registrationRow';
 
 const TODAY = '2026-11-09';
 const base: RegistrationRow = {
@@ -17,13 +17,13 @@ const base: RegistrationRow = {
   passportNumber: 'A1234567',
   passportIssueDate: '2024-03-01',
   passportExpiryDate: '2029-03-01',
-  passportWaived: false,
-  passportWaiverReason: '',
   healthCertificateIssueDate: '2026-10-20',
   healthCertificateExpiryDate: '2027-10-20',
   departmentId: '5',
+  passportScan: true,
+  healthScan: true,
 };
-const foreigner = { libyan: false, canWaive: false, today: TODAY };
+const foreigner = { libyan: false, today: TODAY };
 const fields = (r: RegistrationRow, ctx = foreigner) => rowIssues(r, ctx).map((i) => `${i.field}:${i.code}`);
 
 describe('registration row rules (TL-N2, TL-N4)', () => {
@@ -52,21 +52,28 @@ describe('registration row rules (TL-N2, TL-N4)', () => {
     expect(fields({ ...base, healthCertificateExpiryDate: '2026-10-20' })).toEqual(['healthCertificateExpiryDate:expiryAfterIssue']);
   });
 
-  it('registers without a passport only with the permission and a reason', () => {
-    const waived = { ...base, passportNumber: '', passportIssueDate: '', passportExpiryDate: '', passportWaived: true };
-    expect(fields(waived)).toEqual(['passportWaived:waiverNotAllowed', 'passportWaiverReason:required']);
-    expect(fields({ ...waived, passportWaiverReason: 'At the embassy' }, { ...foreigner, canWaive: true })).toEqual([]);
-    expect(fields({ ...waived, passportNumber: 'A1', passportWaiverReason: 'x' }, { ...foreigner, canWaive: true })).toEqual(['passportNumber:waiverWithoutPassport']);
+  it('needs the scans: health certificate for everyone, passport for a non-Libyan (2026-11-09)', () => {
+    expect(fields({ ...base, passportScan: false, healthScan: false })).toEqual(['passportScan:scanMissing', 'healthScan:scanMissing']);
+    const libyan = { ...foreigner, libyan: true };
+    expect(fields({ ...base, nationalNumber: '119900112233', passportScan: false }, libyan)).toEqual([]);
+    expect(fields({ ...base, nationalNumber: '119900112233', healthScan: false }, libyan)).toEqual(['healthScan:scanMissing']);
+  });
+
+  it('lists the missing scans of a queue row', () => {
+    expect(missingScans({ passportScanAttached: false, healthCertificateScanAttached: false }, false)).toEqual(['Passport', 'HealthCertificate']);
+    expect(missingScans({ passportScanAttached: false, healthCertificateScanAttached: true }, true)).toEqual([]);
+    expect(missingScans({ passportScanAttached: true, healthCertificateScanAttached: false }, false)).toEqual(['HealthCertificate']);
   });
 
   it('requires the birth place and the department', () => {
     expect(fields({ ...base, birthPlaceId: '', departmentId: '' })).toEqual(['birthPlaceId:required', 'departmentId:required']);
   });
 
-  it('builds the request: a waived row sends no passport data', () => {
-    const input = toInput({ ...base, passportWaived: true, passportWaiverReason: ' At the embassy ' }, { libyan: false });
-    expect(input).toMatchObject({ passportNumber: null, passportIssueDate: null, passportExpiryDate: null, passportWaived: true, passportWaiverReason: 'At the embassy', phoneNumber: null });
-    expect(toInput(base, { libyan: false })).toMatchObject({ passportNumber: 'A1234567', passportIssueDate: '2024-03-01', passportWaived: false, passportWaiverReason: null });
+  it('builds the request without the removed waiver fields', () => {
+    const input = toInput(base);
+    expect(input).toMatchObject({ passportNumber: 'A1234567', passportIssueDate: '2024-03-01', phoneNumber: null });
+    expect(input).not.toHaveProperty('passportWaived');
+    expect(toInput({ ...base, passportNumber: '', passportIssueDate: '2024-03-01' })).toMatchObject({ passportNumber: null, passportIssueDate: null });
   });
 
   it('maps server errors to rows and fields', () => {

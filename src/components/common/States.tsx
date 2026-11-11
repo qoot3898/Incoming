@@ -32,6 +32,16 @@ export function EmptyState({ title, description, action, icon }: { title?: strin
   );
 }
 
+/** "No access" panel: a 403 from the API, or a route the user's permissions do not cover. */
+export function ForbiddenState() {
+  const { t } = useTranslation();
+  return (
+    <Paper variant="outlined" sx={{ p: 4 }}>
+      <EmptyState icon={<LockOutlinedIcon />} title={t('errors.forbiddenTitle')} description={t('errors.forbidden')} />
+    </Paper>
+  );
+}
+
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const { t } = useTranslation();
   const e = toApiErrorSync(error, t('errors.generic'));
@@ -51,13 +61,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
       </Paper>
     );
   }
-  if (e.status === 403) {
-    return (
-      <Paper variant="outlined" sx={{ p: 4 }}>
-        <EmptyState icon={<LockOutlinedIcon />} title={t('errors.forbiddenTitle')} description={t('errors.forbidden')} />
-      </Paper>
-    );
-  }
+  if (e.status === 403) return <ForbiddenState />;
   if (e.status === 404) {
     return (
       <Paper variant="outlined" sx={{ p: 4 }}>

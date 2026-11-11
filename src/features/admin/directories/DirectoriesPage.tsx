@@ -3,11 +3,12 @@ import { Alert, Box, Button, CircularProgress, IconButton, Paper, Stack, Switch,
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { adminKeys, directoriesApi } from '../api';
+import { entryFields, extraValues, isBaseEntry, type Entry, type EntryValues } from './directoryFields';
 import { PageHeader } from '@/components/common/PageHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { ErrorState, EmptyState, LoadingState } from '@/components/common/States';
@@ -16,7 +17,7 @@ import { ToneChip } from '@/components/common/StatusChip';
 import { LocalDataGrid } from '@/components/tables/ServerDataGrid';
 import { FilterPanel } from '@/components/tables/FilterPanel';
 import type { FilterDef } from '@/components/tables/filters';
-import { FormDialog, type FieldConfig } from '@/components/forms/FormDialog';
+import { FormDialog } from '@/components/forms/FormDialog';
 import { SelectField } from '@/components/forms/SelectField';
 import { col } from '@/components/tables/columns';
 import { useApiMutation } from '@/hooks/useApiMutation';
@@ -25,8 +26,7 @@ import { useEnumLabel } from '@/hooks/useEnumLabel';
 import { DIRECTORY_RULES, DIRECTORY_SLUGS, type DirectoryRules } from '@/constants/directories';
 import type { Q, S } from '@/types/api';
 
-type Entry = S<'DirectoryEntryItem'>;
-type Values = Record<string, unknown> & { number: number | null; name: string | null };
+type Listing = S<'DirectoryListing'>;
 
 export default function DirectoriesPage() {
   const { t } = useTranslation();
@@ -82,23 +82,16 @@ export default function DirectoriesPage() {
   );
 }
 
-const isBase = (rules: DirectoryRules | undefined, e: Pick<Entry, 'number'> | null) => !!e && !!rules?.baseEntries?.numbers.includes(e.number);
-
 function Directory({ slug }: { slug: string }) {
   const { t } = useTranslation();
-  const enumLabel = useEnumLabel();
   const qc = useQueryClient();
   const rules = DIRECTORY_RULES[slug];
   const list = useListState({ Search: '', Active: '' });
-  const params = useMemo<Q<'ListDirectoryEntries'>>(
-    () => ({ Search: list.filters.Search || undefined, Active: list.filters.Active === '' ? undefined : list.filters.Active === 'true' }),
-    [list.filters.Search, list.filters.Active],
-  );
-  const key = [...adminKeys.directories, slug];
+  const { Search, Active } = list.filters;
+  const params = useMemo<Q<'ListDirectoryEntries'>>(() => ({ Search: Search || undefined, Active: Active === '' ? undefined : Active === 'true' }), [Search, Active]);
+  const key = useMemo(() => [...adminKeys.directories, slug], [slug]);
   const q = useQuery({ queryKey: [...key, params], queryFn: ({ signal }) => directoriesApi.list(slug, params, signal), placeholderData: keepPreviousData });
-  const invalidate = [key, ['shared'], ['registration']];
-  const create = useApiMutation((v: S<'CreateDirectoryEntryRequest'>) => directoriesApi.create(slug, v), { invalidate, rethrow: true });
-  const update = useApiMutation((v: S<'UpdateDirectoryEntryRequest'> & { id: number }) => directoriesApi.update(slug, v.id, v), { invalidate, rethrow: true });
+  const invalidate = useMemo<QueryKey[]>(() => [key, ['shared'], ['registration']], [key]);
   const { mutate: toggleActive } = useApiMutation((v: { id: number; active: boolean }) => directoriesApi.setActive(slug, v.id, { active: v.active }), { invalidate });
   const remove = useApiMutation((id: number) => directoriesApi.remove(slug, id), { invalidate });
   const [editing, setEditing] = useState<Entry | 'new' | null>(null);
@@ -110,17 +103,16 @@ function Directory({ slug }: { slug: string }) {
     async (row: Entry) => {
       setOpening(row.id);
       try {
-        setEditing(await qc.fetchQuery({ queryKey: [...adminKeys.directories, slug, 'entry', row.id], queryFn: () => directoriesApi.get(slug, row.id), staleTime: 0 }));
+        setEditing(await qc.fetchQuery({ queryKey: [...key, 'entry', row.id], queryFn: () => directoriesApi.get(slug, row.id), staleTime: 0 }));
       } catch {
         setEditing(row);
       } finally {
         setOpening(null);
       }
     },
-    [qc, slug],
+    [qc, key, slug],
   );
 
-  const d = q.data;
   const filters: FilterDef<typeof list.filters>[] = [
     { key: 'Search', kind: 'search', label: t('directories.search'), wide: true },
     {
@@ -133,8 +125,79 @@ function Directory({ slug }: { slug: string }) {
       ],
     },
   ];
+  const columns = useDirectoryColumns(q.data, rules, { opening, onEdit: openEdit, onToggle: toggleActive, onDelete: setToDelete });
 
-  const columns = useMemo<GridColDef<Entry>[]>(() => {
+  if (q.isLoading) return <LoadingState />;
+  if (!q.data) return q.error ? <ErrorState error={q.error} onRetry={() => void q.refetch()} /> : null;
+  const d = q.data;
+
+  return (
+    <Stack spacing={2}>
+      <DirectoryHeader listing={d} onAdd={() => setEditing('new')} />
+      <FilterPanel list={list} filters={filters} />
+      <LocalDataGrid<Entry> rows={d.entries} getRowId={(r) => r.id} loading={q.isFetching} columns={columns} emptyText={list.activeKeys.length ? t('common.noResults') : undefined} />
+      <DirectoryHints listing={d} rules={rules} />
+      <EntryDialog slug={slug} listing={d} rules={rules} editing={editing} invalidate={invalidate} onClose={() => setEditing(null)} />
+      <ConfirmDialog
+        open={!!toDelete}
+        title={t('common.delete')}
+        message={t('directories.deleteConfirm', { name: toDelete?.name })}
+        destructive
+        loading={remove.isPending}
+        onClose={() => setToDelete(null)}
+        onConfirm={() => toDelete && remove.mutate(toDelete.id, { onSettled: () => setToDelete(null) })}
+      />
+    </Stack>
+  );
+}
+
+function DirectoryHeader({ listing: d, onAdd }: { listing: Listing; onAdd: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <Paper variant="outlined" sx={{ p: 2 }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
+        <Box>
+          <Typography variant="h6">{d.title}</Typography>
+          {d.description && (
+            <Typography variant="body2" color="text.secondary">
+              {d.description}
+            </Typography>
+          )}
+        </Box>
+        <Box>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={onAdd}>
+            {t('directories.add', { item: d.itemTitle })}
+          </Button>
+        </Box>
+      </Stack>
+    </Paper>
+  );
+}
+
+function DirectoryHints({ listing: d, rules }: { listing: Listing; rules: DirectoryRules | undefined }) {
+  const { t } = useTranslation();
+  const base = rules?.baseEntries;
+  return (
+    <>
+      {d.entries.some((e) => e.usageCount > 0) && <Alert severity="info">{t('directories.deleteHint')}</Alert>}
+      {base && <Alert severity="info">{t('directories.baseEntriesHint', { numbers: [...base.numbers].join(', ') })}</Alert>}
+    </>
+  );
+}
+
+interface ColumnActions {
+  /** Entry whose fresh copy is being loaded for editing. */
+  opening: number | null;
+  onEdit: (row: Entry) => Promise<void>;
+  onToggle: (v: { id: number; active: boolean }) => void;
+  onDelete: (row: Entry) => void;
+}
+
+/** Grid columns of a directory: number, name, the list's extra fields (choice values labelled), usage, state and actions. */
+function useDirectoryColumns(d: Listing | undefined, rules: DirectoryRules | undefined, { opening, onEdit, onToggle, onDelete }: ColumnActions) {
+  const { t } = useTranslation();
+  const enumLabel = useEnumLabel();
+  return useMemo<GridColDef<Entry>[]>(() => {
     if (!d) return [];
     const show = (fieldKey: string, v: unknown) => {
       const choice = rules?.choices?.[fieldKey];
@@ -154,7 +217,7 @@ function Directory({ slug }: { slug: string }) {
           p.row.isFixed ? (
             <ToneChip tone="info" label={t('directories.fixed')} />
           ) : (
-            <Switch size="small" checked={p.row.isActive} onChange={(e) => toggleActive({ id: p.row.id, active: e.target.checked })} inputProps={{ 'aria-label': t('directories.active') }} />
+            <Switch size="small" checked={p.row.isActive} onChange={(e) => onToggle({ id: p.row.id, active: e.target.checked })} inputProps={{ 'aria-label': t('directories.active') }} />
           ),
       },
       {
@@ -162,128 +225,69 @@ function Directory({ slug }: { slug: string }) {
         headerName: '',
         width: 110,
         sortable: false,
-        renderCell: (p) => {
-          if (p.row.isFixed) return null;
-          const base = isBase(rules, p.row);
-          const deleteHint = base ? t('directories.baseEntry') : p.row.usageCount > 0 ? t('directories.inUse') : t('common.delete');
-          return (
-            <Stack direction="row" alignItems="center" sx={{ height: '100%' }}>
-              <Tooltip title={t('common.edit')}>
-                <span>
-                  <IconButton size="small" onClick={() => void openEdit(p.row)} disabled={opening !== null} aria-label={t('common.edit')}>
-                    {opening === p.row.id ? <CircularProgress size={16} /> : <EditOutlinedIcon fontSize="small" />}
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip title={deleteHint}>
-                <span>
-                  <IconButton size="small" disabled={base || p.row.usageCount > 0} onClick={() => setToDelete(p.row)} aria-label={t('common.delete')}>
-                    <DeleteOutlineIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-            </Stack>
-          );
-        },
+        renderCell: (p) => (p.row.isFixed ? null : <RowActions row={p.row} base={isBaseEntry(rules, p.row)} opening={opening} onEdit={onEdit} onDelete={onDelete} />),
       },
     ];
-  }, [d, rules, opening, openEdit, toggleActive, t, enumLabel]);
+  }, [d, rules, opening, onEdit, onToggle, onDelete, t, enumLabel]);
+}
 
-  if (q.isLoading) return <LoadingState />;
-  if (q.error && !d) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
-  if (!d) return null;
+function RowActions({ row, base, opening, onEdit, onDelete }: { row: Entry; base: boolean } & Pick<ColumnActions, 'opening' | 'onEdit' | 'onDelete'>) {
+  const { t } = useTranslation();
+  const inUse = row.usageCount > 0;
+  const deleteHint = base ? t('directories.baseEntry') : inUse ? t('directories.inUse') : t('common.delete');
+  return (
+    <Stack direction="row" alignItems="center" sx={{ height: '100%' }}>
+      <Tooltip title={t('common.edit')}>
+        <span>
+          <IconButton size="small" onClick={() => void onEdit(row)} disabled={opening !== null} aria-label={t('common.edit')}>
+            {opening === row.id ? <CircularProgress size={16} /> : <EditOutlinedIcon fontSize="small" />}
+          </IconButton>
+        </span>
+      </Tooltip>
+      <Tooltip title={deleteHint}>
+        <span>
+          <IconButton size="small" disabled={base || inUse} onClick={() => onDelete(row)} aria-label={t('common.delete')}>
+            <DeleteOutlineIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </Tooltip>
+    </Stack>
+  );
+}
 
-  const entry = editing && editing !== 'new' ? editing : null;
-  const baseEntry = isBase(rules, entry);
-  const extra: FieldConfig<Values>[] = d.fields.map((f) => {
-    const name = f.key ?? '';
-    const choice = rules?.choices?.[name];
-    const locked = baseEntry && !!rules?.baseEntries?.lockedFields.includes(name);
-    if (choice) {
-      return {
-        name,
-        label: f.label ?? name,
-        kind: 'select' as const,
-        options: choice.values.map((v) => ({ value: v, label: enumLabel(choice.enumName, v) })),
-        required: !entry,
-        disabled: locked,
-        helperText: locked ? t('directories.lockedForBase') : undefined,
-        half: true,
-      };
-    }
-    return {
-      name,
-      label: f.label ?? name,
-      ...(f.kind === 'Text' ? { kind: 'text' as const, maxLength: f.maxLength || undefined } : { kind: 'number' as const, min: 0 }),
-      disabled: locked,
-      half: true,
-    };
-  });
-  const fields: FieldConfig<Values>[] = [
-    {
-      name: 'number',
-      kind: 'number',
-      label: t('directories.number'),
-      required: true,
-      half: true,
-      min: 1,
-      disabled: !!entry && !!rules?.lockNumberOnEdit,
-      helperText: entry && rules?.lockNumberOnEdit ? t('directories.numberFixed') : undefined,
-    },
-    { name: 'name', kind: 'text', label: t('fields.name'), required: true, half: true, maxLength: 200 },
-    ...extra,
-  ];
-  // Every extra field is sent on update: a missing optional field (e.g. `name-en`) is cleared by the API.
-  const splitFields = (v: Values) => {
-    const out: Record<string, unknown> = {};
-    d.fields.forEach((f) => f.key && (out[f.key] = v[f.key]));
-    return out;
+interface EntryDialogProps {
+  slug: string;
+  listing: Listing;
+  rules: DirectoryRules | undefined;
+  editing: Entry | 'new' | null;
+  invalidate: QueryKey[];
+  onClose: () => void;
+}
+
+/** Add / edit dialog of one directory entry. */
+function EntryDialog({ slug, listing: d, rules, editing, invalidate, onClose }: EntryDialogProps) {
+  const { t } = useTranslation();
+  const enumLabel = useEnumLabel();
+  const create = useApiMutation((v: S<'CreateDirectoryEntryRequest'>) => directoriesApi.create(slug, v), { invalidate, rethrow: true });
+  const update = useApiMutation((v: S<'UpdateDirectoryEntryRequest'> & { id: number }) => directoriesApi.update(slug, v.id, v), { invalidate, rethrow: true });
+  const entry = editing === 'new' ? null : editing;
+  const title = entry ? t('directories.edit', { item: d.itemTitle }) : t('directories.add', { item: d.itemTitle });
+
+  const submit = (v: EntryValues) => {
+    if (!entry) return create.mutateAsync({ slug, number: v.number, name: v.name, fields: extraValues(d, v) });
+    // A list whose numbers are fixed keeps the stored number whatever the (disabled) field holds.
+    const number = rules?.lockNumberOnEdit ? entry.number : v.number;
+    return update.mutateAsync({ slug, id: entry.id, number, name: v.name, rowVersion: entry.rowVersion, fields: extraValues(d, v) });
   };
 
   return (
-    <Stack spacing={2}>
-      <Paper variant="outlined" sx={{ p: 2 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
-          <Box>
-            <Typography variant="h6">{d.title}</Typography>
-            {d.description && (
-              <Typography variant="body2" color="text.secondary">
-                {d.description}
-              </Typography>
-            )}
-          </Box>
-          <Box>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing('new')}>
-              {t('directories.add', { item: d.itemTitle })}
-            </Button>
-          </Box>
-        </Stack>
-      </Paper>
-      <FilterPanel list={list} filters={filters} />
-      <LocalDataGrid<Entry> rows={d.entries} getRowId={(r) => r.id} loading={q.isFetching} columns={columns} emptyText={list.activeKeys.length ? t('common.noResults') : undefined} />
-      {d.entries.some((e) => e.usageCount > 0) && <Alert severity="info">{t('directories.deleteHint')}</Alert>}
-      {rules?.baseEntries && <Alert severity="info">{t('directories.baseEntriesHint', { numbers: rules.baseEntries.numbers.join(', ') })}</Alert>}
-      <FormDialog<Values>
-        open={editing !== null}
-        onClose={() => setEditing(null)}
-        title={entry ? t('directories.edit', { item: d.itemTitle }) : t('directories.add', { item: d.itemTitle })}
-        fields={fields}
-        defaultValues={entry ? { number: entry.number, name: entry.name, ...entry.fields } : { number: d.nextNumber }}
-        onSubmit={(v) =>
-          entry
-            ? update.mutateAsync({ slug, id: entry.id, number: rules?.lockNumberOnEdit ? entry.number : v.number, name: v.name, rowVersion: entry.rowVersion, fields: splitFields(v) })
-            : create.mutateAsync({ slug, number: v.number, name: v.name, fields: splitFields(v) })
-        }
-      />
-      <ConfirmDialog
-        open={!!toDelete}
-        title={t('common.delete')}
-        message={t('directories.deleteConfirm', { name: toDelete?.name })}
-        destructive
-        loading={remove.isPending}
-        onClose={() => setToDelete(null)}
-        onConfirm={() => toDelete && remove.mutate(toDelete.id, { onSettled: () => setToDelete(null) })}
-      />
-    </Stack>
+    <FormDialog<EntryValues>
+      open={editing !== null}
+      onClose={onClose}
+      title={title}
+      fields={entryFields(d, { rules, entry, t, enumLabel })}
+      defaultValues={entry ? { number: entry.number, name: entry.name, ...entry.fields } : { number: d.nextNumber }}
+      onSubmit={submit}
+    />
   );
 }

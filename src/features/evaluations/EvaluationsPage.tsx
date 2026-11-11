@@ -2,6 +2,8 @@ import { Button, Tab, Tabs } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/app/providers/authContext';
+import { ACTION_PERMISSIONS } from '@/constants/permissions';
 import { useTranslation } from 'react-i18next';
 import { evaluationsApi, evaluationsKeys } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -24,6 +26,7 @@ type Row = S<'EvaluationListItem'>;
 export default function EvaluationsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { can } = useAuth();
   const label = useEnumLabel();
   const enumOptions = useEnumOptions();
   const list = useListState({ Tab: 'Due', Search: '', TrackId: '', WorkSiteId: '', Result: '' });
@@ -53,9 +56,11 @@ export default function EvaluationsPage() {
       <PageHeader
         title={t('nav.items.evaluations')}
         actions={
-          <Button component={RouterLink} to="/evaluations/new" variant="contained" startIcon={<AddIcon />}>
-            {t('evaluations.new')}
-          </Button>
+          can(ACTION_PERMISSIONS.createEvaluation) && (
+            <Button component={RouterLink} to="/evaluations/new" variant="contained" startIcon={<AddIcon />}>
+              {t('evaluations.new')}
+            </Button>
+          )
         }
       />
       <Tabs value={list.filters.Tab} onChange={(_, v: string) => list.setFilters({ Tab: v, Result: '' })} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
@@ -72,7 +77,7 @@ export default function EvaluationsPage() {
           error={due.error}
           onRetry={due.refetch}
           getRowId={(r) => r.employeeId}
-          onRowClick={(r) => navigate(`/evaluations/new?employeeNumber=${r.employeeNumber}`)}
+          onRowClick={can(ACTION_PERMISSIONS.createEvaluation) ? (r) => navigate(`/evaluations/new?employeeNumber=${r.employeeNumber}`) : undefined}
           columns={[
             col.num<Due>('employeeNumber', t('fields.employeeNumber')),
             col.text<Due>('name', t('fields.name'), { minWidth: 170 }),

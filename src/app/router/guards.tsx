@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/app/providers/authContext';
-import { LoadingState } from '@/components/common/States';
+import { ForbiddenState, LoadingState } from '@/components/common/States';
 import { ASSIGNMENT_OPEN_ROUTES, ASSIGNMENT_ROUTE, needsAssignment } from '@/features/authentication/assignment';
 
 /**
@@ -20,4 +20,10 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     return <Navigate to={ASSIGNMENT_ROUTE} replace />;
   }
   return <>{children}</>;
+}
+
+/** A page only some roles may open (e.g. a create form): others see "no access" instead of a form the API would refuse. */
+export function RequirePermission({ codes, children }: { codes: readonly string[]; children: ReactNode }) {
+  const { can } = useAuth();
+  return can(codes) ? <>{children}</> : <ForbiddenState />;
 }

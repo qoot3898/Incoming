@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useReturnTo } from '@/hooks/useReturnTo';
 import { useTranslation } from 'react-i18next';
 import { evaluationsApi, evaluationsKeys } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -33,6 +34,7 @@ const FIELD_MAP = { employeeId: 'worker', evaluationDate: 'date', evaluatorName:
 export default function EvaluationCreatePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const back = useReturnTo();
   const label = useEnumLabel();
   const enumOptions = useEnumOptions();
   const workerField = useWorkerField();
@@ -69,7 +71,7 @@ export default function EvaluationCreatePage() {
     invalidate: [evaluationsKeys.all, ['tasks'], ['workers']],
     rethrow: true,
     success: t('evaluations.recorded'),
-    onSuccess: (r) => navigate(`/evaluations/${r.id}`),
+    onSuccess: (r) => navigate(back ?? `/evaluations/${r.id}`),
   });
 
   const onSubmit = (e: FormEvent) => {
@@ -179,7 +181,7 @@ export default function EvaluationCreatePage() {
                 <FormSelectField control={control} name="result" label={t('evaluations.result')} required options={enumOptions('EvaluationResult', ENUMS.EvaluationResult)} />
                 <FormSelectField control={control} name="recommendation" label={t('evaluations.recommendation')} required options={enumOptions('EvaluationRecommendation', ENUMS.EvaluationRecommendation)} />
               </FormSection>
-              <FormActions submitLabel={t('evaluations.submit')} submitting={formState.isSubmitting} disabled={!!w?.refusal} onCancel={() => navigate('/evaluations')} />
+              <FormActions submitLabel={t('evaluations.submit')} submitting={formState.isSubmitting} disabled={!!w?.refusal} onCancel={() => navigate(back ?? '/evaluations')} />
             </Stack>
           </form>
       </FormCard>

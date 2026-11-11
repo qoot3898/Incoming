@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useReturnTo } from '@/hooks/useReturnTo';
 import { useTranslation } from 'react-i18next';
 import { terminationsApi, terminationsKeys } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -29,6 +30,7 @@ const FIELD_MAP = { employeeId: 'worker' };
 export default function TerminationCreatePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const back = useReturnTo();
   const label = useEnumLabel();
   const enumOptions = useEnumOptions();
   const [sp] = useSearchParams();
@@ -71,7 +73,7 @@ export default function TerminationCreatePage() {
     invalidate: [terminationsKeys.all, ['workers'], ['tasks'], ['attendance']],
     rethrow: true,
     success: t('terminations.submitted'),
-    onSuccess: (r) => navigate(`/terminations/${r.id}`),
+    onSuccess: (r) => navigate(back ?? `/terminations/${r.id}`),
   });
 
   const onSubmit = (e: FormEvent) => {
@@ -144,7 +146,7 @@ export default function TerminationCreatePage() {
                 <FormTextField control={control} name="reasonDetails" label={t('terminations.reasonDetails')} multiline minRows={3} />
               </FullRow>
             </FormSection>
-            <FormActions submitLabel={t('terminations.submit')} destructive submitting={formState.isSubmitting} disabled={!!s?.refusal} onCancel={() => navigate('/terminations')} />
+            <FormActions submitLabel={t('terminations.submit')} destructive submitting={formState.isSubmitting} disabled={!!s?.refusal} onCancel={() => navigate(back ?? '/terminations')} />
           </Stack>
         </form>
       </FormCard>

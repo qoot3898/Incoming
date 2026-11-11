@@ -90,6 +90,28 @@ export default function AssignmentsPage() {
       col.text<Row>('reviewedBy', t('assignment.reviewedBy')),
       col.dateTime<Row>('reviewedAt', t('assignment.reviewedAt')),
       {
+        // Explicit entry point to the review dialog (a row click does the same, but is not discoverable).
+        field: 'review',
+        headerName: '',
+        width: 110,
+        sortable: false,
+        filterable: false,
+        disableColumnMenu: true,
+        renderCell: (p) => (
+          <Button
+            size="small"
+            variant={p.row.status === 'PendingReview' ? 'contained' : 'outlined'}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSnapshot(p.row);
+              setSelectedId(p.row.userId);
+            }}
+          >
+            {t('common.open')}
+          </Button>
+        ),
+      },
+      {
         field: 'isActive',
         headerName: t('users.status'),
         width: 100,

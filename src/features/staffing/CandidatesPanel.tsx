@@ -172,6 +172,11 @@ export function CandidatesPanel({ requestNumber }: { requestNumber: number }) {
                           onSubmit={(v) => interview.mutateAsync({ id: p.row.id, accepted: v.accepted === 'true', notes: v.notes })}
                         />
                       )}
+                      {rc.canInterview && p.row.status === 'Interview' && !!p.row.interviewRefusal && (
+                        <Typography variant="caption" color="warning.main" title={p.row.interviewRefusal} sx={{ lineHeight: 1.3, whiteSpace: 'normal' }}>
+                          {p.row.interviewRefusal}
+                        </Typography>
+                      )}
                       {p.row.canCancel && (
                         <ActionFormButton<{ reason: string | null }>
                           label={t('common.cancel')}

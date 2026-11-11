@@ -3,6 +3,8 @@ import { Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/app/providers/authContext';
+import { ACTION_PERMISSIONS } from '@/constants/permissions';
 import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { staffingApi, staffingKeys } from './api';
@@ -23,6 +25,7 @@ type Row = S<'StaffingRequestListItem'>;
 export default function StaffingListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { can } = useAuth();
   const enumOptions = useEnumOptions();
   const list = useListState({ Number: '', Status: '', TrackId: '', WorkSiteId: '', Reason: '', From: '', To: '' });
   const opts = useScopeOptions(list.filters.TrackId);
@@ -58,9 +61,11 @@ export default function StaffingListPage() {
       <PageHeader
         title={t('nav.items.staffing')}
         actions={
-          <Button component={RouterLink} to="/staffing-requests/new" variant="contained" startIcon={<AddIcon />}>
-            {t('staffing.new')}
-          </Button>
+          can(ACTION_PERMISSIONS.createStaffingRequest) && (
+            <Button component={RouterLink} to="/staffing-requests/new" variant="contained" startIcon={<AddIcon />}>
+              {t('staffing.new')}
+            </Button>
+          )
         }
       />
       <FilterPanel list={list} filters={filters} />

@@ -204,14 +204,13 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
   // defaults are captured once per opening — the body remounts every time the dialog opens.
   const visible = useMemo(() => fields.filter((f) => !f.hidden), [fields]);
   const dynamic = visible.some((f) => f.visibleWhen);
-  // The schema depends on which conditional fields are shown, so it is built per validation from
-  // the values being validated; the ref keeps the resolver stable while fields stay live.
-  const schemaFor = useRef<(raw: RawValues) => z.ZodTypeAny>(() => z.object({}));
-  schemaFor.current = (raw) => buildSchema(shownFor(visible, raw), t, fileProblem);
-  const [resolver] = useState(() => {
-    const r: Resolver<RawValues> = (values, context, options) => zodResolver(schemaFor.current(values))(values, context, options);
-    return r;
-  });
+  // The schema depends on which conditional fields are shown, so it is built per validation from the
+  // values being validated. React Hook Form reads its options on every render, so a new resolver
+  // (fields are live) takes effect without writing to a ref during render.
+  const resolver = useMemo<Resolver<RawValues>>(
+    () => (values, context, options) => zodResolver(buildSchema(shownFor(visible, values), t, fileProblem))(values, context, options),
+    [visible, t, fileProblem],
+  );
   const [defaults] = useState(() => {
     const d: RawValues = {};
     fields.forEach((f) => {

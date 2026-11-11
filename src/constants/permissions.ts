@@ -12,14 +12,30 @@ export const PERMISSIONS = {
   manageSettings: `${TL}.ManageSettings`,
   /** TL-N1: list complaints and record their review (section manager by default). */
   manageComplaints: `${TL}.ManageComplaints`,
-  /** TL-N2: register a non-Libyan worker without a passport (no default role; super admins implicitly). */
-  registerWithoutPassport: `${TL}.RegisterWithoutPassport`,
   /** TL-N3: review users' assignment letters (system administrator by default). */
   reviewAssignments: 'Users.ReviewAssignments',
   /** TL-N6: users' activity on the system (audit log). */
   auditView: 'Audit.View',
   usersView: 'Users.View',
 } as const;
+
+/**
+ * Who may START each workflow (create pages and their entry buttons). Codes and role grants read from
+ * the live API (`GET /roles/permissions`, `GET /roles/{id}`) on 2026-11-09. A button is hidden — and the
+ * create route shows "no access" — when the user holds none of the codes. The API still decides every action.
+ */
+export const ACTION_PERMISSIONS = {
+  createStaffingRequest: [`${TL}.ManageRequests`],
+  registerWorkers: [`${TL}.RegisterWorkers`],
+  /** Distribution queue: assign the site and issue / cancel entry permits (Operations). */
+  managePermits: [`${TL}.ManagePermits`],
+  createLeave: [`${TL}.ManageLeaves`],
+  createTransfer: [`${TL}.ManageTransfers`],
+  createPenalty: [`${TL}.ManagePenalties`],
+  createEvaluation: [`${TL}.ManageEvaluations`],
+  createTermination: [`${TL}.ManageTerminations`],
+  correctIdentity: [`${TL}.ManageEmployeeData`],
+} as const satisfies Record<string, readonly string[]>;
 
 export const NAV_PERMISSIONS: Record<string, readonly string[]> = {
   tasks: [`${TL}.View`],

@@ -3,6 +3,8 @@ import { Button, Tab, Tabs } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/app/providers/authContext';
+import { ACTION_PERMISSIONS } from '@/constants/permissions';
 import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { leavesApi, leavesKeys } from './api';
@@ -25,6 +27,7 @@ type Row = S<'LeaveListItem'>;
 export default function LeavesListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { can } = useAuth();
   const label = useEnumLabel();
   const enumOptions = useEnumOptions();
   const list = useListState({ Tab: 'All', Search: '', Type: '', TrackId: '', WorkSiteId: '', From: '', To: '', LateReturn: false as boolean });
@@ -68,9 +71,11 @@ export default function LeavesListPage() {
       <PageHeader
         title={t('nav.items.leaves')}
         actions={
-          <Button component={RouterLink} to="/leaves/new" variant="contained" startIcon={<AddIcon />}>
-            {t('leaves.new')}
-          </Button>
+          can(ACTION_PERMISSIONS.createLeave) && (
+            <Button component={RouterLink} to="/leaves/new" variant="contained" startIcon={<AddIcon />}>
+              {t('leaves.new')}
+            </Button>
+          )
         }
       />
       <Tabs value={list.filters.Tab} onChange={(_, v: string) => list.setFilter('Tab', v)} variant="scrollable" allowScrollButtonsMobile sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>

@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { RequireAuth } from './guards';
+import { RequireAuth, RequirePermission } from './guards';
+import { ACTION_PERMISSIONS as A } from '@/constants/permissions';
 import { RouteError } from './RouteError';
 import { lazyPage as L } from './lazyPage';
 
@@ -8,6 +9,8 @@ export const router = createBrowserRouter([
   { path: '/login', element: L(() => import('@/features/authentication/LoginPage')), errorElement: <RouteError /> },
   // Public complaint form (TL-N1): no sign-in.
   { path: '/complaint', element: L(() => import('@/features/complaints/PublicComplaintPage')), errorElement: <RouteError /> },
+  // Password change: outside the app shell too, so no navigation is shown while it is forced (and never before the letter is approved).
+  { path: '/change-password', element: <RequireAuth>{L(() => import('@/features/authentication/ChangePasswordPage'))}</RequireAuth>, errorElement: <RouteError /> },
   // Assignment-letter gate (TL-N3): signed in, outside the app shell (no navigation until approved).
   { path: '/assignment', element: <RequireAuth>{L(() => import('@/features/authentication/AssignmentPage'))}</RequireAuth>, errorElement: <RouteError /> },
   {
@@ -20,15 +23,14 @@ export const router = createBrowserRouter([
     errorElement: <RouteError />,
     children: [
       { index: true, element: L(() => import('@/features/tasks/TasksPage')) },
-      { path: 'change-password', element: L(() => import('@/features/authentication/ChangePasswordPage')) },
       { path: 'workers', element: L(() => import('@/features/workers/WorkersListPage')) },
       { path: 'workers/:employeeId', element: L(() => import('@/features/workers/WorkerProfilePage')) },
       { path: 'workers/:employeeId/onboarding', element: L(() => import('@/features/onboarding/OnboardingRecordPage')) },
       { path: 'staffing-requests', element: L(() => import('@/features/staffing/StaffingListPage')) },
-      { path: 'staffing-requests/new', element: L(() => import('@/features/staffing/StaffingCreatePage')) },
+      { path: 'staffing-requests/new', element: <RequirePermission codes={A.createStaffingRequest}>{L(() => import('@/features/staffing/StaffingCreatePage'))}</RequirePermission> },
       { path: 'staffing-requests/:number', element: L(() => import('@/features/staffing/StaffingDetailsPage')) },
       { path: 'candidates', element: L(() => import('@/features/candidates/CandidatesListPage')) },
-      { path: 'registration', element: L(() => import('@/features/registration/RegistrationPage')) },
+      { path: 'registration', element: <RequirePermission codes={A.registerWorkers}>{L(() => import('@/features/registration/RegistrationPage'))}</RequirePermission> },
       { path: 'entry-permits', element: L(() => import('@/features/permits/EntryPermitsPage')) },
       { path: 'onboarding', element: L(() => import('@/features/onboarding/OnboardingListPage')) },
       { path: 'payroll-notices', element: L(() => import('@/features/payroll/PayrollNoticesPage')) },
@@ -36,19 +38,19 @@ export const router = createBrowserRouter([
       { path: 'attendance/sheets/:sheetId', element: L(() => import('@/features/attendance/AttendanceSheetPage')) },
       { path: 'attendance/incidents', element: L(() => import('@/features/attendance/AbsenceIncidentsPage')) },
       { path: 'leaves', element: L(() => import('@/features/leaves/LeavesListPage')) },
-      { path: 'leaves/new', element: L(() => import('@/features/leaves/LeaveCreatePage')) },
+      { path: 'leaves/new', element: <RequirePermission codes={A.createLeave}>{L(() => import('@/features/leaves/LeaveCreatePage'))}</RequirePermission> },
       { path: 'leaves/:leaveId', element: L(() => import('@/features/leaves/LeaveDetailsPage')) },
       { path: 'penalties', element: L(() => import('@/features/penalties/PenaltiesListPage')) },
-      { path: 'penalties/new', element: L(() => import('@/features/penalties/PenaltyCreatePage')) },
+      { path: 'penalties/new', element: <RequirePermission codes={A.createPenalty}>{L(() => import('@/features/penalties/PenaltyCreatePage'))}</RequirePermission> },
       { path: 'penalties/:penaltyId', element: L(() => import('@/features/penalties/PenaltyDetailsPage')) },
       { path: 'transfers', element: L(() => import('@/features/transfers/TransfersListPage')) },
-      { path: 'transfers/new', element: L(() => import('@/features/transfers/TransferCreatePage')) },
+      { path: 'transfers/new', element: <RequirePermission codes={A.createTransfer}>{L(() => import('@/features/transfers/TransferCreatePage'))}</RequirePermission> },
       { path: 'transfers/:transferId', element: L(() => import('@/features/transfers/TransferDetailsPage')) },
       { path: 'evaluations', element: L(() => import('@/features/evaluations/EvaluationsPage')) },
-      { path: 'evaluations/new', element: L(() => import('@/features/evaluations/EvaluationCreatePage')) },
+      { path: 'evaluations/new', element: <RequirePermission codes={A.createEvaluation}>{L(() => import('@/features/evaluations/EvaluationCreatePage'))}</RequirePermission> },
       { path: 'evaluations/:evaluationId', element: L(() => import('@/features/evaluations/EvaluationDetailsPage')) },
       { path: 'terminations', element: L(() => import('@/features/terminations/TerminationsListPage')) },
-      { path: 'terminations/new', element: L(() => import('@/features/terminations/TerminationCreatePage')) },
+      { path: 'terminations/new', element: <RequirePermission codes={A.createTermination}>{L(() => import('@/features/terminations/TerminationCreatePage'))}</RequirePermission> },
       { path: 'terminations/:terminationId', element: L(() => import('@/features/terminations/TerminationDetailsPage')) },
       { path: 'complaints', element: L(() => import('@/features/complaints/ComplaintsListPage')) },
       { path: 'complaints/:complaintId', element: L(() => import('@/features/complaints/ComplaintDetailsPage')) },

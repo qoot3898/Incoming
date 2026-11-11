@@ -3,6 +3,8 @@ import { Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/app/providers/authContext';
+import { ACTION_PERMISSIONS } from '@/constants/permissions';
 import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { transfersApi, transfersKeys } from './api';
@@ -23,6 +25,7 @@ type Row = S<'TransferListItem'>;
 export default function TransfersListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { can } = useAuth();
   const label = useEnumLabel();
   const enumOptions = useEnumOptions();
   const list = useListState({ Search: '', Status: '', InitiatedBy: '', TrackId: '', WorkSiteId: '', From: '', To: '' });
@@ -59,9 +62,11 @@ export default function TransfersListPage() {
       <PageHeader
         title={t('nav.items.transfers')}
         actions={
-          <Button component={RouterLink} to="/transfers/new" variant="contained" startIcon={<AddIcon />}>
-            {t('transfers.new')}
-          </Button>
+          can(ACTION_PERMISSIONS.createTransfer) && (
+            <Button component={RouterLink} to="/transfers/new" variant="contained" startIcon={<AddIcon />}>
+              {t('transfers.new')}
+            </Button>
+          )
         }
       />
       <FilterPanel list={list} filters={filters} />

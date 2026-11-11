@@ -3,6 +3,8 @@ import { Button, Tab, Tabs } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/app/providers/authContext';
+import { ACTION_PERMISSIONS } from '@/constants/permissions';
 import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { terminationsApi, terminationsKeys } from './api';
@@ -24,6 +26,7 @@ const COUNT_KEY: Record<string, keyof S<'TerminationCounts'>> = { All: 'all', Pe
 export default function TerminationsListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { can } = useAuth();
   const label = useEnumLabel();
   const enumOptions = useEnumOptions();
   const list = useListState({ Stage: 'All', Search: '', Reason: '', Initiator: '', TrackId: '', WorkSiteId: '', From: '', To: '' });
@@ -62,9 +65,11 @@ export default function TerminationsListPage() {
       <PageHeader
         title={t('nav.items.terminations')}
         actions={
-          <Button component={RouterLink} to="/terminations/new" variant="contained" startIcon={<AddIcon />}>
-            {t('terminations.new')}
-          </Button>
+          can(ACTION_PERMISSIONS.createTermination) && (
+            <Button component={RouterLink} to="/terminations/new" variant="contained" startIcon={<AddIcon />}>
+              {t('terminations.new')}
+            </Button>
+          )
         }
       />
       <Tabs value={list.filters.Stage} onChange={(_, v: string) => list.setFilter('Stage', v)} variant="scrollable" allowScrollButtonsMobile sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>

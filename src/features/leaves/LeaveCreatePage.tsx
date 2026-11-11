@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useReturnTo } from '@/hooks/useReturnTo';
 import { useTranslation } from 'react-i18next';
 import { leavesApi, leavesKeys } from './api';
 import { inclusiveDays } from './leaveFields';
@@ -32,6 +33,7 @@ const FIELD_MAP = { employeeId: 'worker' };
 export default function LeaveCreatePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const back = useReturnTo();
   const label = useEnumLabel();
   const enumOptions = useEnumOptions();
   const workerField = useWorkerField();
@@ -63,7 +65,7 @@ export default function LeaveCreatePage() {
     invalidate: [leavesKeys.all, ['workers'], ['tasks']],
     rethrow: true,
     success: t('leaves.submitted'),
-    onSuccess: (r) => navigate(`/leaves/${r.id}`),
+    onSuccess: (r) => navigate(back ?? `/leaves/${r.id}`),
   });
 
   const onSubmit = (e: FormEvent) => {
@@ -112,7 +114,7 @@ export default function LeaveCreatePage() {
                 <Typography variant="caption" color="text.secondary">
                   {t('leaves.chainHint')}
                 </Typography>
-                <FormActions submitLabel={t('leaves.submit')} submitting={formState.isSubmitting} onCancel={() => navigate('/leaves')} />
+                <FormActions submitLabel={t('leaves.submit')} submitting={formState.isSubmitting} onCancel={() => navigate(back ?? '/leaves')} />
               </Stack>
             </form>
           </FormCard>

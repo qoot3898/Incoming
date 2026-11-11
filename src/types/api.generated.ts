@@ -2714,6 +2714,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/candidates/{candidateId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** إرفاق نسخة جواز المرشح أو شهادته الصحية قبل تسجيله */
+        post: operations["AttachCandidateDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidates/{candidateId}/documents/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** فتح نسخة جواز المرشح أو شهادته الصحية */
+        get: operations["OpenCandidateDocument"];
+        put?: never;
+        post?: never;
+        /** حذف نسخة جواز المرشح أو شهادته الصحية قبل تسجيله */
+        delete: operations["RemoveCandidateDocument"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5118,7 +5153,7 @@ export interface components {
             timeline: components["schemas"]["LaborWorkerEvent"][];
             /** @description في إجازة معتمدة اليوم. */
             onLeave: boolean;
-            /** @description سبب تسجيله دون جواز سفر بتجاوز (القرار TL-N2)؛ `null` لمن سُجّل بجوازه. */
+            /** @description سبب تسجيله دون جواز سفر بالتجاوز الذي أُلغي في 2026-11-09 (القرار TL-N2)؛ `null` لمن سُجّل بجوازه، وهو كل من سُجّل بعد ذلك. */
             passportWaiverReason: string | null;
             /**
              * Format: date
@@ -7325,7 +7360,7 @@ export interface components {
         };
         /**
          * @description مرشح معتمد واحد للتسجيل (SRS FR-10، FR-11) مع ما تضيفه جهة الإدخال إلى سجل الموظف. يبدأ الاسم والجنسية بقيمتي المرشح؛ وتبدأ قوائم سجل الموظف
-         *     بالقيم الافتراضية للعمال المؤقتين.
+         *     بالقيم الافتراضية للعمال المؤقتين. ونسختا الجواز والشهادة الصحية تُرفقان بالمرشح قبل تسجيله (`POST candidates/{id}/documents`).
          */
         RegisterWorkerInput: {
             /**
@@ -7354,7 +7389,7 @@ export interface components {
              * @description «مكان الميلاد».
              */
             birthPlaceId?: null | number;
-            /** @description «رقم الجواز» (مطلوب ما لم يكن العامل ليبيًا، القرار TL-12، أو يُسجَّل دون جواز بتجاوز bool RegisterWorkerInput.PassportWaived). */
+            /** @description «رقم الجواز» (مطلوب ما لم يكن العامل ليبيًا، القرار TL-12؛ ونسخته مرفقة بالمرشح). */
             passportNumber?: string | null;
             /**
              * Format: date
@@ -7367,13 +7402,6 @@ export interface components {
              */
             passportExpiryDate?: null | string;
             /**
-             * @description تسجيل العامل غير الليبي دون جواز سفر (القرار TL-N2): لمن يملك صلاحية «تسجيل العامل دون جواز سفر»، مع string? RegisterWorkerInput.PassportWaiverReason،
-             *     ودون string? RegisterWorkerInput.PassportNumber.
-             */
-            passportWaived?: boolean;
-            /** @description سبب التسجيل دون جواز سفر (مطلوب مع bool RegisterWorkerInput.PassportWaived). */
-            passportWaiverReason?: string | null;
-            /**
              * Format: int64
              * @description «الرقم الوطني» (مطلوب للليبي).
              */
@@ -7384,7 +7412,7 @@ export interface components {
             phoneNumber?: string | null;
             /**
              * Format: date
-             * @description «تاريخ إصدار الشهادة الصحية»: مطلوب (القرار TL-N4).
+             * @description «تاريخ إصدار الشهادة الصحية»: مطلوب (القرار TL-N4)، ولا يكون بعد يوم إرفاق نسختها.
              */
             healthCertificateIssueDate?: null | string;
             /**
@@ -7483,8 +7511,6 @@ export interface components {
             managementDepartments: components["schemas"]["RegistrationManagementDefault"][];
             /** @description مكان ميلاد موظفي كل جنسية. */
             defaultBirthPlaces: components["schemas"]["RegistrationBirthPlaceDefault"][];
-            /** @description يملك المستخدم صلاحية تسجيل العامل غير الليبي دون جواز سفر (القرار TL-N2). */
-            canRegisterWithoutPassport: boolean;
         };
         /** @description مرشح اعتمده المدير العام، ينتظر أن تسجّله جهة الدخول في مساره (SRS FR-09). */
         RegistrationQueueItem: {
@@ -7533,6 +7559,10 @@ export interface components {
              * @description وقت اعتماد المدير العام للاسم (بالتوقيت المحلي).
              */
             approvedAt: string | null;
+            /** @description أُرفقت نسخة جوازه (مطلوبة لغير الليبي قبل تسجيله). */
+            passportScanAttached: boolean;
+            /** @description أُرفقت نسخة شهادته الصحية (مطلوبة لكل مرشح قبل تسجيله). */
+            healthCertificateScanAttached: boolean;
         };
         /** @description طلب: تغيير مكان حفظ الجواز. */
         RelocatePassportRequest: {
@@ -9474,6 +9504,12 @@ export interface components {
             /** @description السجل الذي يخصه المرفق. */
             recordReference: string | null;
         };
+        /**
+         * @description نسخة ممسوحة ضوئيًا تُرفق بالمرشح المعتمد قبل تسجيله (القرار TL-N2 كما عُدّل في 2026-11-09): لا يُصرف رقم وظيفي قبل إرفاق جواز غير الليبي
+         *     والشهادة الصحية لكل عامل.
+         * @enum {unknown}
+         */
+        CandidateDocumentKind: "Passport" | "HealthCertificate";
     };
     responses: never;
     parameters: never;
@@ -23741,6 +23777,240 @@ export interface operations {
                 "application/json": components["schemas"]["DecideAssignmentRequest"];
             };
         };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AttachCandidateDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidateId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    kind: components["schemas"]["CandidateDocumentKind"];
+                } & {
+                    scan?: components["schemas"]["IFormFile"];
+                };
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OpenCandidateDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidateId: number;
+                kind: components["schemas"]["CandidateDocumentKind"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RemoveCandidateDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidateId: number;
+                kind: components["schemas"]["CandidateDocumentKind"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description No Content */
             204: {

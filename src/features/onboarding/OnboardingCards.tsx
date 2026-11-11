@@ -201,65 +201,15 @@ export function PassportCard({ r }: { r: Rec }) {
   const { t } = useTranslation();
   const label = useEnumLabel();
   const invalidate = useOnboardingInvalidation();
-  const receive = useApiMutation(({ values, transfer }: UploadVars) => onboardingApi.receivePassport(r.employeeId, values, transfer), { invalidate, rethrow: true });
   const relocate = useApiMutation((v: S<'RelocatePassportRequest'>) => onboardingApi.relocatePassport(r.employeeId, v), { invalidate, rethrow: true });
   const p = r.passport;
-  // Recorded passport dates (TL-N4) live on the worker file: custody fills them when empty and refuses different ones.
-  const worker = useQuery({ queryKey: workersKeys.detail(r.employeeId), queryFn: () => workersApi.get(r.employeeId), enabled: r.canManage && !p, staleTime: 60_000 });
-  const recordedIssue = worker.data?.passportIssueDate ?? null;
-  const recordedExpiry = worker.data?.passportExpiryDate ?? null;
-  const datesRequired = !r.libyan && !(recordedIssue && recordedExpiry);
   return (
     <SectionCard
       title={t('onboarding.passportCustody')}
       action={
         r.canManage && (
           <Stack direction="row" spacing={1}>
-            {!p && (
-              <ActionFormButton<Record<string, unknown>>
-                label={t('onboarding.receivePassport')}
-                size="small"
-                disabled={worker.isLoading}
-                description={r.libyan ? t('onboarding.libyanPassportHint') : undefined}
-                fields={[
-                  { name: 'passportNumber', kind: 'text', label: t('fields.passportNumber'), half: true, maxLength: 50 },
-                  { name: 'location', kind: 'text', label: t('onboarding.passportLocation'), half: true, maxLength: 200 },
-                  {
-                    name: 'issuedOn',
-                    kind: 'date',
-                    label: t('fields.passportIssueDate'),
-                    half: true,
-                    required: datesRequired,
-                    max: todayIso(),
-                    disabled: !!recordedIssue,
-                    helperText: recordedIssue ? t('onboarding.recordedDate') : undefined,
-                  },
-                  {
-                    name: 'expiresOn',
-                    kind: 'date',
-                    label: t('fields.passportExpiryDate'),
-                    half: true,
-                    required: datesRequired,
-                    disabled: !!recordedExpiry,
-                    helperText: recordedExpiry ? t('onboarding.recordedDate') : undefined,
-                  },
-                  { name: 'receivedOn', kind: 'date', label: t('onboarding.receivedOn'), required: true, half: true },
-                  { name: 'handedBy', kind: 'text', label: t('onboarding.handedBy'), half: true, maxLength: 200 },
-                  { name: 'receivedBy', kind: 'text', label: t('onboarding.receivedBy'), half: true, maxLength: 200 },
-                  { name: 'notes', kind: 'textarea', label: t('common.notes'), maxLength: 500 },
-                  { name: 'scan', kind: 'file', label: t('attachments.scan') },
-                ]}
-                defaultValues={{ passportNumber: r.passportNumber, receivedOn: todayIso(), handedBy: r.name, issuedOn: recordedIssue, expiresOn: recordedExpiry }}
-                validate={(v) => {
-                  const issued = v.issuedOn as string | null;
-                  const expires = v.expiresOn as string | null;
-                  if (issued && expires && expires <= issued) return { expiresOn: t('validation.expiryAfterIssue') };
-                  if (!!issued !== !!expires) return issued ? { expiresOn: t('validation.required') } : { issuedOn: t('validation.required') };
-                  return null;
-                }}
-                onSubmit={(values, transfer) => receive.mutateAsync({ values, transfer })}
-              />
-            )}
+            {!p && <ReceivePassportButton r={r} />}
             {p && p.status === 'Kept' && (
               <ActionFormButton<S<'RelocatePassportRequest'>>
                 label={t('onboarding.relocatePassport')}
@@ -302,95 +252,151 @@ export function PassportCard({ r }: { r: Rec }) {
   );
 }
 
+/**
+ * Passport taken into custody (FR-24). Recorded passport dates (TL-N4) live on the worker file: custody
+ * fills them when empty (then both are required) and refuses different ones (then they are shown read-only).
+ */
+function ReceivePassportButton({ r }: { r: Rec }) {
+  const { t } = useTranslation();
+  const invalidate = useOnboardingInvalidation();
+  const receive = useApiMutation(({ values, transfer }: UploadVars) => onboardingApi.receivePassport(r.employeeId, values, transfer), { invalidate, rethrow: true });
+  const worker = useQuery({ queryKey: workersKeys.detail(r.employeeId), queryFn: () => workersApi.get(r.employeeId), staleTime: 60_000 });
+  const recordedIssue = worker.data?.passportIssueDate ?? null;
+  const recordedExpiry = worker.data?.passportExpiryDate ?? null;
+  const datesRequired = !r.libyan && !(recordedIssue && recordedExpiry);
+  const recordedHint = (recorded: string | null) => (recorded ? t('onboarding.recordedDate') : undefined);
+  return (
+    <ActionFormButton<Record<string, unknown>>
+      label={t('onboarding.receivePassport')}
+      size="small"
+      disabled={worker.isLoading}
+      description={r.libyan ? t('onboarding.libyanPassportHint') : undefined}
+      fields={[
+        { name: 'passportNumber', kind: 'text', label: t('fields.passportNumber'), half: true, maxLength: 50 },
+        { name: 'location', kind: 'text', label: t('onboarding.passportLocation'), half: true, maxLength: 200 },
+        { name: 'issuedOn', kind: 'date', label: t('fields.passportIssueDate'), half: true, required: datesRequired, max: todayIso(), disabled: !!recordedIssue, helperText: recordedHint(recordedIssue) },
+        { name: 'expiresOn', kind: 'date', label: t('fields.passportExpiryDate'), half: true, required: datesRequired, disabled: !!recordedExpiry, helperText: recordedHint(recordedExpiry) },
+        { name: 'receivedOn', kind: 'date', label: t('onboarding.receivedOn'), required: true, half: true },
+        { name: 'handedBy', kind: 'text', label: t('onboarding.handedBy'), half: true, maxLength: 200 },
+        { name: 'receivedBy', kind: 'text', label: t('onboarding.receivedBy'), half: true, maxLength: 200 },
+        { name: 'notes', kind: 'textarea', label: t('common.notes'), maxLength: 500 },
+        { name: 'scan', kind: 'file', label: t('attachments.scan') },
+      ]}
+      defaultValues={{ passportNumber: r.passportNumber, receivedOn: todayIso(), handedBy: r.name, issuedOn: recordedIssue, expiresOn: recordedExpiry }}
+      validate={(v) => {
+        const issued = v.issuedOn as string | null;
+        const expires = v.expiresOn as string | null;
+        if (issued && expires && expires <= issued) return { expiresOn: t('validation.expiryAfterIssue') };
+        if (!!issued !== !!expires) return issued ? { expiresOn: t('validation.required') } : { issuedOn: t('validation.required') };
+        return null;
+      }}
+      onSubmit={(values, transfer) => receive.mutateAsync({ values, transfer })}
+    />
+  );
+}
+
 export function SurveyCard({ r }: { r: Rec }) {
   const { t } = useTranslation();
   const label = useEnumLabel();
-  const enumOptions = useEnumOptions();
-  const invalidate = useOnboardingInvalidation();
-  const [showDetails, setShowDetails] = useState(false);
-  const setApplicable = useApiMutation((v: { applicable: string }) => onboardingApi.setSurveyApplicability(r.employeeId, { applicable: v.applicable === 'true' }), { invalidate, rethrow: true });
-  const review = useApiMutation(({ values, transfer }: UploadVars) => onboardingApi.reviewSurvey(r.employeeId, values, transfer), { invalidate: [...invalidate, [...onboardingKeys.all, 'survey', r.employeeId]], rethrow: true });
-  const details = useQuery({
-    queryKey: [...onboardingKeys.all, 'survey', r.employeeId],
-    queryFn: () => onboardingApi.survey(r.employeeId),
-    enabled: showDetails && r.canReviewSurvey,
-  });
   const s = r.survey;
+  const yesNo = (v: boolean | null | undefined) => (v === null || v === undefined ? '—' : v ? t('common.yes') : t('common.no'));
   return (
-    <SectionCard
-      title={t('onboarding.securitySurvey')}
-      action={
-        <Stack direction="row" spacing={1}>
-          {r.canManage && (
-            <ActionFormButton<{ applicable: string }>
-              label={t('onboarding.surveyApplicability')}
-              size="small"
-              fields={[
-                {
-                  name: 'applicable',
-                  kind: 'select',
-                  label: t('onboarding.surveyApplies'),
-                  required: true,
-                  options: [
-                    { value: 'true', label: t('onboarding.technicalWorkerYes') },
-                    { value: 'false', label: t('onboarding.technicalWorkerNo') },
-                  ],
-                },
-              ]}
-              defaultValues={{ applicable: s.applicable === null || s.applicable === undefined ? '' : String(s.applicable) }}
-              onSubmit={(v) => setApplicable.mutateAsync(v)}
-            />
-          )}
-          {r.canReviewSurvey && s.applicable && (
-            <ActionFormButton<Record<string, unknown>>
-              label={t('onboarding.recordSurveyReview')}
-              size="small"
-              variant="contained"
-              fields={[
-                { name: 'outcome', kind: 'select', label: t('onboarding.surveyOutcome'), required: true, half: true, options: enumOptions('SurveyOutcome', ENUMS.SurveyOutcome) },
-                { name: 'reviewedOn', kind: 'date', label: t('onboarding.reviewedOn'), required: true, half: true },
-                { name: 'notes', kind: 'textarea', label: t('common.notes'), maxLength: 1000 },
-                { name: 'scan', kind: 'file', label: t('attachments.scan') },
-              ]}
-              defaultValues={{ reviewedOn: todayIso() }}
-              onSubmit={(values, transfer) => review.mutateAsync({ values, transfer })}
-            />
-          )}
-        </Stack>
-      }
-    >
+    <SectionCard title={t('onboarding.securitySurvey')} action={<SurveyActions r={r} />}>
       <InfoGrid
         items={[
           { label: t('onboarding.surveyStage'), value: label('SurveyStage', s.stage) },
-          { label: t('onboarding.surveyApplies'), value: s.applicable === null || s.applicable === undefined ? '—' : s.applicable ? t('common.yes') : t('common.no') },
+          { label: t('onboarding.surveyApplies'), value: yesNo(s.applicable) },
           { label: t('onboarding.reviewed'), value: s.reviewedOn ? `${t('common.yes')} — ${formatDate(s.reviewedOn)}` : t('common.no') },
           { label: t('onboarding.reviewedBy'), value: s.reviewedBy },
         ]}
       />
-      {r.canReviewSurvey && s.stage === 'Reviewed' && (
-        <Box sx={{ mt: 2 }}>
-          {!showDetails ? (
-            <Button size="small" startIcon={<VisibilityOutlinedIcon />} onClick={() => setShowDetails(true)}>
-              {t('onboarding.showSurveyResult')}
-            </Button>
-          ) : details.isLoading ? (
-            <LoadingState minHeight={80} />
-          ) : details.error ? (
-            <ErrorState error={details.error} />
-          ) : details.data?.unreadable ? (
-            <Alert severity="info">{t('onboarding.surveyUnreadable')}</Alert>
-          ) : (
-            <Alert severity={details.data?.outcome === 'Accepted' ? 'success' : 'error'} action={details.data?.attachmentId ? <AttachmentButton attachmentId={details.data.attachmentId} /> : undefined}>
-              <strong>{label('SurveyOutcome', details.data?.outcome)}</strong>
-              {details.data?.notes && <div>{details.data.notes}</div>}
-              <Typography variant="caption" display="block">
-                {t('onboarding.accessLogged')}
-              </Typography>
-            </Alert>
-          )}
-        </Box>
-      )}
+      {r.canReviewSurvey && s.stage === 'Reviewed' && <SurveyResult employeeId={r.employeeId} />}
     </SectionCard>
+  );
+}
+
+/** Applicability (technical worker or not) for the section; the restricted review for the survey reviewer (TL-B8). */
+function SurveyActions({ r }: { r: Rec }) {
+  const { t } = useTranslation();
+  const enumOptions = useEnumOptions();
+  const invalidate = useOnboardingInvalidation();
+  const setApplicable = useApiMutation((v: { applicable: string }) => onboardingApi.setSurveyApplicability(r.employeeId, { applicable: v.applicable === 'true' }), { invalidate, rethrow: true });
+  const review = useApiMutation(({ values, transfer }: UploadVars) => onboardingApi.reviewSurvey(r.employeeId, values, transfer), { invalidate: [...invalidate, [...onboardingKeys.all, 'survey', r.employeeId]], rethrow: true });
+  const applicable = r.survey.applicable;
+  return (
+    <Stack direction="row" spacing={1}>
+      {r.canManage && (
+        <ActionFormButton<{ applicable: string }>
+          label={t('onboarding.surveyApplicability')}
+          size="small"
+          fields={[
+            {
+              name: 'applicable',
+              kind: 'select',
+              label: t('onboarding.surveyApplies'),
+              required: true,
+              options: [
+                { value: 'true', label: t('onboarding.technicalWorkerYes') },
+                { value: 'false', label: t('onboarding.technicalWorkerNo') },
+              ],
+            },
+          ]}
+          defaultValues={{ applicable: applicable === null || applicable === undefined ? '' : String(applicable) }}
+          onSubmit={(v) => setApplicable.mutateAsync(v)}
+        />
+      )}
+      {r.canReviewSurvey && applicable && (
+        <ActionFormButton<Record<string, unknown>>
+          label={t('onboarding.recordSurveyReview')}
+          size="small"
+          variant="contained"
+          fields={[
+            { name: 'outcome', kind: 'select', label: t('onboarding.surveyOutcome'), required: true, half: true, options: enumOptions('SurveyOutcome', ENUMS.SurveyOutcome) },
+            { name: 'reviewedOn', kind: 'date', label: t('onboarding.reviewedOn'), required: true, half: true },
+            { name: 'notes', kind: 'textarea', label: t('common.notes'), maxLength: 1000 },
+            { name: 'scan', kind: 'file', label: t('attachments.scan') },
+          ]}
+          defaultValues={{ reviewedOn: todayIso() }}
+          onSubmit={(values, transfer) => review.mutateAsync({ values, transfer })}
+        />
+      )}
+    </Stack>
+  );
+}
+
+/** The encrypted survey result, read on demand (each reading is logged, AC-18). */
+function SurveyResult({ employeeId }: { employeeId: number }) {
+  const { t } = useTranslation();
+  const [show, setShow] = useState(false);
+  const details = useQuery({ queryKey: [...onboardingKeys.all, 'survey', employeeId], queryFn: () => onboardingApi.survey(employeeId), enabled: show });
+  return (
+    <Box sx={{ mt: 2 }}>
+      {show ? (
+        <SurveyResultBody query={details} />
+      ) : (
+        <Button size="small" startIcon={<VisibilityOutlinedIcon />} onClick={() => setShow(true)}>
+          {t('onboarding.showSurveyResult')}
+        </Button>
+      )}
+    </Box>
+  );
+}
+
+function SurveyResultBody({ query }: { query: { isLoading: boolean; error: unknown; data?: S<'OnboardingSurveyDetails'> } }) {
+  const { t } = useTranslation();
+  const label = useEnumLabel();
+  if (query.isLoading) return <LoadingState minHeight={80} />;
+  if (query.error) return <ErrorState error={query.error} />;
+  const d = query.data;
+  if (d?.unreadable) return <Alert severity="info">{t('onboarding.surveyUnreadable')}</Alert>;
+  return (
+    <Alert severity={d?.outcome === 'Accepted' ? 'success' : 'error'} action={d?.attachmentId ? <AttachmentButton attachmentId={d.attachmentId} /> : undefined}>
+      <strong>{label('SurveyOutcome', d?.outcome)}</strong>
+      {d?.notes && <div>{d.notes}</div>}
+      <Typography variant="caption" display="block">
+        {t('onboarding.accessLogged')}
+      </Typography>
+    </Alert>
   );
 }
 
@@ -621,54 +627,66 @@ export function NoticeCard({ employeeId }: { employeeId: number }) {
   const { t } = useTranslation();
   const key = [...onboardingKeys.all, 'notice', employeeId];
   const q = useQuery({ queryKey: key, queryFn: () => onboardingApi.onboardingNotice(employeeId) });
-  const invalidate = [...useOnboardingInvalidation(), key];
-  const deliver = useApiMutation((v: S<'RecordNoticeDeliveryRequest'> & { id: number }) => payrollApi.recordDelivery(v.id, v), { invalidate, rethrow: true });
-  const confirm = useApiMutation((id: number) => payrollApi.confirm(id), { invalidate, success: t('payroll.confirmed') });
-
-  const notFound = axios.isAxiosError(q.error) && q.error.response?.status === 404;
   return (
     <SectionCard title={t('payroll.onboardingNotice')}>
-      {q.isLoading ? (
-        <LoadingState minHeight={80} />
-      ) : notFound || (!q.error && !q.data) ? (
-        <EmptyState title={t('payroll.noNoticeYet')} />
-      ) : q.error ? (
-        <ErrorState error={q.error} />
-      ) : (
-        <Stack spacing={2}>
-          <InfoGrid
-            columns={2}
-            items={[
-              { label: t('fields.status'), value: <StatusChip enumName="PayrollNoticeStatus" value={q.data!.status} /> },
-              { label: t('payroll.effectiveDate'), value: formatDate(q.data!.effectiveDate) },
-              { label: t('salary.salary'), value: formatMoney(q.data!.salary) },
-              { label: t('salary.allowance'), value: formatMoney(q.data!.allowance) },
-              { label: t('payroll.deliveredOn'), value: q.data!.deliveredOn ? `${formatDate(q.data!.deliveredOn)} — ${q.data!.deliveredBy ?? ''}` : '—' },
-              { label: t('payroll.confirmedAt'), value: q.data!.confirmedAt ? `${formatDateTime(q.data!.confirmedAt)} — ${q.data!.confirmedBy ?? ''}` : '—' },
-            ]}
-          />
-          <Stack direction="row" spacing={1}>
-            {q.data!.canRecordDelivery && (
-              <ActionFormButton<S<'RecordNoticeDeliveryRequest'>>
-                label={t('payroll.recordDelivery')}
-                size="small"
-                variant="contained"
-                fields={[
-                  { name: 'deliveredOn', kind: 'date', label: t('payroll.deliveredOn'), required: true, half: true },
-                  { name: 'deliveredBy', kind: 'text', label: t('payroll.deliveredBy'), half: true, maxLength: 200 },
-                ]}
-                defaultValues={{ deliveredOn: todayIso() }}
-                onSubmit={(v) => deliver.mutateAsync({ ...v, id: q.data!.id })}
-              />
-            )}
-            {q.data!.canConfirm && (
-              <Button size="small" variant="contained" color="success" onClick={() => confirm.mutate(q.data!.id)} disabled={confirm.isPending}>
-                {t('payroll.confirmReceipt')}
-              </Button>
-            )}
-          </Stack>
-        </Stack>
-      )}
+      <NoticeBody query={q} queryKey={key} />
     </SectionCard>
+  );
+}
+
+type Notice = S<'OnboardingNoticeDetails'>;
+
+function NoticeBody({ query: q, queryKey }: { query: { isLoading: boolean; error: unknown; data?: Notice }; queryKey: readonly unknown[] }) {
+  const { t } = useTranslation();
+  if (q.isLoading) return <LoadingState minHeight={80} />;
+  // No notice yet answers 404: the start approval has not issued it.
+  const notFound = axios.isAxiosError(q.error) && q.error.response?.status === 404;
+  if (notFound || (!q.error && !q.data)) return <EmptyState title={t('payroll.noNoticeYet')} />;
+  if (q.error || !q.data) return <ErrorState error={q.error} />;
+  return <NoticeDetails notice={q.data} queryKey={queryKey} />;
+}
+
+/** "date — user" for a step of the notice, or a dash. */
+const noticeStep = (when: string | null | undefined, who: string | null | undefined, format: (v: string) => string) => (when ? `${format(when)} — ${who ?? ''}` : '—');
+
+function NoticeDetails({ notice: n, queryKey }: { notice: Notice; queryKey: readonly unknown[] }) {
+  const { t } = useTranslation();
+  const invalidate = [...useOnboardingInvalidation(), queryKey];
+  const deliver = useApiMutation((v: S<'RecordNoticeDeliveryRequest'>) => payrollApi.recordDelivery(n.id, v), { invalidate, rethrow: true });
+  const confirm = useApiMutation(() => payrollApi.confirm(n.id), { invalidate, success: t('payroll.confirmed') });
+  return (
+    <Stack spacing={2}>
+      <InfoGrid
+        columns={2}
+        items={[
+          { label: t('fields.status'), value: <StatusChip enumName="PayrollNoticeStatus" value={n.status} /> },
+          { label: t('payroll.effectiveDate'), value: formatDate(n.effectiveDate) },
+          { label: t('salary.salary'), value: formatMoney(n.salary) },
+          { label: t('salary.allowance'), value: formatMoney(n.allowance) },
+          { label: t('payroll.deliveredOn'), value: noticeStep(n.deliveredOn, n.deliveredBy, formatDate) },
+          { label: t('payroll.confirmedAt'), value: noticeStep(n.confirmedAt, n.confirmedBy, formatDateTime) },
+        ]}
+      />
+      <Stack direction="row" spacing={1}>
+        {n.canRecordDelivery && (
+          <ActionFormButton<S<'RecordNoticeDeliveryRequest'>>
+            label={t('payroll.recordDelivery')}
+            size="small"
+            variant="contained"
+            fields={[
+              { name: 'deliveredOn', kind: 'date', label: t('payroll.deliveredOn'), required: true, half: true },
+              { name: 'deliveredBy', kind: 'text', label: t('payroll.deliveredBy'), half: true, maxLength: 200 },
+            ]}
+            defaultValues={{ deliveredOn: todayIso() }}
+            onSubmit={(v) => deliver.mutateAsync(v)}
+          />
+        )}
+        {n.canConfirm && (
+          <Button size="small" variant="contained" color="success" onClick={() => confirm.mutate(undefined)} disabled={confirm.isPending}>
+            {t('payroll.confirmReceipt')}
+          </Button>
+        )}
+      </Stack>
+    </Stack>
   );
 }

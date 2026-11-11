@@ -1,8 +1,9 @@
 import { Fragment, memo } from 'react';
-import { Checkbox, FormControlLabel, MenuItem, Stack, TableCell, TableRow, TextField } from '@mui/material';
+import { MenuItem, TableCell, TableRow, TextField } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import type { Option } from '@/components/forms/FormDialog';
-import { WAIVER_REASON_MAX, type RegistrationRow, type RowField } from './registrationRow';
+import { CandidateScanCell } from './CandidateScanCell';
+import type { IssueField, RegistrationRow, RowField } from './registrationRow';
 
 export interface RowChoices {
   nationalities: Option[];
@@ -17,7 +18,6 @@ interface Props {
   index: number;
   choices: RowChoices;
   libyan: boolean;
-  canWaive: boolean;
   /** Field → message (client rules and server errors); `_row` for messages about the whole row. */
   errors?: Partial<Record<string, string>>;
   columnCount: number;
@@ -28,12 +28,14 @@ interface Props {
  * One editable worker row of the registration table. Memoized: typing in a row re-renders only that
  * row (the page passes a stable `onChange`), which keeps 100-worker batches responsive (AC-11).
  */
-export const RegistrationRowEditor = memo(function RegistrationRowEditor({ row: r, index, choices, libyan, canWaive, errors, columnCount, onChange }: Props) {
+/** A missing required scan is outlined like an invalid input. */
+const scanCellSx = (invalid: boolean) => ({ whiteSpace: 'nowrap' as const, ...(invalid ? { outline: '1px solid', outlineColor: 'error.main', outlineOffset: -4, borderRadius: 1 } : {}) });
+
+export const RegistrationRowEditor = memo(function RegistrationRowEditor({ row: r, index, choices, libyan, errors, columnCount, onChange }: Props) {
   const { t } = useTranslation();
   const set = (patch: Partial<RegistrationRow>) => onChange(index, patch);
-  const err = (field: RowField) => !!errors?.[field];
+  const err = (field: IssueField) => !!errors?.[field];
   const label = (field: RowField) => t(`registration.cols.${field}`);
-  const waived = r.passportWaived && !libyan;
   const messages = Object.entries(errors ?? {}).filter((e): e is [string, string] => !!e[1]);
 
   const text = (field: RowField, width: number, extra?: { placeholder?: string; disabled?: boolean; ltr?: boolean }) => (
@@ -48,14 +50,13 @@ export const RegistrationRowEditor = memo(function RegistrationRowEditor({ row: 
       slotProps={{ htmlInput: { 'aria-label': label(field), dir: extra?.ltr ? 'ltr' : undefined } }}
     />
   );
-  const date = (field: RowField, disabled?: boolean) => (
+  const date = (field: RowField) => (
     <TextField
       size="small"
       type="date"
       value={r[field] as string}
       onChange={(e) => set({ [field]: e.target.value })}
       error={err(field)}
-      disabled={disabled}
       slotProps={{ htmlInput: { 'aria-label': label(field) } }}
     />
   );
@@ -94,46 +95,17 @@ export const RegistrationRowEditor = memo(function RegistrationRowEditor({ row: 
         <TableCell>{text('nationalNumber', 130, { placeholder: libyan ? t('registration.libyanHint') : '', ltr: true })}</TableCell>
         <TableCell>{text('idCardNumber', 110, { ltr: true })}</TableCell>
         <TableCell>{text('phoneNumber', 120, { placeholder: t('common.optional'), ltr: true })}</TableCell>
-        <TableCell>{text('passportNumber', 120, { disabled: waived, placeholder: libyan ? t('common.optional') : '', ltr: true })}</TableCell>
-        <TableCell>{date('passportIssueDate', waived)}</TableCell>
-        <TableCell>{date('passportExpiryDate', waived)}</TableCell>
-        {canWaive && (
-          <TableCell>
-            {libyan ? (
-              '—'
-            ) : (
-              <Stack spacing={0.5} sx={{ minWidth: 200 }}>
-                <FormControlLabel
-                  sx={{ m: 0 }}
-                  control={
-                    <Checkbox
-                      size="small"
-                      checked={r.passportWaived}
-                      onChange={(e) =>
-                        set(e.target.checked ? { passportWaived: true, passportNumber: '', passportIssueDate: '', passportExpiryDate: '' } : { passportWaived: false, passportWaiverReason: '' })
-                      }
-                    />
-                  }
-                  label={t('registration.withoutPassport')}
-                />
-                {r.passportWaived && (
-                  <TextField
-                    size="small"
-                    multiline
-                    maxRows={3}
-                    value={r.passportWaiverReason}
-                    onChange={(e) => set({ passportWaiverReason: e.target.value })}
-                    error={err('passportWaiverReason')}
-                    placeholder={label('passportWaiverReason')}
-                    slotProps={{ htmlInput: { maxLength: WAIVER_REASON_MAX, 'aria-label': label('passportWaiverReason') } }}
-                  />
-                )}
-              </Stack>
-            )}
-          </TableCell>
-        )}
+        <TableCell>{text('passportNumber', 120, { placeholder: libyan ? t('common.optional') : '', ltr: true })}</TableCell>
+        <TableCell>{date('passportIssueDate')}</TableCell>
+        <TableCell>{date('passportExpiryDate')}</TableCell>
+        <TableCell sx={scanCellSx(err('passportScan'))}>
+          <CandidateScanCell candidateId={r.candidateId} kind="Passport" attached={r.passportScan} required={!libyan} onChange={(v) => set({ passportScan: v })} />
+        </TableCell>
         <TableCell>{date('healthCertificateIssueDate')}</TableCell>
         <TableCell>{date('healthCertificateExpiryDate')}</TableCell>
+        <TableCell sx={scanCellSx(err('healthScan'))}>
+          <CandidateScanCell candidateId={r.candidateId} kind="HealthCertificate" attached={r.healthScan} required onChange={(v) => set({ healthScan: v })} />
+        </TableCell>
         <TableCell>{select('departmentId', choices.departments, 150)}</TableCell>
       </TableRow>
       {messages.length > 0 && (

@@ -29,7 +29,10 @@ export default function LoginPage() {
   type Values = z.infer<typeof schema>;
   const { register, handleSubmit, formState } = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { userName: '', password: '' } });
 
-  const from = (location.state as { from?: string } | null)?.from ?? '/';
+  // Never return to the password screen after signing in: it is only for a forced change, and the route
+  // guard sends the user there (or to the assignment letter) from '/' when the account needs it.
+  const requested = (location.state as { from?: string } | null)?.from ?? '/';
+  const from = requested.startsWith('/change-password') ? '/' : requested;
   if (status === 'authenticated') return <Navigate to={from} replace />;
 
   const onSubmit = handleSubmit(async (v) => {

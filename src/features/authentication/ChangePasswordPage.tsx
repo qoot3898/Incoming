@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { Alert, Stack, Typography } from '@mui/material';
+import { Alert, Button, Stack, Typography } from '@mui/material';
+import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,7 +10,7 @@ import { useAuth } from '@/app/providers/authContext';
 import { authApi } from './api';
 import { useSnackbar } from '@/app/providers/snackbarContext';
 import { PageHeader } from '@/components/common/PageHeader';
-import { PageContainer } from '@/components/layout/PageContainer';
+import { StandaloneLayout } from '@/components/layout/StandaloneLayout';
 import { FormTextField } from '@/components/forms/fields';
 import { FormActions, FormCard, FormErrorAlert, FormSection } from '@/components/forms/FormLayout';
 import { useFormServerError } from '@/components/forms/useFormServerError';
@@ -19,7 +20,7 @@ const FIELDS = Object.keys(DEFAULTS);
 
 export default function ChangePasswordPage() {
   const { t } = useTranslation();
-  const { user, reload } = useAuth();
+  const { user, reload, logout } = useAuth();
   const { notify } = useSnackbar();
   const navigate = useNavigate();
   const schema = useMemo(
@@ -50,7 +51,21 @@ export default function ChangePasswordPage() {
   });
 
   return (
-    <PageContainer width="narrow">
+    <StandaloneLayout
+      persistLanguage
+      actions={
+        <Button
+          color="inherit"
+          startIcon={<LogoutOutlinedIcon />}
+          onClick={async () => {
+            await logout();
+            navigate('/login', { replace: true });
+          }}
+        >
+          {t('auth.logout')}
+        </Button>
+      }
+    >
       <PageHeader title={t('auth.changePassword')} />
       <FormCard>
         <form onSubmit={onSubmit} noValidate>
@@ -73,6 +88,6 @@ export default function ChangePasswordPage() {
           </Stack>
         </form>
       </FormCard>
-    </PageContainer>
+    </StandaloneLayout>
   );
 }

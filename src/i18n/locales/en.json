@@ -1181,9 +1181,9 @@
       "phoneNumber": "Phone",
       "passportIssueDate": "Passport issued",
       "passportExpiryDate": "Passport expires",
-      "passportWaived": "No passport",
-      "passportWaiverReason": "Reason for registering without a passport",
-      "healthCertificateIssueDate": "Health certificate issued"
+      "healthCertificateIssueDate": "Health certificate issued",
+      "passportScan": "Passport copy",
+      "healthScan": "Health certificate copy"
     },
     "confirmDuplicates": "Register despite duplicate passport",
     "done": "Workers registered and employee numbers issued",
@@ -1208,13 +1208,24 @@
       "expiryAfterIssue": "Must be after the issue date",
       "expiredOnRegistration": "Expired on the registration day",
       "datesNeedPassport": "Passport dates need a passport number",
-      "waiverWithoutPassport": "No passport number when registering without a passport",
-      "waiverNotAllowed": "You may not register without a passport"
+      "scanMissing": "Attach the copy in this row before registering"
     },
-    "rulesHint": "Non-Libyans register with their passport number and its dates; Libyans with their national number. The health certificate and its dates are required and must be valid on the registration day; the phone is optional.",
-    "waiverHint": "You may register a non-Libyan without a passport by giving the reason; the passport then stays missing on the checklist until it is taken into custody.",
-    "withoutPassport": "No passport",
-    "rowsInvalid": "Check the data in {{count}} row(s) before registering."
+    "rulesHint": "Non-Libyans register with their passport number, its dates and its copy; Libyans with their national number. The health certificate, its dates and its copy are required, valid on the registration day, and issued no later than the day its copy was attached. The phone is optional.",
+    "rowsInvalid": "Check the data in {{count}} row(s) before registering.",
+    "scans": {
+      "Passport": "Passport copy",
+      "HealthCertificate": "Health certificate copy",
+      "ok": "Attached",
+      "missing": "Missing",
+      "notRequired": "Not required",
+      "attach": "Attach {{name}}",
+      "replace": "Replace {{name}}",
+      "open": "Open {{name}}",
+      "remove": "Delete {{name}}",
+      "removeConfirm": "The {{name}} will be deleted from the candidate, who cannot be registered until it is attached again.",
+      "attached": "{{name}} attached",
+      "removed": "{{name}} deleted"
+    }
   },
   "reports": {
     "candidateResult": "Candidate result",
@@ -1529,7 +1540,7 @@
     },
     "registeredWithoutPassport": "Registered without a passport: {{reason}}. The passport stays missing until it is taken into custody.",
     "datesNeedPassport": "Enter the passport number with its dates",
-    "passportRemovalNotAllowed": "A non-Libyan's passport cannot be removed without the register-without-passport permission",
+    "passportRemovalNotAllowed": "A non-Libyan's passport cannot be removed",
     "recordedDateKept": "A recorded date cannot be removed",
     "openInPenalties": "Open in the penalties list",
     "noPenalties": "No penalties for this worker"

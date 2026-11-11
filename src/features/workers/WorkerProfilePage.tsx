@@ -5,6 +5,8 @@ import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import { useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/app/providers/authContext';
+import { ACTION_PERMISSIONS } from '@/constants/permissions';
 import { workersApi, workersKeys } from './api';
 import { leavesApi, leavesKeys } from '@/features/leaves/api';
 import { registrationApi } from '@/features/registration/api';
@@ -24,6 +26,7 @@ import { ENUMS } from '@/constants/enums';
 import { formatDate, formatMoney, formatBytes, formatDateTime, todayIso } from '@/utils/format';
 import { penaltiesApi, penaltiesKeys } from '@/features/penalties/api';
 import { usePenaltyDecisionTypes } from '@/features/penalties/decisionTypes';
+import { identityPassportIssues, type IdentityIssue } from './identityRules';
 import { useTabParam } from '@/hooks/useTabParam';
 import type { S } from '@/types/api';
 import type { UploadVars } from '@/services/api/client';
@@ -73,8 +76,10 @@ export default function WorkerProfilePage() {
 
 function WorkerActions({ worker: w }: { worker: Worker }) {
   const { t } = useTranslation();
-  const q = `?employeeId=${w.employeeId}&employeeNumber=${w.employeeNumber}`;
+  // returnTo: the create forms send the user back to this worker when they finish or cancel.
+  const q = `?employeeId=${w.employeeId}&employeeNumber=${w.employeeNumber}&returnTo=${encodeURIComponent(`/workers/${w.employeeId}`)}`;
   const active = !w.serviceEnded;
+  const { can } = useAuth();
   return (
     <>
       <Button component={RouterLink} to={`/workers/${w.employeeId}/onboarding`} variant="contained">
@@ -82,21 +87,31 @@ function WorkerActions({ worker: w }: { worker: Worker }) {
       </Button>
       {active && (
         <>
-          <Button component={RouterLink} to={`/leaves/new${q}`} variant="outlined">
-            {t('leaves.new')}
-          </Button>
-          <Button component={RouterLink} to={`/transfers/new${q}`} variant="outlined">
-            {t('transfers.new')}
-          </Button>
-          <Button component={RouterLink} to={`/penalties/new${q}`} variant="outlined">
-            {t('penalties.new')}
-          </Button>
-          <Button component={RouterLink} to={`/evaluations/new${q}`} variant="outlined">
-            {t('evaluations.new')}
-          </Button>
-          <Button component={RouterLink} to={`/terminations/new${q}`} variant="outlined" color="error">
-            {t('terminations.new')}
-          </Button>
+          {can(ACTION_PERMISSIONS.createLeave) && (
+            <Button component={RouterLink} to={`/leaves/new${q}`} variant="outlined">
+              {t('leaves.new')}
+            </Button>
+          )}
+          {can(ACTION_PERMISSIONS.createTransfer) && (
+            <Button component={RouterLink} to={`/transfers/new${q}`} variant="outlined">
+              {t('transfers.new')}
+            </Button>
+          )}
+          {can(ACTION_PERMISSIONS.createPenalty) && (
+            <Button component={RouterLink} to={`/penalties/new${q}`} variant="outlined">
+              {t('penalties.new')}
+            </Button>
+          )}
+          {can(ACTION_PERMISSIONS.createEvaluation) && (
+            <Button component={RouterLink} to={`/evaluations/new${q}`} variant="outlined">
+              {t('evaluations.new')}
+            </Button>
+          )}
+          {can(ACTION_PERMISSIONS.createTermination) && (
+            <Button component={RouterLink} to={`/terminations/new${q}`} variant="outlined" color="error">
+              {t('terminations.new')}
+            </Button>
+          )}
         </>
       )}
     </>
@@ -107,6 +122,7 @@ function Overview({ w }: { w: Worker }) {
   const { t } = useTranslation();
   const label = useEnumLabel();
   const [editOpen, setEditOpen] = useState(false);
+  const canCorrect = useAuth().can(ACTION_PERMISSIONS.correctIdentity);
   const yes = t('common.yes');
   const no = t('common.no');
   return (
@@ -116,9 +132,11 @@ function Overview({ w }: { w: Worker }) {
           <SectionCard
             title={t('workers.identity')}
             action={
-              <Button size="small" startIcon={<EditOutlinedIcon />} onClick={() => setEditOpen(true)}>
-                {t('workers.editIdentity')}
-              </Button>
+              canCorrect && (
+                <Button size="small" startIcon={<EditOutlinedIcon />} onClick={() => setEditOpen(true)}>
+                  {t('workers.editIdentity')}
+                </Button>
+              )
             }
           >
             <InfoGrid
@@ -313,23 +331,9 @@ function IdentityDialog({ worker: w, open, onClose }: { worker: Worker; open: bo
         birthDate: w.birthDate,
       }}
       validate={(v) => {
-        const errors: Partial<Record<keyof S<'UpdateEmployeeIdentityRequest'>, string>> = {};
-        const required = t('validation.required');
-        const passportChanged = (v.passportNumber ?? '') !== (w.passportNumber ?? '');
-        if (v.passportNumber) {
-          // A new or changed passport needs both dates; recorded dates are never blanked.
-          if (!v.passportIssueDate && (passportChanged || w.passportIssueDate)) errors.passportIssueDate = required;
-          if (!v.passportExpiryDate && (passportChanged || w.passportExpiryDate)) errors.passportExpiryDate = required;
-          if (v.passportIssueDate && v.passportExpiryDate && v.passportExpiryDate <= v.passportIssueDate) errors.passportExpiryDate = t('validation.expiryAfterIssue');
-        } else {
-          if (v.passportIssueDate || v.passportExpiryDate) errors.passportNumber = t('workers.datesNeedPassport');
-          // A foreigner's passport is dropped only with the waiver permission (TL-N2).
-          const foreign = v.nationalityId !== null && !libyanIds.has(Number(v.nationalityId));
-          if (w.passportNumber && foreign && !o?.canRegisterWithoutPassport) errors.passportNumber = t('workers.passportRemovalNotAllowed');
-        }
-        if (w.passportIssueDate && !v.passportIssueDate) errors.passportIssueDate = t('workers.recordedDateKept');
-        if (w.passportExpiryDate && !v.passportExpiryDate) errors.passportExpiryDate = t('workers.recordedDateKept');
-        return errors;
+        const issues = identityPassportIssues(v, w, { libyanIds });
+        const text = (issue: IdentityIssue) => (issue === 'required' || issue === 'expiryAfterIssue' ? t(`validation.${issue}`) : t(`workers.${issue}`));
+        return Object.fromEntries(Object.entries(issues).map(([field, issue]) => [field, text(issue)]));
       }}
       onSubmit={(v) => mutation.mutateAsync(v)}
     />

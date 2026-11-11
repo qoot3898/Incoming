@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useReturnTo } from '@/hooks/useReturnTo';
 import { useTranslation } from 'react-i18next';
 import { transfersApi, transfersKeys } from './api';
 import { TransferForm } from './TransferForm';
@@ -11,12 +12,13 @@ import { useApiMutation } from '@/hooks/useApiMutation';
 export default function TransferCreatePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const back = useReturnTo();
   const [worker, setWorker] = usePrefilledWorker();
   const submit = useApiMutation(transfersApi.submit, {
-    invalidate: [transfersKeys.all, ['tasks']],
+    invalidate: [transfersKeys.all, ['tasks'], ['workers']],
     rethrow: true,
     success: t('transfers.submitted'),
-    onSuccess: (r) => navigate(`/transfers/${r.id}`),
+    onSuccess: (r) => navigate(back ?? `/transfers/${r.id}`),
   });
   return (
     <PageContainer width="form">
@@ -27,7 +29,7 @@ export default function TransferCreatePage() {
           onWorkerChange={setWorker}
           submitLabel={t('transfers.submit')}
           onSubmit={(b) => submit.mutateAsync(b)}
-          onCancel={() => navigate('/transfers')}
+          onCancel={() => navigate(back ?? '/transfers')}
           guardUnsaved
         />
       </FormCard>

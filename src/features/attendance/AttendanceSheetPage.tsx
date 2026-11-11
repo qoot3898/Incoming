@@ -58,20 +58,20 @@ export default function AttendanceSheetPage() {
   return <QueryBoundary query={query}>{(sheet) => <SheetView sheet={sheet} />}</QueryBoundary>;
 }
 
+/** Mutations of a sheet refresh the sheets, tasks and everything attendance feeds (incidents → penalties / terminations). */
+const SHEET_INVALIDATE = [attendanceKeys.all, tasksKeys.all, ['workers'], ['penalties'], ['terminations']];
+
 function SheetView({ sheet }: { sheet: Sheet }) {
   const { t } = useTranslation();
-  const label = useEnumLabel();
   const { notify } = useSnackbar();
   const [tab, setTab] = useState(0);
   const [changes, setChanges] = useState<Changes>({});
   const [reasonOpen, setReasonOpen] = useState(false);
-  const [reason, setReason] = useState('');
   const [lastResult, setLastResult] = useState<S<'AttendanceSaveResult'> | null>(null);
   const days = useMemo(() => Array.from({ length: sheet.dayCount || sheet.workers[0]?.cells.length || 0 }, (_, i) => addDays(sheet.periodStart, i)), [sheet]);
-  const invalidate = [attendanceKeys.all, tasksKeys.all, ['workers'], ['penalties'], ['terminations']];
 
   const save = useApiMutation((body: S<'RecordAttendanceRequest'>) => attendanceApi.record(sheet.id, body), {
-    invalidate,
+    invalidate: SHEET_INVALIDATE,
     rethrow: true,
     success: false,
     onSuccess: (r) => {
@@ -80,13 +80,10 @@ function SheetView({ sheet }: { sheet: Sheet }) {
       notify(t('attendance.savedResult', { days: r.changedDays, workers: r.workers }));
     },
   });
-  const submit = useApiMutation((v: S<'SubmitAttendanceSheetRequest'>) => attendanceApi.submit(sheet.id, v), { invalidate, rethrow: true });
-  const review = useApiMutation(() => attendanceApi.review(sheet.id), { invalidate });
-  const receive = useApiMutation(() => attendanceApi.receive(sheet.id), { invalidate });
 
   const pending = Object.keys(changes).length;
-  const needsReason = sheet.status !== 'Open';
 
+  /** Saves the pending cells; returns whether it worked (the correction dialog stays open otherwise). */
   const doSave = async (correctionReason: string | null) => {
     try {
       await save.mutateAsync({
@@ -97,9 +94,10 @@ function SheetView({ sheet }: { sheet: Sheet }) {
         }),
       });
       setReasonOpen(false);
-      setReason('');
+      return true;
     } catch (e) {
       notify(errorMessage(e as ApiError), 'error');
+      return false;
     }
   };
 
@@ -120,64 +118,9 @@ function SheetView({ sheet }: { sheet: Sheet }) {
 
   return (
     <Box>
-      <PageHeader
-        title={t('attendance.sheetTitle', { site: sheet.workSiteName, month: sheet.month, year: sheet.year })}
-        subtitle={`${sheet.trackName ?? ''} · ${formatDate(sheet.periodStart)} – ${formatDate(sheet.periodEnd)}`}
-        breadcrumbs={[{ label: t('nav.items.attendance'), to: '/attendance' }]}
-        meta={
-          <Stack direction="row" spacing={1}>
-            <StatusChip enumName="AttendanceSheetStatus" value={sheet.status} />
-            {sheet.isLocked && <ToneChip tone="neutral" label={t('attendance.locked')} />}
-          </Stack>
-        }
-        actions={
-          <>
-            {sheet.canSubmit && (
-              <ActionFormButton<S<'SubmitAttendanceSheetRequest'>>
-                label={t('attendance.submit')}
-                variant="contained"
-                description={pending ? t('attendance.unsavedWarning') : t('attendance.submitHint')}
-                fields={[
-                  { name: 'supervisorName', kind: 'text', label: t('attendance.supervisor'), half: true, maxLength: 200 },
-                  { name: 'submittedOn', kind: 'date', label: t('attendance.submittedOn'), half: true, required: true },
-                ]}
-                defaultValues={{ supervisorName: sheet.supervisorName, submittedOn: todayIso() }}
-                onSubmit={(v) => submit.mutateAsync(v)}
-              />
-            )}
-            {sheet.canReview && (
-              <Button variant="contained" onClick={() => review.mutate(undefined)} disabled={review.isPending}>
-                {t('attendance.review')}
-              </Button>
-            )}
-            {sheet.canReceive && (
-              <Button variant="contained" color="success" onClick={() => receive.mutate(undefined)} disabled={receive.isPending}>
-                {t('attendance.receive')}
-              </Button>
-            )}
-            <PrintFormButton code="F06" recordId={sheet.id} />
-          </>
-        }
-      />
-      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-        <InfoGrid
-          columns={4}
-          items={[
-            { label: t('attendance.supervisor'), value: sheet.supervisorName },
-            { label: t('attendance.submittedOn'), value: sheet.submittedOn ? `${formatDate(sheet.submittedOn)} — ${sheet.submittedBy ?? ''}` : '—' },
-            { label: t('attendance.reviewedAt'), value: sheet.reviewedAt ? `${formatDateTime(sheet.reviewedAt)} — ${sheet.reviewedBy ?? ''}` : '—' },
-            { label: t('attendance.receivedAt'), value: sheet.receivedAt ? `${formatDateTime(sheet.receivedAt)} — ${sheet.receivedBy ?? ''}` : '—' },
-          ]}
-        />
-      </Paper>
-      {lastResult && (lastResult.incidents > 0 || lastResult.dismissals > 0 || lastResult.conflicts.length > 0) && (
-        <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setLastResult(null)}>
-          {t('attendance.saveEffects', { incidents: lastResult.incidents, dismissals: lastResult.dismissals })}
-          {lastResult.conflicts.map((c, i) => (
-            <div key={i}>{typeof c === 'string' ? c : JSON.stringify(c)}</div>
-          ))}
-        </Alert>
-      )}
+      <SheetHeader sheet={sheet} pending={pending} />
+      <SheetFacts sheet={sheet} />
+      {lastResult && <SaveEffects result={lastResult} onClose={() => setLastResult(null)} />}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1} sx={{ mb: 1 }}>
         <Tabs value={tab} onChange={(_, v: number) => setTab(v)}>
           <Tab label={t('attendance.dayView')} />
@@ -185,47 +128,178 @@ function SheetView({ sheet }: { sheet: Sheet }) {
           <Tab label={t('attendance.deviceDifferences')} />
         </Tabs>
         {sheet.canRecord && (
-          <Stack direction="row" spacing={1} alignItems="center">
-            {pending > 0 && <Typography variant="body2" color="warning.main">{t('attendance.pendingChanges', { count: pending })}</Typography>}
-            <Button color="inherit" disabled={!pending} onClick={() => setChanges({})}>
-              {t('common.discard')}
-            </Button>
-            <Button variant="contained" startIcon={<SaveOutlinedIcon />} disabled={!pending || save.isPending} onClick={() => (needsReason ? setReasonOpen(true) : doSave(null))}>
-              {t('common.save')}
-            </Button>
-          </Stack>
+          <RecordBar
+            pending={pending}
+            saving={save.isPending}
+            onDiscard={() => setChanges({})}
+            // Corrections after submission need a reason (AC-30).
+            onSave={() => (sheet.status !== 'Open' ? setReasonOpen(true) : void doSave(null))}
+          />
         )}
       </Stack>
       <Legend />
-      {sheet.workers.length === 0 ? (
-        <Paper variant="outlined">
-          <EmptyState title={t('attendance.noWorkers')} />
-        </Paper>
-      ) : tab === 0 ? (
-        <DayView sheet={sheet} days={days} valueOf={valueOf} setCode={setCode} />
-      ) : tab === 1 ? (
-        <MonthView sheet={sheet} days={days} setCode={setCode} changes={changes} />
-      ) : (
-        <DeviceDifferences sheetId={sheet.id} />
-      )}
-      <Dialog open={reasonOpen} onClose={() => setReasonOpen(false)}>
-        <DialogTitle>{t('attendance.correctionReason')}</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('attendance.correctionHint', { status: label('AttendanceSheetStatus', sheet.status) })}
-          </Typography>
-          <TextField autoFocus multiline minRows={3} label={t('common.reason')} value={reason} onChange={(e) => setReason(e.target.value)} required />
-        </DialogContent>
-        <DialogActions>
-          <Button color="inherit" onClick={() => setReasonOpen(false)}>
-            {t('common.cancel')}
-          </Button>
-          <Button variant="contained" disabled={!reason.trim() || save.isPending} onClick={() => doSave(reason.trim())}>
-            {t('common.save')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <SheetBody tab={tab} sheet={sheet} days={days} valueOf={valueOf} setCode={setCode} changes={changes} />
+      <CorrectionDialog open={reasonOpen} status={sheet.status} saving={save.isPending} onClose={() => setReasonOpen(false)} onSave={doSave} />
     </Box>
+  );
+}
+
+function SheetHeader({ sheet, pending }: { sheet: Sheet; pending: number }) {
+  const { t } = useTranslation();
+  return (
+    <PageHeader
+      title={t('attendance.sheetTitle', { site: sheet.workSiteName, month: sheet.month, year: sheet.year })}
+      subtitle={`${sheet.trackName ?? ''} · ${formatDate(sheet.periodStart)} – ${formatDate(sheet.periodEnd)}`}
+      breadcrumbs={[{ label: t('nav.items.attendance'), to: '/attendance' }]}
+      meta={
+        <Stack direction="row" spacing={1}>
+          <StatusChip enumName="AttendanceSheetStatus" value={sheet.status} />
+          {sheet.isLocked && <ToneChip tone="neutral" label={t('attendance.locked')} />}
+        </Stack>
+      }
+      actions={<SheetActions sheet={sheet} pending={pending} />}
+    />
+  );
+}
+
+/** Submit (supervisor), review (section), receive (payroll) and print TL-F06 (FR-26..FR-30). */
+function SheetActions({ sheet, pending }: { sheet: Sheet; pending: number }) {
+  const { t } = useTranslation();
+  const submit = useApiMutation((v: S<'SubmitAttendanceSheetRequest'>) => attendanceApi.submit(sheet.id, v), { invalidate: SHEET_INVALIDATE, rethrow: true });
+  const review = useApiMutation(() => attendanceApi.review(sheet.id), { invalidate: SHEET_INVALIDATE });
+  const receive = useApiMutation(() => attendanceApi.receive(sheet.id), { invalidate: SHEET_INVALIDATE });
+  return (
+    <>
+      {sheet.canSubmit && (
+        <ActionFormButton<S<'SubmitAttendanceSheetRequest'>>
+          label={t('attendance.submit')}
+          variant="contained"
+          description={pending ? t('attendance.unsavedWarning') : t('attendance.submitHint')}
+          fields={[
+            { name: 'supervisorName', kind: 'text', label: t('attendance.supervisor'), half: true, maxLength: 200 },
+            { name: 'submittedOn', kind: 'date', label: t('attendance.submittedOn'), half: true, required: true },
+          ]}
+          defaultValues={{ supervisorName: sheet.supervisorName, submittedOn: todayIso() }}
+          onSubmit={(v) => submit.mutateAsync(v)}
+        />
+      )}
+      {sheet.canReview && (
+        <Button variant="contained" onClick={() => review.mutate(undefined)} disabled={review.isPending}>
+          {t('attendance.review')}
+        </Button>
+      )}
+      {sheet.canReceive && (
+        <Button variant="contained" color="success" onClick={() => receive.mutate(undefined)} disabled={receive.isPending}>
+          {t('attendance.receive')}
+        </Button>
+      )}
+      <PrintFormButton code="F06" recordId={sheet.id} />
+    </>
+  );
+}
+
+/** "date — user" for a step of the sheet, or a dash. */
+const stepText = (when: string | null | undefined, who: string | null | undefined, format: (v: string) => string) => (when ? `${format(when)} — ${who ?? ''}` : '—');
+
+function SheetFacts({ sheet }: { sheet: Sheet }) {
+  const { t } = useTranslation();
+  return (
+    <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+      <InfoGrid
+        columns={4}
+        items={[
+          { label: t('attendance.supervisor'), value: sheet.supervisorName },
+          { label: t('attendance.submittedOn'), value: stepText(sheet.submittedOn, sheet.submittedBy, formatDate) },
+          { label: t('attendance.reviewedAt'), value: stepText(sheet.reviewedAt, sheet.reviewedBy, formatDateTime) },
+          { label: t('attendance.receivedAt'), value: stepText(sheet.receivedAt, sheet.receivedBy, formatDateTime) },
+        ]}
+      />
+    </Paper>
+  );
+}
+
+/** What the last save triggered: absence incidents, dismissal requests (FR-27) and conflicting days. */
+function SaveEffects({ result, onClose }: { result: S<'AttendanceSaveResult'>; onClose: () => void }) {
+  const { t } = useTranslation();
+  if (result.incidents === 0 && result.dismissals === 0 && result.conflicts.length === 0) return null;
+  return (
+    <Alert severity="warning" sx={{ mb: 2 }} onClose={onClose}>
+      {t('attendance.saveEffects', { incidents: result.incidents, dismissals: result.dismissals })}
+      {result.conflicts.map((c, i) => (
+        <div key={i}>{typeof c === 'string' ? c : JSON.stringify(c)}</div>
+      ))}
+    </Alert>
+  );
+}
+
+function RecordBar({ pending, saving, onDiscard, onSave }: { pending: number; saving: boolean; onDiscard: () => void; onSave: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <Stack direction="row" spacing={1} alignItems="center">
+      {pending > 0 && (
+        <Typography variant="body2" color="warning.main">
+          {t('attendance.pendingChanges', { count: pending })}
+        </Typography>
+      )}
+      <Button color="inherit" disabled={!pending} onClick={onDiscard}>
+        {t('common.discard')}
+      </Button>
+      <Button variant="contained" startIcon={<SaveOutlinedIcon />} disabled={!pending || saving} onClick={onSave}>
+        {t('common.save')}
+      </Button>
+    </Stack>
+  );
+}
+
+function SheetBody({ tab, sheet, days, valueOf, setCode, changes }: ViewProps & { tab: number; changes: Changes }) {
+  const { t } = useTranslation();
+  if (sheet.workers.length === 0) {
+    return (
+      <Paper variant="outlined">
+        <EmptyState title={t('attendance.noWorkers')} />
+      </Paper>
+    );
+  }
+  if (tab === 0) return <DayView sheet={sheet} days={days} valueOf={valueOf} setCode={setCode} />;
+  if (tab === 1) return <MonthView sheet={sheet} days={days} setCode={setCode} changes={changes} />;
+  return <DeviceDifferences sheetId={sheet.id} />;
+}
+
+interface CorrectionProps {
+  open: boolean;
+  status: Sheet['status'];
+  saving: boolean;
+  onClose: () => void;
+  /** Resolves `true` when saved (the dialog then closes and the reason is cleared). */
+  onSave: (reason: string) => Promise<boolean>;
+}
+
+/** Reason for changing a sheet that is no longer open (AC-30). */
+function CorrectionDialog({ open, status, saving, onClose, onSave }: CorrectionProps) {
+  const { t } = useTranslation();
+  const label = useEnumLabel();
+  const [reason, setReason] = useState('');
+  const save = async () => {
+    if (await onSave(reason.trim())) setReason('');
+  };
+  return (
+    <Dialog open={open} onClose={onClose}>
+      <DialogTitle>{t('attendance.correctionReason')}</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {t('attendance.correctionHint', { status: label('AttendanceSheetStatus', status) })}
+        </Typography>
+        <TextField autoFocus multiline minRows={3} label={t('common.reason')} value={reason} onChange={(e) => setReason(e.target.value)} required />
+      </DialogContent>
+      <DialogActions>
+        <Button color="inherit" onClick={onClose}>
+          {t('common.cancel')}
+        </Button>
+        <Button variant="contained" disabled={!reason.trim() || saving} onClick={() => void save()}>
+          {t('common.save')}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 

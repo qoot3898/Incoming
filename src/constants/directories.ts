@@ -31,7 +31,7 @@ export interface DirectoryRules {
   /** The entry number is fixed once the entry exists. */
   lockNumberOnEdit?: boolean;
   /** Entries whose number is listed here cannot be deleted and keep these extra fields unchanged. */
-  baseEntries?: { numbers: readonly number[]; lockedFields: readonly string[] };
+  baseEntries?: { numbers: ReadonlySet<number>; lockedFields: ReadonlySet<string> };
 }
 
 /** Per-list UI rules the generic directory screen applies (the API stays authoritative). */
@@ -39,6 +39,6 @@ export const DIRECTORY_RULES: Record<string, DirectoryRules> = {
   [PENALTY_DECISIONS_SLUG]: {
     choices: { behavior: { enumName: 'PenaltyDecision', values: PENALTY_BEHAVIORS } },
     lockNumberOnEdit: true,
-    baseEntries: { numbers: Object.keys(BASE_PENALTY_DECISIONS).map(Number), lockedFields: ['behavior'] },
+    baseEntries: { numbers: new Set(Object.keys(BASE_PENALTY_DECISIONS).map(Number)), lockedFields: new Set(['behavior']) },
   },
 };

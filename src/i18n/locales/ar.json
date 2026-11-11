@@ -1181,9 +1181,9 @@
       "phoneNumber": "الهاتف",
       "passportIssueDate": "إصدار الجواز",
       "passportExpiryDate": "انتهاء الجواز",
-      "passportWaived": "دون جواز",
-      "passportWaiverReason": "سبب التسجيل دون جواز",
-      "healthCertificateIssueDate": "إصدار الشهادة الصحية"
+      "healthCertificateIssueDate": "إصدار الشهادة الصحية",
+      "passportScan": "نسخة الجواز",
+      "healthScan": "نسخة الشهادة الصحية"
     },
     "confirmDuplicates": "تأكيد التسجيل رغم تكرار الجواز",
     "done": "تم تسجيل العمال وإصدار أرقامهم الوظيفية",
@@ -1208,13 +1208,24 @@
       "expiryAfterIssue": "يجب أن يكون بعد تاريخ الإصدار",
       "expiredOnRegistration": "منتهية الصلاحية في يوم التسجيل",
       "datesNeedPassport": "لا يُدخل التاريخ دون رقم الجواز",
-      "waiverWithoutPassport": "لا يُدخل رقم جواز مع التسجيل دون جواز",
-      "waiverNotAllowed": "لا تملك صلاحية التسجيل دون جواز"
+      "scanMissing": "أرفق النسخة في هذا الصف قبل التسجيل"
     },
-    "rulesHint": "غير الليبي يُسجَّل برقم جوازه وتاريخيه، والليبي برقمه الوطني. الشهادة الصحية بتاريخيها مطلوبة وغير منتهية في يوم التسجيل، والهاتف اختياري.",
-    "waiverHint": "لديك صلاحية تسجيل غير الليبي دون جواز سفر مع ذكر السبب؛ ويبقى الجواز بندًا ناقصًا حتى يُستلم في العهدة.",
-    "withoutPassport": "دون جواز",
-    "rowsInvalid": "راجع البيانات في {{count}} صف قبل التسجيل."
+    "rulesHint": "غير الليبي يُسجَّل برقم جوازه وتاريخيه ونسخته، والليبي برقمه الوطني. الشهادة الصحية بتاريخيها ونسختها مطلوبة وغير منتهية في يوم التسجيل، ولا يكون تاريخ إصدارها بعد يوم إرفاق نسختها. الهاتف اختياري.",
+    "rowsInvalid": "راجع البيانات في {{count}} صف قبل التسجيل.",
+    "scans": {
+      "Passport": "نسخة الجواز",
+      "HealthCertificate": "نسخة الشهادة الصحية",
+      "ok": "مرفقة",
+      "missing": "ناقصة",
+      "notRequired": "غير مطلوبة",
+      "attach": "إرفاق {{name}}",
+      "replace": "استبدال {{name}}",
+      "open": "فتح {{name}}",
+      "remove": "حذف {{name}}",
+      "removeConfirm": "ستُحذف {{name}} من المرشح، ولا يمكن تسجيله حتى تُرفق من جديد.",
+      "attached": "أُرفقت {{name}}",
+      "removed": "حُذفت {{name}}"
+    }
   },
   "reports": {
     "candidateResult": "نتيجة المرشح",
@@ -1529,7 +1540,7 @@
     },
     "registeredWithoutPassport": "سُجّل دون جواز سفر: {{reason}}. يبقى الجواز بندًا ناقصًا حتى يُستلم في العهدة.",
     "datesNeedPassport": "أدخل رقم الجواز مع تاريخيه",
-    "passportRemovalNotAllowed": "لا يُحذف جواز غير الليبي دون صلاحية التسجيل دون جواز",
+    "passportRemovalNotAllowed": "لا يُحذف جواز غير الليبي",
     "recordedDateKept": "لا يُحذف تاريخ مسجل",
     "openInPenalties": "فتح في قائمة الجزاءات",
     "noPenalties": "لا جزاءات لهذا العامل"

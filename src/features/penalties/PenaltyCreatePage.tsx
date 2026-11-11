@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useReturnTo } from '@/hooks/useReturnTo';
 import { useTranslation } from 'react-i18next';
 import { penaltiesApi, penaltiesKeys } from './api';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -55,6 +56,7 @@ export default function PenaltyCreatePage() {
 function PenaltyForm({ incidentId, draft }: { incidentId: number | null; draft?: Draft }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const back = useReturnTo();
   const enumOptions = useEnumOptions();
   const workerField = useWorkerField();
   // The incident fixes the worker; otherwise the (optionally prefilled) picker decides.
@@ -91,10 +93,10 @@ function PenaltyForm({ incidentId, draft }: { incidentId: number | null; draft?:
   );
 
   const propose = useApiMutation(penaltiesApi.propose, {
-    invalidate: [penaltiesKeys.all, ['attendance'], ['tasks']],
+    invalidate: [penaltiesKeys.all, ['attendance'], ['tasks'], ['workers']],
     rethrow: true,
     success: t('penalties.proposed'),
-    onSuccess: (r) => navigate(`/penalties/${r.id}`),
+    onSuccess: (r) => navigate(back ?? `/penalties/${r.id}`),
   });
 
   const onSubmit = (e: FormEvent) => {
@@ -146,7 +148,7 @@ function PenaltyForm({ incidentId, draft }: { incidentId: number | null; draft?:
             <FormTextField control={control} name="issuedBy" label={t('penalties.issuedBy')} required helperText={t('penalties.issuedByHint')} slotProps={{ htmlInput: { maxLength: 100 } }} />
             <FormTextField control={control} name="issuedOn" type="date" label={t('penalties.issuedOn')} required slotProps={{ htmlInput: { max: todayIso() } }} />
           </FormSection>
-          <FormActions submitLabel={t('penalties.propose')} submitting={formState.isSubmitting} onCancel={() => navigate(incidentId ? '/attendance/incidents' : '/penalties')} />
+          <FormActions submitLabel={t('penalties.propose')} submitting={formState.isSubmitting} onCancel={() => navigate(back ?? (incidentId ? '/attendance/incidents' : '/penalties'))} />
         </Stack>
       </form>
       <UnsavedChangesGuard when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful} />

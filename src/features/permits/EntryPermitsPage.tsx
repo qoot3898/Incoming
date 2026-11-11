@@ -24,6 +24,8 @@ import { useApiMutation } from '@/hooks/useApiMutation';
 import { useScopeOptions } from '@/features/shared/options';
 import { ENUMS } from '@/constants/enums';
 import { todayIso } from '@/utils/format';
+import { useAuth } from '@/app/providers/authContext';
+import { ACTION_PERMISSIONS } from '@/constants/permissions';
 import type { Q, S } from '@/types/api';
 
 const PERMIT_TABS = ['queue', 'permits'] as const;
@@ -31,6 +33,16 @@ const PERMIT_TABS = ['queue', 'permits'] as const;
 export default function EntryPermitsPage() {
   const { t } = useTranslation();
   const [tab, setTab] = useTabParam(PERMIT_TABS, 'queue');
+  // Distribution and issuing belong to Operations (`ManagePermits`); everyone else only consults and prints permits.
+  const manage = useAuth().can(ACTION_PERMISSIONS.managePermits);
+  if (!manage) {
+    return (
+      <PageContainer>
+        <PageHeader title={t('nav.items.permits')} />
+        <PermitsTab />
+      </PageContainer>
+    );
+  }
   return (
     <PageContainer>
       <PageHeader title={t('nav.items.permits')} />
