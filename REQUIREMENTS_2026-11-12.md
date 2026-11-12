@@ -28,6 +28,7 @@ user's scope and no add / nominate buttons or request-form section appear. Attac
 - `resolveLink` anchors the relative links the API sends (`transfers/7` → `/transfers/7`) and knows the `candidates` section; protocol-relative links are still rejected.
 - `features/candidates/candidateFields.ts` (the form fields and limits shared by the list, the card and the request panel), `candidateSearch.ts` (debounced search of available candidates) and `CandidatePoolPicker` (multi-select with a job filter, keyed by the job so a new job resets it).
 - `features/staffing/requestCandidates.ts`: building and error-mapping of `candidateIds` / `newCandidates` for the new-request form.
+- `components/workflow/refusals.ts` (`splitParties`) and `RefusalGroups`: the approval parties a user represents are split into those he may decide for now (buttons) and the refused ones, and parties refused for the same reason share **one** hint naming them (`Section, HR, Operations and General Manager: not this party's step now`) instead of one identical line each. Used by the start-approval card and by `PartyDecision` (transfers, leaves). A user with one party still reads `Party: reason`; different reasons stay separate lines.
 - `src/test/renderWithProviders.tsx`: query client, auth context (`can` computed from a permission list), snackbar and router for component tests.
 
 ## Verification

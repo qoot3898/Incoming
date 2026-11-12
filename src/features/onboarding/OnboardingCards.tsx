@@ -34,6 +34,8 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/common/States
 import { AttachmentButton } from '@/components/common/FileButtons';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { RefusalHint } from '@/components/common/RefusalHint';
+import { RefusalGroups } from '@/components/workflow/RefusalGroups';
+import { splitParties } from '@/components/workflow/refusals';
 import { ActionFormButton } from '@/components/forms/ActionFormButton';
 import { ApprovalRounds } from '@/components/workflow/ApprovalRounds';
 import { useApiMutation } from '@/hooks/useApiMutation';
@@ -559,6 +561,8 @@ export function StartApprovalCard({ employeeId }: { employeeId: number }) {
   if (q.isLoading) return <SectionCard title={t('startApproval.title')}><LoadingState minHeight={100} /></SectionCard>;
   if (q.error) return <SectionCard title={t('startApproval.title')}><ErrorState error={q.error} /></SectionCard>;
   const d = q.data!;
+  // The API lists the parties this user represents: buttons where he may decide now, one hint per refusal reason.
+  const { open, refused } = splitParties(d.parties);
   return (
     <SectionCard
       title={t('startApproval.title')}
@@ -581,17 +585,12 @@ export function StartApprovalCard({ employeeId }: { employeeId: number }) {
             {d.delayed && <ToneChip tone="error" label={t('startApproval.delayed', { days: d.delayDays })} />}
           </Stack>
         )}
-        {d.parties.map((p) => (
-          <Box key={p.party}>
-            {p.refusal ? (
-              <RefusalHint text={`${label('LaborParty', p.party)}: ${p.refusal}`} />
-            ) : (
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <DecideButtons party={p.party} onDecide={(approve, note) => decide.mutateAsync({ party: p.party, approve, note })} />
-              </Stack>
-            )}
-          </Box>
+        {open.map((p) => (
+          <Stack key={p.party} direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <DecideButtons party={p.party} onDecide={(approve, note) => decide.mutateAsync({ party: p.party, approve, note })} />
+          </Stack>
         ))}
+        <RefusalGroups groups={refused} />
         <ApprovalRounds rounds={d.rounds} />
       </Stack>
     </SectionCard>

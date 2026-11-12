@@ -1,7 +1,8 @@
 import { Stack } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { ActionFormButton } from '@/components/forms/ActionFormButton';
-import { RefusalHint } from '@/components/common/RefusalHint';
+import { RefusalGroups } from './RefusalGroups';
+import { splitParties } from './refusals';
 import { useEnumLabel } from '@/hooks/useEnumLabel';
 import type { FieldConfig } from '@/components/forms/FormDialog';
 import type { LaborParty } from '@/types/api';
@@ -27,10 +28,11 @@ export function PartyDecision({ parties, proxyParties = [], verdicts = ['Approve
   const label = useEnumLabel();
   const proxySet = new Set(proxyParties);
   const verdictSet = new Set(verdicts);
+  // Buttons for the parties he may decide for now; the others are explained once per reason (not once per party).
+  const { open, refused } = splitParties(parties);
   return (
     <Stack spacing={1.5}>
-      {parties.map(({ party, refusal }) => {
-        if (refusal) return <RefusalHint key={party} text={`${label('LaborParty', party)}: ${refusal}`} />;
+      {open.map(({ party }) => {
         const proxy = proxySet.has(party);
         const fields = (required: boolean, noteLabel: string): FieldConfig<Values>[] => [
           { name: 'note', kind: 'textarea', label: noteLabel, required, maxLength: 500 },
@@ -67,6 +69,7 @@ export function PartyDecision({ parties, proxyParties = [], verdicts = ['Approve
           </Stack>
         );
       })}
+      <RefusalGroups groups={refused} />
     </Stack>
   );
 }
