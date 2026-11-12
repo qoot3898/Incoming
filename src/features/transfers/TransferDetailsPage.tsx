@@ -5,6 +5,7 @@ import { Link as RouterLink, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { transfersApi, transfersKeys } from './api';
 import { TransferForm } from './TransferForm';
+import { DecisionFileCard } from './DecisionFileCard';
 import { onboardingApi } from '@/features/onboarding/api';
 import { PageHeader } from '@/components/common/PageHeader';
 import { QueryBoundary } from '@/components/common/States';
@@ -118,6 +119,7 @@ export default function TransferDetailsPage() {
                     ]}
                   />
                 </SectionCard>
+                <DecisionFileCard transfer={d} />
                 <SectionCard title={t('transfers.execution')}>
                   <InfoGrid
                     items={[

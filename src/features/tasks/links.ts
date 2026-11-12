@@ -40,13 +40,19 @@ export const ACTION_ROUTES: Record<Kind, string> = {
 
 const KNOWN = [
   /^\/workers\/\d+(\/onboarding)?$/,
-  /^\/(leaves|transfers|penalties|terminations|evaluations|staffing-requests)\/\d+$/,
+  /^\/(leaves|transfers|penalties|terminations|evaluations|staffing-requests|candidates)\/\d+$/,
   /^\/attendance\/sheets\/\d+$/,
 ];
 
-/** Backend links are followed only when they match a route of this application (format unspecified, U-03). */
+/**
+ * Backend links are followed only when they match a route of this application (format unspecified, U-03).
+ * The API documents them as addresses relative to the base address and the fingerprint notices of TL-N12 are
+ * written without a leading slash (`transfers/7`), so a relative link is anchored to the root before matching.
+ */
 export function resolveLink(link?: string | null): string | null {
-  if (!link) return null;
-  const path = link.split('?')[0];
-  return KNOWN.some((r) => r.test(path)) ? link : null;
+  const raw = link?.trim();
+  if (!raw) return null;
+  const anchored = raw.startsWith('/') ? raw : `/${raw}`;
+  const path = anchored.split('?')[0];
+  return KNOWN.some((r) => r.test(path)) ? anchored : null;
 }

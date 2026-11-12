@@ -14,37 +14,48 @@ import {
   Typography,
   Card,
   CardContent,
+  Link,
 } from '@mui/material';
 import PersonAddAlt1OutlinedIcon from '@mui/icons-material/PersonAddAlt1Outlined';
+import PlaylistAddCheckOutlinedIcon from '@mui/icons-material/PlaylistAddCheckOutlined';
 import { useQuery } from '@tanstack/react-query';
 import { Link as RouterLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { candidatesApi, candidatesKeys, staffingKeys } from './api';
+import { NominateCandidatesDialog } from './NominateCandidatesDialog';
+import { useCandidateFields, type CandidateValues } from '@/features/candidates/candidateFields';
+import { useScopeOptions } from '@/features/shared/options';
 import { QueryBoundary, EmptyState } from '@/components/common/States';
 import { StatusChip } from '@/components/common/StatusChip';
 import { ActionFormButton } from '@/components/forms/ActionFormButton';
 import { LocalDataGrid } from '@/components/tables/ServerDataGrid';
 import { col } from '@/components/tables/columns';
-import { useEnumLabel, useEnumOptions } from '@/hooks/useEnumLabel';
+import { useEnumLabel } from '@/hooks/useEnumLabel';
 import { useApiMutation } from '@/hooks/useApiMutation';
-import { useScopeOptions } from '@/features/shared/options';
 import { formatDateTime } from '@/utils/format';
 import type { S } from '@/types/api';
 import { errorMessage, type ApiError } from '@/services/api/errors';
 
 type Candidate = S<'RequestCandidateItem'>;
 
-export function CandidatesPanel({ requestNumber }: { requestNumber: number }) {
+/**
+ * The nominations on a request (TL-N13): candidates are chosen from the candidate list or added new, and may be
+ * nominated from the moment the request is submitted; interviews start once it is approved. Cancelling a
+ * nomination sends the candidate back to the list with his data and copies.
+ */
+export function CandidatesPanel({ requestNumber, jobName }: { requestNumber: number; jobName?: string | null }) {
   const { t } = useTranslation();
   const label = useEnumLabel();
-  const enumOptions = useEnumOptions();
-  const opts = useScopeOptions();
+  const fields = useCandidateFields();
+  // A candidate added here is for this request's job unless the user picks another (the directory is read by name).
+  const requestJobId = useScopeOptions().jobIdByName(jobName);
   const query = useQuery({ queryKey: staffingKeys.candidates(requestNumber), queryFn: () => candidatesApi.forRequest(requestNumber) });
   const invalidate = [staffingKeys.all, candidatesKeys.all];
-  const add = useApiMutation(candidatesApi.add, { invalidate, rethrow: true });
+  const add = useApiMutation((v: CandidateValues) => candidatesApi.add({ ...v, requestNumber }), { invalidate, rethrow: true, success: t('candidates.added') });
   const interview = useApiMutation((v: { id: number; accepted: boolean; notes: string | null }) => candidatesApi.interview(v.id, { accepted: v.accepted, notes: v.notes }), { invalidate, rethrow: true });
   const cancel = useApiMutation((v: { id: number; reason: string | null }) => candidatesApi.cancel(v.id, { reason: v.reason }), { invalidate, rethrow: true });
   const [decideOpen, setDecideOpen] = useState(false);
+  const [nominateOpen, setNominateOpen] = useState(false);
 
   return (
     <QueryBoundary query={query}>
@@ -77,25 +88,20 @@ export function CandidatesPanel({ requestNumber }: { requestNumber: number }) {
                 </Stack>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   {rc.canAdd && (
-                    <ActionFormButton<S<'AddCandidateRequest'>>
-                      label={t('candidates.add')}
-                      variant="contained"
-                      startIcon={<PersonAddAlt1OutlinedIcon />}
-                      fields={[
-                        { name: 'name', kind: 'text', label: t('fields.name'), required: true, maxLength: 200 },
-                        { name: 'nationalityId', kind: 'select', label: t('fields.nationality'), required: true, half: true, options: opts.nationalities },
-                        {
-                          name: 'recruitedBy',
-                          kind: 'select',
-                          label: t('candidates.recruitedBy'),
-                          required: true,
-                          half: true,
-                          options: enumOptions('LaborParty', ['LaborSection', 'Operations'] as const),
-                        },
-                        { name: 'nominatedBy', kind: 'text', label: t('candidates.nominatedBy'), maxLength: 200 },
-                      ]}
-                      onSubmit={(v) => add.mutateAsync({ ...v, requestNumber })}
-                    />
+                    <>
+                      <Button variant="contained" startIcon={<PlaylistAddCheckOutlinedIcon />} onClick={() => setNominateOpen(true)}>
+                        {t('candidates.nominateFromList')}
+                      </Button>
+                      <ActionFormButton<CandidateValues>
+                        label={t('candidates.newCandidate')}
+                        dialogTitle={t('candidates.add')}
+                        startIcon={<PersonAddAlt1OutlinedIcon />}
+                        description={t('candidates.addAndNominateHint')}
+                        fields={fields}
+                        defaultValues={{ jobId: requestJobId }}
+                        onSubmit={(v) => add.mutateAsync(v)}
+                      />
+                    </>
                   )}
                   {rc.canDecide && (
                     <Button variant="contained" color="secondary" onClick={() => setDecideOpen(true)}>
@@ -106,7 +112,7 @@ export function CandidatesPanel({ requestNumber }: { requestNumber: number }) {
               </Stack>
               {!rc.acceptsCandidates && (
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                  {t('candidates.notAccepting')}
+                  {rc.canAdd ? t('candidates.interviewsAfterApproval') : t('candidates.notAccepting')}
                 </Typography>
               )}
               {rc.interviewCriterion && (
@@ -126,7 +132,18 @@ export function CandidatesPanel({ requestNumber }: { requestNumber: number }) {
               rows={rc.candidates}
               getRowId={(r) => r.id}
               columns={[
-                col.text<Candidate>('name', t('fields.name'), { minWidth: 180 }),
+                {
+                  field: 'name',
+                  headerName: t('fields.name'),
+                  flex: 1,
+                  minWidth: 180,
+                  renderCell: (p) => (
+                    <Link component={RouterLink} to={`/candidates/${p.row.id}`} underline="hover" onClick={(e) => e.stopPropagation()}>
+                      {p.row.name}
+                    </Link>
+                  ),
+                },
+                col.text<Candidate>('phone', t('candidates.phone'), { minWidth: 130 }),
                 col.text<Candidate>('nationalityName', t('fields.nationality')),
                 col.text<Candidate>('nominatedBy', t('candidates.nominatedBy')),
                 { field: 'recruitedBy', headerName: t('candidates.recruitedBy'), width: 140, valueFormatter: (v: string) => label('LaborParty', v) },
@@ -179,10 +196,10 @@ export function CandidatesPanel({ requestNumber }: { requestNumber: number }) {
                       )}
                       {p.row.canCancel && (
                         <ActionFormButton<{ reason: string | null }>
-                          label={t('common.cancel')}
+                          label={t('candidates.cancel')}
                           size="small"
                           color="error"
-                          dialogTitle={t('candidates.cancel')}
+                          description={t('candidates.cancelHint')}
                           destructive
                           fields={[{ name: 'reason', kind: 'textarea', label: t('common.reason'), required: true, maxLength: 500 }]}
                           onSubmit={(v) => cancel.mutateAsync({ id: p.row.id, reason: v.reason })}
@@ -195,6 +212,7 @@ export function CandidatesPanel({ requestNumber }: { requestNumber: number }) {
             />
           )}
           <DecideDialog open={decideOpen} onClose={() => setDecideOpen(false)} rc={rc} />
+          {nominateOpen && <NominateCandidatesDialog requestNumber={requestNumber} jobName={jobName} onClose={() => setNominateOpen(false)} />}
         </Stack>
       )}
     </QueryBoundary>

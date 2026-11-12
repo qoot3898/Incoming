@@ -3,16 +3,14 @@
  * show before sending: 7–15 digits, an optional leading `+`, and spaces, dashes, parentheses or dots
  * between them. Arabic-Indic digits (٠-٩, ۰-۹) are accepted. The API stores digits only.
  */
+import { toAsciiDigits } from '@/utils/digits';
+
+export { toAsciiDigits };
+
 export const PHONE_MIN_DIGITS = 7;
 export const PHONE_MAX_DIGITS = 15;
 
-const ARABIC_INDIC = /[٠-٩۰-۹]/g;
 const ALLOWED = /^\+?[0-9\s\-().]+$/;
-
-/** Converts Arabic-Indic and Persian digits to ASCII digits. */
-export function toAsciiDigits(value: string): string {
-  return value.replace(ARABIC_INDIC, (d) => String((d.charCodeAt(0) & 0xf) % 10));
-}
 
 export type PhoneProblem = 'characters' | 'tooShort' | 'tooLong';
 

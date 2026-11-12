@@ -257,7 +257,10 @@ function RecordClearanceButton({ row: c, onRecord }: { row: ClearanceRow; onReco
   );
 }
 
-/** Final settlement recorded and approved by two finance users (FR-50, TL-B20); amounts only for those allowed to see them. */
+/**
+ * Final settlement recorded, then approved by finance (FR-50, TL-B20); amounts only for those allowed to see them.
+ * TL-N11: whoever recorded it may approve it too — the buttons follow `canRecordSettlement` / `canApproveSettlement` alone.
+ */
 export function SettlementSection({ d }: SectionProps) {
   const { t } = useTranslation();
   const a = d.actions;
@@ -265,7 +268,6 @@ export function SettlementSection({ d }: SectionProps) {
   const amount = (v: number | null | undefined) => (a.seesAmounts ? formatMoney(v) : t('terminations.hiddenAmount'));
   return (
     <SectionCard title={t('terminations.settlement')} action={<SettlementActions d={d} />}>
-      {!a.canApproveSettlement && a.settlementRefusal && <RefusalHint text={a.settlementRefusal} />}
       {st.recorded ? (
         <InfoGrid
           items={[

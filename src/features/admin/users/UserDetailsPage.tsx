@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import PersonSearchOutlinedIcon from '@mui/icons-material/PersonSearchOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
+import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined';
 import { useTranslation } from 'react-i18next';
 import { adminKeys, usersApi } from '../api';
 import { TempPasswordDialog } from '../TempPasswordDialog';
@@ -93,6 +94,10 @@ export default function UserDetailsPage() {
                   </Button>
                   <Button variant="outlined" color="inherit" onClick={() => setConfirm('signout')}>
                     {t('users.forceSignOut')}
+                  </Button>
+                  {/* TL-N9: grant or deny permissions on top of the roles. */}
+                  <Button component={RouterLink} to={`/admin/users/${u.id}/permissions`} startIcon={<KeyOutlinedIcon />}>
+                    {t('users.permissions')}
                   </Button>
                   {canAudit && (
                     <>

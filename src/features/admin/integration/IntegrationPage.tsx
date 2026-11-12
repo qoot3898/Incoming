@@ -19,6 +19,9 @@ import { useApiMutation } from '@/hooks/useApiMutation';
 import { ENUMS } from '@/constants/enums';
 import { parseCsv } from '@/utils/csv';
 import { FileInput } from '@/components/files/FileInput';
+import { SiteSuggestionsList } from '@/components/common/SiteSuggestionsList';
+import { useSnackbar } from '@/app/providers/snackbarContext';
+import { API_ERROR_CODES, errorMessage, type ApiError } from '@/services/api/errors';
 import type { Q, S } from '@/types/api';
 
 const TABS = ['events', 'log', 'workers', 'device', 'migration'] as const;
@@ -263,12 +266,37 @@ const MIGRATION_COLUMNS = [
   'passportNumber', 'idCardNumber', 'nationalNumber', 'phoneNumber', 'birthDate', 'healthCertificateExpiryDate', 'startDate', 'salary', 'allowance',
 ] as const;
 
+/** The capacity refusal of a migration run (TL-N7) with the sites that could take the workers. */
+function MigrationRefusal({ error }: { error: ApiError | null }) {
+  if (!error) return null;
+  return (
+    <Alert severity="error">
+      {error.detail || error.title}
+      <SiteSuggestionsList suggestions={error.suggestions ?? []} />
+    </Alert>
+  );
+}
+
 function MigrationTab() {
   const { t } = useTranslation();
   const csv = useCsvFile();
   const [dryRun, setDryRun] = useState(true);
   const [report, setReport] = useState<S<'MigrationReport'> | null>(null);
-  const migrate = useApiMutation(integrationApi.migrate, { invalidate: [['workers']], success: false, onSuccess: setReport });
+  const { notify } = useSnackbar();
+  // TL-N7: a site that cannot take the migrated workers refuses the run and proposes other sites; that
+  // is shown in the page, every other failure as a toast like elsewhere.
+  const [refusal, setRefusal] = useState<ApiError | null>(null);
+  const migrate = useApiMutation(integrationApi.migrate, { invalidate: [['workers']], success: false, rethrow: true, onSuccess: setReport });
+  const runMigration = async (body: S<'MigrateCurrentWorkersRequest'>) => {
+    setRefusal(null);
+    try {
+      await migrate.mutateAsync(body);
+    } catch (e) {
+      const err = e as ApiError;
+      if (err.code === API_ERROR_CODES.siteCapacityExceeded) setRefusal(err);
+      else if (!err.cancelled) notify(errorMessage(err), 'error');
+    }
+  };
   const n = (v?: string) => (v ? Number(v) : undefined);
   const s = (v?: string) => (v ? v : null);
   const workers: S<'MigrationWorkerRow'>[] = (csv.rows ?? []).map((r) => ({
@@ -315,9 +343,10 @@ function MigrationTab() {
             disabled={migrate.isPending}
           />
           {csv.rows && <Alert severity="info">{t('integration.parsed', { count: workers.length })}</Alert>}
+          <MigrationRefusal error={refusal} />
           <FormControlLabel control={<Switch checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />} label={t('integration.dryRun')} />
           <Box>
-            <Button variant="contained" color={dryRun ? 'primary' : 'warning'} disabled={!workers.length || migrate.isPending} onClick={() => migrate.mutate({ dryRun, workers })}>
+            <Button variant="contained" color={dryRun ? 'primary' : 'warning'} disabled={!workers.length || migrate.isPending} onClick={() => void runMigration({ dryRun, workers })}>
               {dryRun ? t('integration.validate') : t('integration.migrate')}
             </Button>
           </Box>

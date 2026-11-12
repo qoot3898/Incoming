@@ -2,10 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AuthContext, type AuthUser } from './authContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { authApi } from '@/features/authentication/api';
-import { onAccessGate, onSessionExpired } from '@/services/api/client';
+import { onAccessGate, onPermissionDenied, onSessionExpired } from '@/services/api/client';
 import { tokenStorage } from '@/services/api/tokenStorage';
 import i18n, { normalizeLanguage } from '@/i18n';
 import { hasAnyPermission } from '@/constants/permissions';
+
+/** Minimum time between permission refreshes triggered by refused requests. */
+const PERMISSION_REFRESH_INTERVAL_MS = 30_000;
 
 type User = AuthUser;
 type Status = 'loading' | 'authenticated' | 'anonymous';
@@ -40,20 +43,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // A 403 PASSWORD_CHANGE_REQUIRED / ASSIGNMENT_APPROVAL_REQUIRED on any request means the account
   // state changed (e.g. a letter was returned): re-read auth/me so the route guard shows the right
   // screen. Several failing requests at once trigger one reload.
-  const gateReload = useRef<Promise<void> | null>(null);
+  const pendingReload = useRef<Promise<void> | null>(null);
+  const reloadOnce = useCallback(() => {
+    if (pendingReload.current || !tokenStorage.get()) return;
+    pendingReload.current = reload()
+      .catch(() => undefined)
+      .finally(() => {
+        pendingReload.current = null;
+      });
+  }, [reload]);
+
   useEffect(() => {
-    const unsubscribe = onAccessGate(() => {
-      if (gateReload.current || !tokenStorage.get()) return;
-      gateReload.current = reload()
-        .catch(() => undefined)
-        .finally(() => {
-          gateReload.current = null;
-        });
+    const unsubscribe = onAccessGate(reloadOnce);
+    return () => {
+      unsubscribe();
+    };
+  }, [reloadOnce]);
+
+  // A plain 403 FORBIDDEN: permissions granted or denied directly (TL-N9) apply on the next request, so
+  // the permissions held in the session may be stale. Re-read them, at most once per interval, so
+  // menus and buttons follow without a new sign-in and a screen that keeps being refused cannot loop.
+  const lastPermissionRefresh = useRef(0);
+  useEffect(() => {
+    const unsubscribe = onPermissionDenied(() => {
+      const now = Date.now();
+      if (now - lastPermissionRefresh.current < PERMISSION_REFRESH_INTERVAL_MS) return;
+      lastPermissionRefresh.current = now;
+      reloadOnce();
     });
     return () => {
       unsubscribe();
     };
-  }, [reload]);
+  }, [reloadOnce]);
 
   useEffect(() => {
     const unsubscribe = onSessionExpired(() => {

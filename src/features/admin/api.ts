@@ -1,4 +1,4 @@
-import { api } from '@/services/api/client';
+import { api, type TransferOptions } from '@/services/api/client';
 import type { Paged, Q, S } from '@/types/api';
 
 export const adminKeys = {
@@ -7,6 +7,9 @@ export const adminKeys = {
   directories: ['admin', 'directories'] as const,
   settings: ['admin', 'settings'] as const,
   labor: ['admin', 'labor'] as const,
+  siteCapacities: ['admin', 'site-capacities'] as const,
+  siteCapacityChanges: (workSiteId: number) => ['admin', 'site-capacities', 'changes', workSiteId] as const,
+  userPermissions: (userId: number) => ['admin', 'users', 'permissions', userId] as const,
   audit: ['admin', 'audit'] as const,
   integration: ['admin', 'integration'] as const,
   backups: ['admin', 'backups'] as const,
@@ -18,12 +21,23 @@ export const adminKeys = {
   integrationList: (kind: 'events' | 'log' | 'workers', p: object) => ['admin', 'integration', kind, p] as const,
 };
 
+/** Multipart body of `PUT /labor-settings/site-capacities/{workSiteId}` (the contract types it loosely). */
+export interface SiteCapacityChange extends Record<string, unknown> {
+  capacity: number | null;
+  rowVersion?: string | null;
+  file?: File | null;
+}
+
 export const usersApi = {
   list: (q: Q<'ListUsers'>, signal?: AbortSignal) => api.get<Paged<S<'UserListItem'>>>('/users', q, { signal }),
   get: (id: number) => api.get<S<'UserDetails'>>(`/users/${id}`),
   create: (body: S<'CreateUserRequest'>) => api.post<S<'TemporaryPasswordResult'>>('/users', body),
   update: (id: number, body: S<'UpdateUserRequest'>) => api.put(`/users/${id}`, body),
   setRoles: (id: number, body: S<'SetUserRolesRequest'>) => api.put(`/users/${id}/roles`, body),
+  /** TL-N9: every grantable permission with where it comes from (roles, direct grant or denial) and whether the user holds it. */
+  permissions: (id: number) => api.get<S<'UserPermissionsResponse'>>(`/users/${id}/permissions`),
+  /** Replaces the direct grants and denials with the two complete lists (204; empty lists = back to the roles' permissions). */
+  setPermissions: (id: number, body: S<'SetUserPermissionsRequest'>) => api.put(`/users/${id}/permissions`, body),
   setActive: (id: number, body: S<'SetUserActiveRequest'>) => api.put(`/users/${id}/active`, body),
   unlock: (id: number) => api.post(`/users/${id}/unlock`),
   resetPassword: (id: number) => api.post<S<'TemporaryPasswordResult'>>(`/users/${id}/reset-password`),
@@ -75,6 +89,14 @@ export const laborSettingsApi = {
   userScopes: (q: Q<'ListLaborUserScopes'>, signal?: AbortSignal) => api.get<S<'LaborUserScopeItem'>[]>('/labor-settings/user-scopes', q, { signal }),
   addUserScope: (body: S<'AddLaborUserScopeRequest'>) => api.post('/labor-settings/user-scopes', body),
   removeUserScope: (scopeId: number) => api.delete(`/labor-settings/user-scopes/${scopeId}`),
+  /** TL-N7: active sites by number with capacity, occupancy and the last change. */
+  siteCapacities: () => api.get<S<'SiteCapacityItem'>[]>('/labor-settings/site-capacities'),
+  /** `capacity: null` = no limit; `rowVersion` guards against a change made meanwhile (409 CONCURRENCY_CONFLICT). */
+  changeSiteCapacity: (workSiteId: number, values: SiteCapacityChange, transfer?: TransferOptions) =>
+    api.putForm<S<'SiteCapacityItem'>>(`/labor-settings/site-capacities/${workSiteId}`, values, transfer),
+  siteCapacityChanges: (workSiteId: number) => api.get<S<'SiteCapacityChangeItem'>[]>(`/labor-settings/site-capacities/${workSiteId}/changes`),
+  /** The decision attached to a change (PDF); every opening is audited. */
+  openSiteCapacityFile: (changeId: number) => api.blob('get', `/labor-settings/site-capacities/changes/${changeId}/file`),
 };
 
 export const auditApi = {

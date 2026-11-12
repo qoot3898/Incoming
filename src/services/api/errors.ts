@@ -14,9 +14,29 @@ export const API_ERROR_CODES = {
   confirmationRequired: 'CONFIRMATION_REQUIRED',
   recordInUse: 'RECORD_IN_USE',
   businessRuleViolated: 'BUSINESS_RULE_VIOLATED',
+  /** TL-N7: the site cannot take everyone being placed in it; the body lists `suggestions`. */
+  siteCapacityExceeded: 'SITE_CAPACITY_EXCEEDED',
+  /** TL-N9: a user cannot change their own permissions. */
+  selfPrivilegeChange: 'SELF_PRIVILEGE_CHANGE',
+  /** TL-N9: granting (or lifting a denial of) a permission the editor does not hold. */
+  permissionNotHeld: 'PERMISSION_NOT_HELD',
 } as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[keyof typeof API_ERROR_CODES];
+
+/**
+ * A site proposed by a `SITE_CAPACITY_EXCEEDED` rejection (TL-N7). `shortage` is the number of workers
+ * approved staffing requests still lack there, `freePlaces` the room left (`null` = no limit) and
+ * `distanceKm` the distance from the requested site (`null` = unknown, e.g. no coordinates).
+ */
+export interface SiteSuggestion {
+  workSiteId: number;
+  number: number;
+  name: string;
+  shortage: number | null;
+  freePlaces: number | null;
+  distanceKm: number | null;
+}
 
 export interface ApiError {
   status?: number;
@@ -28,6 +48,8 @@ export interface ApiError {
   correlationId?: string;
   /** camelCase field name → messages */
   fieldErrors: Record<string, string[]>;
+  /** Sites that could take the workers (at most five, possibly none) — only with `SITE_CAPACITY_EXCEEDED`. */
+  suggestions?: SiteSuggestion[];
   /** The request was cancelled by the user (AbortController) — not a failure to report. */
   cancelled?: boolean;
 }
@@ -39,6 +61,7 @@ interface ProblemLike {
   code?: string;
   correlationId?: string;
   errors?: Record<string, string[]>;
+  suggestions?: unknown;
 }
 
 /** Text of a Blob body (error responses of file downloads); FileReader where `Blob.text` is missing. */
@@ -55,6 +78,30 @@ export function blobText(blob: Blob): Promise<string> {
 /** Reads the stable error code from a ProblemDetails body (already-parsed JSON only). */
 export function problemCode(data: unknown): string | undefined {
   return data && typeof data === 'object' && 'code' in data && typeof (data as ProblemLike).code === 'string' ? (data as ProblemLike).code : undefined;
+}
+
+const numberOrNull = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+/** Reads `suggestions` of a capacity rejection, dropping anything that is not a well-formed site. */
+export function parseSuggestions(value: unknown): SiteSuggestion[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const sites = value.flatMap((raw): SiteSuggestion[] => {
+    if (!raw || typeof raw !== 'object') return [];
+    const r = raw as Record<string, unknown>;
+    const workSiteId = numberOrNull(r.workSiteId);
+    if (workSiteId === null) return [];
+    return [
+      {
+        workSiteId,
+        number: numberOrNull(r.number) ?? workSiteId,
+        name: typeof r.name === 'string' ? r.name : '',
+        shortage: numberOrNull(r.shortage),
+        freePlaces: numberOrNull(r.freePlaces),
+        distanceKm: numberOrNull(r.distanceKm),
+      },
+    ];
+  });
+  return sites;
 }
 
 const camel = (key: string) =>
@@ -86,6 +133,7 @@ export async function toApiError(error: unknown, fallback: string): Promise<ApiE
       code: problem.code,
       correlationId: problem.correlationId,
       fieldErrors,
+      suggestions: parseSuggestions(problem.suggestions),
     };
   }
   return { title: error instanceof Error ? error.message : fallback, fieldErrors: {} };
@@ -106,6 +154,7 @@ export function toApiErrorSync(error: unknown, fallback: string): ApiError {
       code: typeof problem === 'object' ? problem.code : undefined,
       correlationId: typeof problem === 'object' ? problem.correlationId : undefined,
       fieldErrors,
+      suggestions: typeof problem === 'object' ? parseSuggestions(problem.suggestions) : undefined,
     };
   }
   return { title: error instanceof Error ? error.message : fallback, fieldErrors: {} };

@@ -16,6 +16,7 @@ import { useApiMutation } from '@/hooks/useApiMutation';
 import { useEnumLabel, useEnumOptions } from '@/hooks/useEnumLabel';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ENUMS } from '@/constants/enums';
+import { errorMessage, type ApiError } from '@/services/api/errors';
 import { formatDate, todayIso } from '@/utils/format';
 import type { S } from '@/types/api';
 
@@ -80,11 +81,9 @@ function HeaderActions({ r }: { r: Rec }) {
   const invalidate = useOnboardingInvalidation();
   const id = r.employeeId;
   const reportStart = useApiMutation((v: S<'ReportStartRequest'>) => onboardingApi.reportStart(id, v), { invalidate, rethrow: true });
-  const withdraw = useApiMutation(() => onboardingApi.withdrawStartReport(id), { invalidate });
   const open = useApiMutation((v: S<'OpenOnboardingRequest'>) => onboardingApi.open(id, v), { invalidate, rethrow: true });
   const correct = useApiMutation((v: S<'CorrectStartDateRequest'>) => onboardingApi.correctStartDate(id, v), { invalidate, rethrow: true });
   const closeNotStarted = useApiMutation((v: S<'CloseNotStartedRequest'>) => onboardingApi.closeNotStarted(id, v), { invalidate, rethrow: true });
-  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [suspendOpen, setSuspendOpen] = useState(false);
   const reported = r.onboarding?.reportedStartDate ?? '';
 
@@ -103,11 +102,7 @@ function HeaderActions({ r }: { r: Rec }) {
           onSubmit={(v) => reportStart.mutateAsync(v)}
         />
       )}
-      {r.canWithdrawReport && (
-        <Button color="inherit" variant="outlined" onClick={() => setConfirmWithdraw(true)}>
-          {t('onboarding.withdrawReport')}
-        </Button>
-      )}
+      {r.canWithdrawReport && <WithdrawReportButton employeeId={id} />}
       {r.canOpen && (
         <ActionFormButton<S<'OpenOnboardingRequest'>>
           label={t('onboarding.openRecord')}
@@ -158,15 +153,41 @@ function HeaderActions({ r }: { r: Rec }) {
       <Button component={RouterLink} to={`/workers/${r.employeeId}`} color="inherit">
         {t('workers.profile')}
       </Button>
-      <ConfirmDialog
-        open={confirmWithdraw}
-        title={t('onboarding.withdrawReport')}
-        message={t('onboarding.withdrawConfirm')}
-        loading={withdraw.isPending}
-        onClose={() => setConfirmWithdraw(false)}
-        onConfirm={() => withdraw.mutate(undefined, { onSettled: () => setConfirmWithdraw(false) })}
-      />
       {suspendOpen && <SuspendDialog employeeId={id} onClose={() => setSuspendOpen(false)} />}
+    </>
+  );
+}
+
+/**
+ * Withdraws the start report. While the worker has a termination request in progress the API refuses it
+ * (422 `BUSINESS_RULE_VIOLATED`, TL-N10) and names the request; the refusal stays in the dialog until
+ * the request is decided or cancelled.
+ */
+function WithdrawReportButton({ employeeId }: { employeeId: number }) {
+  const { t } = useTranslation();
+  const invalidate = useOnboardingInvalidation();
+  const [open, setOpen] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const withdraw = useApiMutation(() => onboardingApi.withdrawStartReport(employeeId), { invalidate, rethrow: true });
+  const close = () => {
+    setOpen(false);
+    setRefusal(null);
+  };
+  const confirm = async () => {
+    setRefusal(null);
+    try {
+      await withdraw.mutateAsync();
+      close();
+    } catch (e) {
+      if (!(e as ApiError).cancelled) setRefusal(errorMessage(e as ApiError));
+    }
+  };
+  return (
+    <>
+      <Button color="inherit" variant="outlined" onClick={() => setOpen(true)}>
+        {t('onboarding.withdrawReport')}
+      </Button>
+      <ConfirmDialog open={open} title={t('onboarding.withdrawReport')} message={t('onboarding.withdrawConfirm')} loading={withdraw.isPending} error={refusal} onClose={close} onConfirm={() => void confirm()} />
     </>
   );
 }

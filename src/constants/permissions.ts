@@ -17,6 +17,24 @@ export const PERMISSIONS = {
   /** TL-N6: users' activity on the system (audit log). */
   auditView: 'Audit.View',
   usersView: 'Users.View',
+  /**
+   * TL-N7: change a site's capacity and open the attached decisions. No default role holds it; the
+   * super admin has it implicitly and grants it to a role or a user.
+   */
+  manageSiteCapacity: `${TL}.ManageSiteCapacity`,
+  /** TL-N9: grant or deny a user permissions directly (system administrator in new databases). */
+  managePermissions: 'Users.ManagePermissions',
+  /**
+   * TL-N13: keep the candidate list (add, edit, withdraw, restore, nominate on a request). Whoever holds it sees the
+   * whole list; anyone else sees only candidates nominated on a request within their scope.
+   */
+  manageCandidates: `${TL}.ManageCandidates`,
+  /**
+   * TL-N12: «إشعارات البصمة» — receives an in-system notice (link `transfers/{id}`) when a transfer changes where a
+   * worker's fingerprint must be registered. Held by the default role LaborFingerprintSupervisor; it needs no screen
+   * of its own (the notice opens the request), so nothing in the UI is gated on it.
+   */
+  fingerprintNotices: `${TL}.FingerprintNotices`,
 } as const;
 
 /**
@@ -60,6 +78,8 @@ export const NAV_PERMISSIONS: Record<string, readonly string[]> = {
   roles: ['Roles.View'],
   directories: [`${TL}.ManageSettings`],
   laborSettings: [`${TL}.ManageSettings`],
+  /** TL-N7: the list and the history are open to the settings managers too; only changing needs `manageSiteCapacity`. */
+  siteCapacities: [`${TL}.ManageSettings`, PERMISSIONS.manageSiteCapacity],
   settings: ['Settings.View'],
   audit: ['Audit.View'],
   integration: [`${TL}.Integration`, `${TL}.MigrateWorkers`],

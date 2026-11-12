@@ -1,7 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { RequireAuth, RequirePermission } from './guards';
-import { ACTION_PERMISSIONS as A } from '@/constants/permissions';
+import { ACTION_PERMISSIONS as A, NAV_PERMISSIONS, PERMISSIONS } from '@/constants/permissions';
 import { RouteError } from './RouteError';
 import { lazyPage as L } from './lazyPage';
 
@@ -30,6 +30,7 @@ export const router = createBrowserRouter([
       { path: 'staffing-requests/new', element: <RequirePermission codes={A.createStaffingRequest}>{L(() => import('@/features/staffing/StaffingCreatePage'))}</RequirePermission> },
       { path: 'staffing-requests/:number', element: L(() => import('@/features/staffing/StaffingDetailsPage')) },
       { path: 'candidates', element: L(() => import('@/features/candidates/CandidatesListPage')) },
+      { path: 'candidates/:candidateId', element: L(() => import('@/features/candidates/CandidateDetailsPage')) },
       { path: 'registration', element: <RequirePermission codes={A.registerWorkers}>{L(() => import('@/features/registration/RegistrationPage'))}</RequirePermission> },
       { path: 'entry-permits', element: L(() => import('@/features/permits/EntryPermitsPage')) },
       { path: 'onboarding', element: L(() => import('@/features/onboarding/OnboardingListPage')) },
@@ -57,12 +58,14 @@ export const router = createBrowserRouter([
       { path: 'reports', element: L(() => import('@/features/reports/ReportsPage')) },
       { path: 'admin/users', element: L(() => import('@/features/admin/users/UsersPage')) },
       { path: 'admin/users/:userId', element: L(() => import('@/features/admin/users/UserDetailsPage')) },
+      { path: 'admin/users/:userId/permissions', element: <RequirePermission codes={[PERMISSIONS.usersView]}>{L(() => import('@/features/admin/users/UserPermissionsPage'))}</RequirePermission> },
       { path: 'admin/assignments', element: L(() => import('@/features/admin/assignments/AssignmentsPage')) },
       { path: 'admin/roles', element: L(() => import('@/features/admin/roles/RolesPage')) },
       { path: 'admin/roles/:roleId', element: L(() => import('@/features/admin/roles/RoleDetailsPage')) },
       { path: 'admin/directories', element: L(() => import('@/features/admin/directories/DirectoriesPage')) },
       { path: 'admin/directories/:slug', element: L(() => import('@/features/admin/directories/DirectoriesPage')) },
       { path: 'admin/labor-settings', element: L(() => import('@/features/admin/labor-settings/LaborSettingsPage')) },
+      { path: 'admin/site-capacities', element: <RequirePermission codes={NAV_PERMISSIONS.siteCapacities}>{L(() => import('@/features/admin/site-capacities/SiteCapacitiesPage'))}</RequirePermission> },
       { path: 'admin/settings', element: L(() => import('@/features/admin/settings/SettingsPage')) },
       { path: 'admin/audit', element: L(() => import('@/features/admin/audit/AuditPage')) },
       { path: 'admin/integration', element: L(() => import('@/features/admin/integration/IntegrationPage')) },

@@ -50,6 +50,17 @@ export function onAccessGate(listener: AccessGateListener) {
 
 const GATE_CODES: ReadonlySet<string> = new Set([API_ERROR_CODES.passwordChangeRequired, API_ERROR_CODES.assignmentApprovalRequired]);
 
+/**
+ * A plain 403 `FORBIDDEN` (not an account gate) means the user lacks the permission *now*. Direct grants
+ * and denials (TL-N9) apply on the user's next request without a new sign-in, so the permissions the
+ * screens were built from may be stale: the auth provider re-reads `auth/me` to refresh menus and buttons.
+ */
+const deniedListeners = new Set<() => void>();
+export function onPermissionDenied(listener: () => void) {
+  deniedListeners.add(listener);
+  return () => deniedListeners.delete(listener);
+}
+
 /** The error code of a 403 body; blob responses (file downloads) carry the ProblemDetails as a Blob. */
 async function forbiddenCode(data: unknown): Promise<string | undefined> {
   if (data instanceof Blob) {
@@ -109,9 +120,10 @@ http.interceptors.response.use(
       tokenStorage.clear();
       expiredListeners.forEach((l) => l());
     }
-    if (error.response?.status === 403 && gateListeners.size > 0) {
+    if (error.response?.status === 403 && (gateListeners.size > 0 || deniedListeners.size > 0)) {
       const code = await forbiddenCode(error.response.data);
       if (code && GATE_CODES.has(code)) gateListeners.forEach((l) => l(code as AccessGateCode));
+      else if (code === API_ERROR_CODES.forbidden) deniedListeners.forEach((l) => l());
     }
     return Promise.reject(error);
   },
@@ -154,6 +166,9 @@ export const api = {
    */
   postForm: <T = void>(url: string, values: Record<string, unknown>, transfer?: TransferOptions) =>
     http.post<T>(url, toFormData(values), { signal: transfer?.signal, onUploadProgress: transfer?.onUploadProgress }).then((r) => r.data),
+  /** multipart/form-data PUT, same conventions as `postForm` (empty values are not sent). */
+  putForm: <T = void>(url: string, values: Record<string, unknown>, transfer?: TransferOptions) =>
+    http.put<T>(url, toFormData(values), { signal: transfer?.signal, onUploadProgress: transfer?.onUploadProgress }).then((r) => r.data),
   /** Binary GET/POST returning a Blob + suggested file name. */
   blob: async (method: 'get' | 'post', url: string, body?: unknown, params?: object) => {
     const r = await http.request<Blob>({ method, url, data: body, params, responseType: 'blob' });

@@ -116,4 +116,50 @@ describe('FormDialog', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     expect(onSubmit.mock.calls[0][0]).toEqual({ number: 60, name: 'x' });
   });
+
+  describe('site capacity refusal (TL-N7)', () => {
+    type SiteValues = { workSiteId: number | null };
+    const siteFields: FieldConfig<SiteValues>[] = [
+      {
+        name: 'workSiteId',
+        kind: 'select',
+        label: 'Site',
+        required: true,
+        options: [
+          { value: 14, label: 'Port kitchen' },
+          { value: 9, label: 'Karimiya store' },
+        ],
+      },
+    ];
+    const refusal = {
+      title: 'full',
+      detail: 'The site cannot take 2 more.',
+      code: 'SITE_CAPACITY_EXCEEDED',
+      fieldErrors: {},
+      suggestions: [
+        { workSiteId: 14, number: 120, name: 'Port kitchen', shortage: 3, freePlaces: null, distanceKm: 12.4 },
+        { workSiteId: 77, number: 999, name: 'Not an option here', shortage: null, freePlaces: 4, distanceKm: 1 },
+      ],
+    };
+
+    it('lists the proposed sites under the message', async () => {
+      const onSubmit = vi.fn().mockRejectedValue(refusal);
+      render(<FormDialog<SiteValues> open title="T" fields={siteFields} defaultValues={{ workSiteId: 9 }} onClose={() => undefined} onSubmit={onSubmit} />);
+      fireEvent.click(screen.getByRole('button', { name: 'حفظ' }));
+      await screen.findByText('The site cannot take 2 more.');
+      expect(screen.getByText('120 — Port kitchen')).toBeTruthy();
+      expect(screen.getByText('ينقصه 3 · سعة بلا حد · 12.4 كم')).toBeTruthy();
+    });
+
+    it('fills the site field from a suggestion, never retrying by itself', async () => {
+      const onSubmit = vi.fn().mockRejectedValue(refusal);
+      render(<FormDialog<SiteValues> open title="T" fields={siteFields} siteField="workSiteId" defaultValues={{ workSiteId: 9 }} onClose={() => undefined} onSubmit={onSubmit} />);
+      expect(screen.getByRole('combobox', { name: /Site/ }).textContent).toBe('Karimiya store');
+      fireEvent.click(screen.getByRole('button', { name: 'حفظ' }));
+      await screen.findByText('The site cannot take 2 more.');
+      fireEvent.click(screen.getAllByRole('button', { name: 'اختيار' })[0]);
+      await waitFor(() => expect(screen.getByRole('combobox', { name: /Site/ }).textContent).toBe('Port kitchen'));
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+  });
 });

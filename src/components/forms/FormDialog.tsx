@@ -18,7 +18,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form';
+import { Controller, useForm, useWatch, type Resolver, type UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
@@ -173,6 +173,11 @@ export interface FormDialogProps<T> {
   /** Cross-field validation (date order, "required when …"); messages appear under the fields. */
   validate?: FormDialogValidate<T>;
   /**
+   * The select field that holds a work site. When the API refuses the site for lack of capacity
+   * (TL-N7) its suggested sites can be chosen straight into this field.
+   */
+  siteField?: keyof T & string;
+  /**
    * Performs the action. `transfer` carries an AbortSignal and an upload-progress callback:
    * pass it to `api.postForm` for forms with a file field so the upload shows progress and can be cancelled.
    */
@@ -195,9 +200,21 @@ export function FormDialog<T>({ open, onClose, maxWidth = 'sm', ...body }: FormD
   );
 }
 
+/** Picks a suggested site into the dialog's site select (only a site that is one of its enabled options). */
+function sitePicker<T>(siteField: string | undefined, fields: FieldConfig<T>[], setValue: UseFormSetValue<RawValues>, onPicked: () => void) {
+  if (!siteField) return undefined;
+  const field = fields.find((f) => f.name === siteField);
+  if (field?.kind !== 'select') return undefined;
+  return (siteId: number) => {
+    if (!field.options.some((o) => o.value === siteId && !o.disabled)) return;
+    setValue(siteField, String(siteId), { shouldDirty: true });
+    onPicked();
+  };
+}
+
 type BodyProps<T> = Omit<FormDialogProps<T>, 'open' | 'maxWidth'> & { onSubmittingChange: (busy: boolean) => void };
 
-function FormDialogBody<T>({ title, description, fields, defaultValues, submitLabel, destructive, children, onClose, onSubmit, validate, onSubmittingChange }: BodyProps<T>) {
+function FormDialogBody<T>({ title, description, fields, defaultValues, submitLabel, destructive, children, onClose, onSubmit, validate, siteField, onSubmittingChange }: BodyProps<T>) {
   const { t } = useTranslation();
   const fileProblem = useFileProblemText();
   // Fields stay live (select options may arrive while the dialog is open);
@@ -219,7 +236,7 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
     return d;
   });
 
-  const { control, handleSubmit, setError, formState, getValues } = useForm<RawValues>({ resolver, defaultValues: defaults });
+  const { control, handleSubmit, setError, setValue, formState, getValues } = useForm<RawValues>({ resolver, defaultValues: defaults });
   // Re-render on value changes only when some field depends on them.
   const watched = useWatch({ control, disabled: !dynamic }) as RawValues;
   const shown = dynamic ? shownFor(visible, { ...defaults, ...watched }) : visible;
@@ -227,6 +244,8 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
     (field, message) => setError(field, { type: 'server', message }),
     visible.map((f) => f.name),
   );
+
+  const pickSite = sitePicker<T>(siteField, visible, setValue, clearServerError);
 
   // One request at a time (fast double clicks / Enter), and a handle to cancel an upload.
   const inFlight = useRef(false);
@@ -277,7 +296,7 @@ function FormDialogBody<T>({ title, description, fields, defaultValues, submitLa
             </Typography>
           )}
           {children}
-          <FormErrorAlert value={serverError} />
+          <FormErrorAlert value={serverError} onPickSite={pickSite} />
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
             {shown.map((f) => (
               <Box key={f.name} sx={{ gridColumn: f.half ? undefined : '1 / -1' }}>

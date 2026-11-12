@@ -8,7 +8,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
 import { adminKeys, directoriesApi } from '../api';
-import { entryFields, extraValues, isBaseEntry, type Entry, type EntryValues } from './directoryFields';
+import { entryFields, entryProblems, extraValues, isBaseEntry, type Entry, type EntryValues } from './directoryFields';
 import { PageHeader } from '@/components/common/PageHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { ErrorState, EmptyState, LoadingState } from '@/components/common/States';
@@ -287,6 +287,7 @@ function EntryDialog({ slug, listing: d, rules, editing, invalidate, onClose }: 
       title={title}
       fields={entryFields(d, { rules, entry, t, enumLabel })}
       defaultValues={entry ? { number: entry.number, name: entry.name, ...entry.fields } : { number: d.nextNumber }}
+      validate={(v) => entryProblems(d, v, t)}
       onSubmit={submit}
     />
   );

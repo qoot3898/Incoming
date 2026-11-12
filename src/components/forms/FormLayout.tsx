@@ -1,6 +1,8 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Alert, Box, Button, CircularProgress, Paper, Stack, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
+import { SiteSuggestionsList } from '@/components/common/SiteSuggestionsList';
+import { API_ERROR_CODES } from '@/services/api/errors';
 import type { FormServerError } from './useFormServerError';
 
 const COLUMNS = { 1: '1fr', 2: 'repeat(2, minmax(0, 1fr))', 3: 'repeat(3, minmax(0, 1fr))' } as const;
@@ -80,9 +82,10 @@ export function FormActions({ submitLabel, submitting, disabled, onCancel, cance
 /**
  * Server error summary for a form: the ProblemDetails message plus any field messages
  * that could not be shown next to a field. Receives focus so keyboard and screen-reader
- * users notice it.
+ * users notice it. A `SITE_CAPACITY_EXCEEDED` rejection (TL-N7) also lists the proposed sites;
+ * `onPickSite` lets the user fill the form's site field from that list.
  */
-export function FormErrorAlert({ value }: { value: FormServerError | null }) {
+export function FormErrorAlert({ value, onPickSite }: { value: FormServerError | null; onPickSite?: (siteId: number) => void }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -105,6 +108,7 @@ export function FormErrorAlert({ value }: { value: FormServerError | null }) {
         .map((m) => (
           <div key={m}>{m}</div>
         ))}
+      {value.error.code === API_ERROR_CODES.siteCapacityExceeded && <SiteSuggestionsList suggestions={value.error.suggestions ?? []} onPick={onPickSite} />}
     </Alert>
   );
 }

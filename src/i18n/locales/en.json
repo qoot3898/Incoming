@@ -153,7 +153,7 @@
     "add": "Add candidate",
     "approveAll": "Approve all",
     "approvedAt": "Approved at",
-    "cancel": "Cancel candidate",
+    "cancel": "Cancel nomination",
     "excludeReason": "Exclusion reason",
     "excludeReasonHint": "Required when excluding any name (excluded: {{count}})",
     "excludeReasonRequired": "Give a reason for the names not selected",
@@ -167,11 +167,68 @@
     "nominatedBy": "Nominated by",
     "none": "No candidates yet",
     "notAccepted": "Not accepted",
-    "notAccepting": "The request does not accept candidates now (must be approved and not yet filled).",
+    "notAccepting": "The request does not take candidates now (rejected, closed or filled).",
     "recordInterview": "Record interview",
     "recruitedBy": "Recruited by",
     "rejectList": "Reject the list",
-    "saveDecision": "Save decision ({{approved}} approved, {{excluded}} excluded)"
+    "saveDecision": "Save decision ({{approved}} approved, {{excluded}} excluded)",
+    "listTitle": "Candidate list",
+    "poolStatus": "Status in the list",
+    "phone": "Phone number",
+    "candidateJob": "Candidate's job",
+    "requestJob": "Request's job",
+    "nominationCount": "Nominations",
+    "addHint": "The candidate is recorded in the candidate list without a staffing request and can be nominated on any request later.",
+    "addAndNominateHint": "The candidate is recorded in the list and nominated on this request in the same step.",
+    "added": "Candidate added",
+    "edit": "Edit details",
+    "editTitle": "Edit candidate details",
+    "saved": "Candidate details saved",
+    "conflict": "The candidate was changed in the meantime; the page was refreshed, so review the details and try again.",
+    "withdraw": "Withdraw from the list",
+    "withdrawHint": "The candidate leaves the list and cannot be nominated until restored, and the passport and health-certificate copies are deleted. A candidate with a running nomination cannot be withdrawn.",
+    "withdrawReason": "Reason for withdrawal",
+    "withdrawn": "Candidate withdrawn from the list",
+    "restore": "Restore to the list",
+    "restored": "Candidate restored to the list",
+    "nominate": "Nominate on a request",
+    "nominateHint": "An available candidate can be nominated on a staffing request that is not rejected, closed or filled.",
+    "requestNumber": "Staffing request number",
+    "nominatedOn": "Candidate nominated on request {{number}}",
+    "nominateFromList": "Nominate from the list",
+    "nominateFromListHint": "Choose from the available candidates; they are nominated on this request together.",
+    "nominatedFromList": "Candidates nominated on the request",
+    "newCandidate": "New candidate",
+    "pickerLabel": "Candidates from the list",
+    "pickerHint": "Search by name or phone number",
+    "pickerNoResults": "No matching available candidates",
+    "pickerJobOnly": "Request's job only",
+    "pickerAllJobs": "All jobs",
+    "pickerChosen": "Chosen: {{count}}",
+    "cancelHint": "His nomination on this request is cancelled and the candidate goes back to the list with his data and copies.",
+    "interviewsAfterApproval": "Interviews start once the request is approved; candidates can be nominated now.",
+    "card": {
+      "createdBy": "Recorded by",
+      "data": "Candidate details",
+      "documents": "Attached copies",
+      "noDocuments": "No copies attached",
+      "nominatedAt": "Nominated on",
+      "nominations": "Nominations on requests",
+      "noNominations": "No nominations on requests within your scope",
+      "registeredAs": "Registered worker",
+      "request": "Request",
+      "scanHint": "Copies are attached and deleted from the registration screen.",
+      "withdrawalReason": "Reason for withdrawal",
+      "withdrawnAt": "Withdrawn on"
+    },
+    "form": {
+      "addNew": "New candidate",
+      "forJob": "for the same job",
+      "hint": "Optional: nominate from the candidate list or add new candidates; the request and its candidates are saved together or not at all.",
+      "newTitle": "New candidate {{n}}",
+      "removeNew": "Remove the new candidate",
+      "title": "Candidates"
+    }
   },
   "common": {
     "all": "All",
@@ -257,7 +314,16 @@
     "baseEntry": "Base type: renamed and stopped, never deleted",
     "lockedForBase": "Fixed for base types",
     "numberFixed": "The number cannot change once added",
-    "baseEntriesHint": "Base types ({{numbers}}) can be renamed and stopped but not deleted, and their behavior never changes. A type in use is stopped instead of deleted."
+    "baseEntriesHint": "Base types ({{numbers}}) can be renamed and stopped but not deleted, and their behavior never changes. A type in use is stopped instead of deleted.",
+    "coordinateHint": {
+      "Latitude": "From -90 to 90, at most six decimals, e.g. 32.887209",
+      "Longitude": "From -180 to 180, at most six decimals, e.g. 13.191338"
+    },
+    "coordinateProblems": {
+      "format": "Enter a number in Latin digits with at most six decimals",
+      "pair": "Enter latitude and longitude together, or leave both empty",
+      "range": "The value is outside the allowed range"
+    }
   },
   "enums": {
     "AbsenceIncidentListStatus": {
@@ -724,6 +790,12 @@
       "PendingReview": "Pending approval",
       "Returned": "Returned",
       "Approved": "Approved"
+    },
+    "CandidatePoolStatus": {
+      "Available": "Available",
+      "Nominated": "Nominated on a request",
+      "Registered": "Registered as a worker",
+      "Withdrawn": "Withdrawn from the list"
     }
   },
   "errors": {
@@ -981,7 +1053,8 @@
       "users": "Users",
       "workers": "Worker files",
       "complaints": "Complaints",
-      "assignments": "Assignment letters"
+      "assignments": "Assignment letters",
+      "siteCapacities": "Site capacities"
     },
     "main": "Main navigation",
     "sections": {
@@ -1289,8 +1362,7 @@
     "countApproved": "Approved / required",
     "enteredBy": "Entered by",
     "justification": "Justification",
-    "leavingRequired": "Replacement requires selecting the leaving worker",
-    "leavingWorker": "Leaving worker",
+    "leavingRequired": "A replacement request requires choosing the leaving workers",
     "new": "New staffing request",
     "number": "Request no.",
     "reason": "Reason",
@@ -1311,7 +1383,10 @@
     "sections": {
       "position": "Position",
       "request": "Request details"
-    }
+    },
+    "leavingWorkers": "Leaving workers",
+    "leavingWorkersHint": "Choose a different leaving worker for each requested place: {{chosen}} of {{total}}",
+    "leavingCountMismatch": "The number of leaving workers must equal the requested count ({{total}})"
   },
   "startApproval": {
     "delayed": "Delayed {{days}} day(s)",
@@ -1438,7 +1513,25 @@
     "submittedBy": "Submitted by",
     "supervisorsInformed": "Supervisors informed",
     "to": "To site",
-    "trackSitesOnly": "Track sites only; others need Operations permission"
+    "trackSitesOnly": "Track sites only; others need Operations permission",
+    "decisionFile": {
+      "attach": "Attach transfer decision",
+      "attached": "Transfer decision attached",
+      "attachedAt": "Attached",
+      "attachLater": "The request was submitted, but the transfer decision could not be attached: {{reason}} You can attach it from the request page.",
+      "conflict": "A party decided on the request at the same moment; the page was refreshed and the attached decision did not change.",
+      "fileHint": "Optional: PDF only; the parties review it before they decide.",
+      "fileLabel": "Transfer decision (PDF)",
+      "hint": "One optional PDF that the parties review before they decide.",
+      "none": "No transfer decision is attached to this request.",
+      "open": "Open transfer decision",
+      "remove": "Delete transfer decision",
+      "removeConfirm": "The transfer decision attached to this request will be deleted. Continue?",
+      "removed": "Transfer decision deleted",
+      "replace": "Replace transfer decision",
+      "replaceHint": "The new file replaces the decision currently attached.",
+      "title": "Transfer decision"
+    }
   },
   "users": {
     "activate": "Activate",
@@ -1487,7 +1580,8 @@
     "unlock": "Unlock",
     "unsavedRoles": "Role changes are not saved yet",
     "userName": "User name",
-    "status": "Account"
+    "status": "Account",
+    "permissions": "Direct permissions"
   },
   "validation": {
     "dateMax": "Date must be on or before {{date}}",
@@ -1641,5 +1735,71 @@
     "reviewed": "Review recorded",
     "review": "Review",
     "notReviewed": "Not reviewed yet"
+  },
+  "capacity": {
+    "capacity": "Capacity",
+    "choose": "Choose",
+    "distanceKm": "{{km}} km",
+    "distanceUnknown": "Distance unknown",
+    "freePlaces": "Free places: {{count}}",
+    "noSuggestions": "No other site can take them right now; raise the capacity or reduce the number.",
+    "occupancy": "Occupancy",
+    "shortage": "Needs {{count}}",
+    "suggestedSites": "Suggested sites",
+    "unlimited": "No capacity limit",
+    "states": {
+      "available": "Available",
+      "full": "Full",
+      "over": "Over capacity (+{{count}})",
+      "unlimited": "No limit"
+    },
+    "coordinates": "Coordinates",
+    "noCoordinates": "No coordinates",
+    "lastChange": "Last change",
+    "change": "Change capacity",
+    "changeFor": "Change the capacity of {{site}}",
+    "changeHint": "Current occupancy: {{occupancy}}. Lowering the capacity below the occupancy moves nobody, but every new placement in the site is refused until the occupancy drops below the capacity.",
+    "capacityHint": "A whole number from {{min}} to {{max}}; leave empty for no limit.",
+    "decisionFile": "Capacity decision (PDF)",
+    "decisionFileHint": "Optional: PDF files only.",
+    "problems": {
+      "integer": "The capacity is a whole number",
+      "range": "The capacity is between 0 and 10000",
+      "unchanged": "Nothing changed: this is the current capacity"
+    },
+    "saved": "Capacity changed",
+    "conflict": "The site's capacity changed after it was read; the list was reloaded, so open the change again.",
+    "history": "History",
+    "historyFor": "Capacity history of {{site}}",
+    "noChanges": "This site's capacity has never changed",
+    "changedAt": "Changed at",
+    "changedBy": "By",
+    "fromTo": "From {{from}} to {{to}}",
+    "decision": "Decision",
+    "overCapacityAlert": "{{count}} site(s) over capacity: nobody is moved, and every new placement in them is refused until the occupancy drops below the capacity.",
+    "freePlacesColumn": "Free places"
+  },
+  "userPermissions": {
+    "matrix": "Direct permissions",
+    "title": "User permissions",
+    "unsaved": "{{count}} unsaved change(s)",
+    "readOnly": {
+      "noRight": "Changing direct permissions requires the \"Manage user permissions\" permission.",
+      "self": "You cannot change your own permissions.",
+      "superAdmin": "A super admin holds every permission, so direct permissions do not apply."
+    },
+    "effect": {
+      "deny": "Deny",
+      "grant": "Grant",
+      "role": "As role"
+    },
+    "held": "Held",
+    "notHeld": "Not held",
+    "deniedDespiteRole": "Denied despite role",
+    "grantedDirectly": "Granted directly",
+    "viaRoles": "From role: {{roles}}",
+    "notHeldByYou": "You do not hold this permission, so you cannot grant it or lift its denial.",
+    "saved": "Direct permissions saved",
+    "history": "Permission change history"
   }
 }

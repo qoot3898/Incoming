@@ -25,6 +25,7 @@ import SyncAltOutlinedIcon from '@mui/icons-material/SyncAltOutlined';
 import BackupOutlinedIcon from '@mui/icons-material/BackupOutlined';
 import FeedbackOutlinedIcon from '@mui/icons-material/FeedbackOutlined';
 import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
+import WarehouseOutlinedIcon from '@mui/icons-material/WarehouseOutlined';
 import { NAV_PERMISSIONS } from './permissions';
 
 export interface NavItem {
@@ -85,6 +86,7 @@ export const NAVIGATION: NavSection[] = [
       item('roles', '/admin/roles', AdminPanelSettingsOutlinedIcon),
       item('directories', '/admin/directories', ListAltOutlinedIcon),
       item('laborSettings', '/admin/labor-settings', AccountTreeOutlinedIcon),
+      item('siteCapacities', '/admin/site-capacities', WarehouseOutlinedIcon),
       item('settings', '/admin/settings', TuneOutlinedIcon),
       item('audit', '/admin/audit', HistoryOutlinedIcon),
       item('integration', '/admin/integration', SyncAltOutlinedIcon),

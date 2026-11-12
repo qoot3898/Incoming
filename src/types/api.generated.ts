@@ -2125,7 +2125,7 @@ export interface paths {
         /** قائمة المرشحين */
         get: operations["ListCandidates"];
         put?: never;
-        /** إضافة مرشح على طلب احتياج */
+        /** إضافة مرشح إلى قائمة المرشحين */
         post: operations["AddCandidate"];
         delete?: never;
         options?: never;
@@ -2160,7 +2160,8 @@ export interface paths {
         /** مرشحو طلب الاحتياج */
         get: operations["GetRequestCandidates"];
         put?: never;
-        post?: never;
+        /** ترشيح مرشحين من القائمة على طلب احتياج */
+        post: operations["NominateCandidates"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2193,7 +2194,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** إلغاء مرشح */
+        /** إلغاء ترشيح مرشح */
         post: operations["CancelCandidate"];
         delete?: never;
         options?: never;
@@ -2749,6 +2750,163 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/{userId}/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** صلاحيات مستخدم */
+        get: operations["GetUserPermissions"];
+        /** تحديد الصلاحيات المباشرة لمستخدم */
+        put: operations["SetUserPermissions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labor-settings/site-capacities/changes/{changeId}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** فتح مرفق تغيير سعة موقع */
+        get: operations["OpenSiteCapacityFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labor-settings/site-capacities/{workSiteId}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** سجل تغييرات سعة موقع */
+        get: operations["ListSiteCapacityChanges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labor-settings/site-capacities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** سعة المواقع وإشغالها */
+        get: operations["ListSiteCapacities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labor-settings/site-capacities/{workSiteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** تغيير سعة موقع مع مرفق اختياري */
+        put: operations["ChangeSiteCapacity"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transfers/{transferId}/decision-file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** فتح قرار النقل */
+        get: operations["OpenTransferDecisionFile"];
+        /** إرفاق قرار النقل (PDF) أو استبداله */
+        put: operations["AttachTransferDecisionFile"];
+        post?: never;
+        /** حذف قرار النقل المرفق */
+        delete: operations["RemoveTransferDecisionFile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidates/{candidateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** بطاقة مرشح */
+        get: operations["GetCandidate"];
+        /** تعديل بيانات مرشح */
+        put: operations["UpdateCandidate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidates/{candidateId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** إعادة مرشح مسحوب إلى قائمة المرشحين */
+        post: operations["RestoreCandidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/candidates/{candidateId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** سحب مرشح من قائمة المرشحين */
+        post: operations["WithdrawCandidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2845,13 +3003,13 @@ export interface components {
             /** @description مرجع الحدث في النظام الخارجي. */
             externalReference?: string | null;
         };
-        /** @description مرشح مقترح على طلب احتياج معتمد («إضافة مرشح»، SRS FR-05). */
+        /** @description مرشح جديد في «قائمة المرشحين» (القرار TL-N13، SRS FR-05)؛ ومع int? AddCandidateRequest.RequestNumber يُرشَّح أيضًا على ذلك الطلب في العملية نفسها. */
         AddCandidateRequest: {
             /**
              * Format: int32
-             * @description «الرقم المرجعي» لطلب الاحتياج.
+             * @description «الرقم المرجعي» لطلب احتياج يُرشَّح عليه فورًا (اختياري).
              */
-            requestNumber?: number;
+            requestNumber?: null | number;
             /** @description «الاسم» (يصبح اسم الموظف عند التسجيل). */
             name?: string | null;
             /**
@@ -2862,6 +3020,15 @@ export interface components {
             /** @description «رشّحه»: العامل الحالي أو أحد المعارف ممن رشّح المرشح. */
             nominatedBy?: string | null;
             recruitedBy?: null | components["schemas"]["LaborParty"];
+            /** @description «رقم الهاتف» (اختياري؛ ويُقترح رقمًا للموظف عند تسجيله). */
+            phone?: string | null;
+            /**
+             * Format: int32
+             * @description «المهنة» التي يُرشَّح لها (اختيارية؛ تُصفّى بها القائمة عند الترشيح على طلب).
+             */
+            jobId?: null | number;
+            /** @description «ملاحظات» (اختيارية). */
+            notes?: string | null;
         };
         /** @description طلب: إضافة بند إخلاء طرف. */
         AddClearanceItemRequest: {
@@ -3061,8 +3228,7 @@ export interface components {
             correction: string | null;
             /** @description هل اليوم من الأيام الماضية أو الحالية في الكشف (فيأخذ رمزًا)؟ */
             isOpenDay?: boolean;
-            /** @description ما يُحتسب به اليوم: رمزه أو الإجازة أو حضور إن لم يُسجَّل شيء؛ `null` خارج الكشف. */
-            effective?: components["schemas"]["AttendanceCode"];
+            effective?: null | components["schemas"]["AttendanceCode"];
             /** @description معنى اليوم بلا رمز: الإجازة التي تغطيه، أو حضور. */
             implicit?: components["schemas"]["AttendanceCode"];
         };
@@ -3391,7 +3557,7 @@ export interface components {
             /** @description السبب (مطلوب). */
             reason?: string | null;
         };
-        /** @description صف في قائمة المرشحين. */
+        /** @description صف في «قائمة المرشحين» (القرار TL-N13): المرشح وموضعه وآخر ترشيح له. */
         CandidateListItem: {
             /**
              * Format: int32
@@ -3406,26 +3572,36 @@ export interface components {
             nominatedBy: string | null;
             /** @description «جهة الاستقطاب». */
             recruitedBy: components["schemas"]["LaborParty"];
+            /** @description «رقم الهاتف». */
+            phone: string | null;
+            /** @description «المهنة» التي يُرشَّح لها، أو null. */
+            candidateJobName: string | null;
+            /** @description موضعه في القائمة. */
+            poolStatus: components["schemas"]["CandidatePoolStatus"];
             /**
              * Format: int32
-             * @description «الرقم المرجعي» لطلب الاحتياج.
+             * @description «الرقم المرجعي» لطلب آخر ترشيح له؛ null إن لم يُرشَّح أو كان الطلب خارج مسارات المستخدم ومواقعه.
              */
-            requestNumber: number;
-            /** @description «المسار» الخاص بالطلب. */
+            requestNumber: null | number;
+            /** @description «المسار» الخاص بذلك الطلب. */
             trackName: string | null;
-            /** @description «الموقع» في الطلب. */
+            /** @description «الموقع» في ذلك الطلب. */
             workSiteName: string | null;
-            /** @description «المهنة» في الطلب. */
+            /** @description «المهنة» في ذلك الطلب. */
             jobName: string | null;
-            /** @description «الحالة». */
-            status: components["schemas"]["CandidateStatus"];
-            /** @description سبب الرفض أو الاستبعاد أو الإلغاء. */
+            status: null | components["schemas"]["CandidateStatus"];
+            /** @description سبب عدم القبول أو الاستبعاد أو الإلغاء على ذلك الطلب. */
             statusReason: string | null;
             /**
              * Format: date-time
-             * @description وقت آخر تغيير للحالة.
+             * @description وقت آخر تغيير لحالة ذلك الترشيح، أو وقت تسجيل المرشح إن لم يُرشَّح.
              */
             statusChangedAt: string | null;
+            /**
+             * Format: int32
+             * @description عدد ترشيحاته كلها.
+             */
+            nominationCount: number;
             /**
              * Format: int32
              * @description العامل المسجَّل من المرشح.
@@ -3436,6 +3612,11 @@ export interface components {
              * @description رقم الموظف الخاص به.
              */
             employeeNumber: null | number;
+            /**
+             * Format: date-time
+             * @description وقت تسجيله في القائمة.
+             */
+            createdAt: string | null;
         };
         /** @enum {unknown} */
         CandidateStatus: "Interview" | "PendingGeneralManager" | "Approved" | "NotAccepted" | "NotApproved" | "Registered" | "Cancelled" | null;
@@ -3897,7 +4078,7 @@ export interface components {
          * @description كيفية إدخال حقل إضافي في الدليل وعرضه.
          * @enum {unknown}
          */
-        DirectoryFieldKind: "Text" | "Amount" | "Rate";
+        DirectoryFieldKind: "Text" | "Amount" | "Rate" | "Latitude" | "Longitude";
         /** @description دليل مع مداخله. */
         DirectoryListing: {
             /** @description مقطع الرابط. */
@@ -4149,7 +4330,7 @@ export interface components {
             referenceStatus: string | null;
             /** @description يراجع المستخدم التقييمات وهذا التقييم ينتظر مراجعته (انظر ReviewRefusal). */
             canReview: boolean;
-            /** @description سبب منع المستخدم من مراجعته (هو من سجّله، القرار TL-21)؛ null إن جاز له. */
+            /** @description سبب منع المستخدم من مراجعته (روجع، أو أُغلق ملف العامل)؛ null إن جاز له، ولو كان هو من سجّله (القرار TL-N11). */
             reviewRefusal: string | null;
             /** @description سبب منع المستخدم من إحالته إلى جزاء الآن (الصلاحية، حالة العامل)؛ null إن جاز له. */
             penaltyRefusal: string | null;
@@ -5657,7 +5838,7 @@ export interface components {
         LeavePartyItem: {
             /** @description الجهة. */
             party: components["schemas"]["LaborParty"];
-            /** @description سبب منعه من البتّ فيه الآن (ليس دوره، أو مبدأ المُنشئ والمُعتمِد، القرار TL-21)؛ null إن جاز له. */
+            /** @description سبب منعه من البتّ فيه الآن (ليس دوره، أو بتّ في خطوة أخرى من الجولة، القرار TL-21)؛ null إن جاز له. */
             refusal: string | null;
         };
         /** @description جواز العامل المحفوظ كما تراه الإجازة (SRS FR-25، AC-25). */
@@ -6273,7 +6454,7 @@ export interface components {
             proposals: components["schemas"]["SalaryProposalItem"][];
             open: null | components["schemas"]["SalaryProposalItem"];
             /**
-             * @description سبب منع المستخدم، وهو صاحب خطوة الموارد البشرية في الاقتراح المفتوح، من البتّ فيه الآن (مبدأ المُنشئ والمُعتمِد، القرار TL-21)؛ null إن جاز
+             * @description سبب منع المستخدم، وهو صاحب خطوة الموارد البشرية في الاقتراح المفتوح، من البتّ فيه الآن (بتّ في خطوة أخرى من الجولة، القرار TL-21)؛ null إن جاز
              *     له أو لم تكن الخطوة له.
              */
             decisionRefusal: string | null;
@@ -7032,7 +7213,7 @@ export interface components {
              * @description «طُبق الأثر المالي بتاريخ».
              */
             appliedOn: null | string;
-            /** @description يجوز للمستخدم اتخاذ القرار الآن (مدير القسم لا المقترِح، القرار TL-21). */
+            /** @description يجوز للمستخدم اتخاذ القرار الآن (مدير القسم، ولو كان هو المقترِح، القرار TL-N11). */
             canDecide: boolean;
             /** @description سبب منع المستخدم، وهو مدير قسم، من البتّ في هذا الجزاء (هو من اقترحه)؛ يُعرض بدلًا من الأزرار. */
             decisionRefusal: string | null;
@@ -7225,7 +7406,7 @@ export interface components {
             issuedOn?: null | string;
         };
         /** @enum {unknown} */
-        PenaltySource: "Direct" | "AbsenceIncident" | "Evaluation" | null;
+        PenaltySource: "Direct" | "AbsenceIncident" | "Evaluation";
         /**
          * @description «حالة الجزاء» (العملية P05.2، SRS FR-36..FR-38).
          * @enum {unknown}
@@ -7563,6 +7744,8 @@ export interface components {
             passportScanAttached: boolean;
             /** @description أُرفقت نسخة شهادته الصحية (مطلوبة لكل مرشح قبل تسجيله). */
             healthCertificateScanAttached: boolean;
+            /** @description «رقم الهاتف» المسجَّل للمرشح (يُقترح رقمًا للموظف، القرار TL-N13). */
+            phone: string | null;
         };
         /** @description طلب: تغيير مكان حفظ الجواز. */
         RelocatePassportRequest: {
@@ -7597,11 +7780,11 @@ export interface components {
             /** @description «بلّغ عنه»: المشرف الذي أبلغ عنه. */
             reportedBy?: string | null;
         };
-        /** @description مرشح على طلب احتياج وما يجوز للمستخدم الحالي فعله به. */
+        /** @description ترشيح مرشح على طلب احتياج، مع بيانات مرشحه وما يجوز للمستخدم الحالي فعله به (القرار TL-N13). */
         RequestCandidateItem: {
             /**
              * Format: int32
-             * @description المعرّف.
+             * @description معرّف المرشح في القائمة (وبه تُستدعى المقابلة والقرار والإلغاء على ترشيحه الجاري).
              */
             id: number;
             /** @description «الاسم». */
@@ -7612,7 +7795,7 @@ export interface components {
             nominatedBy: string | null;
             /** @description «جهة الاستقطاب». */
             recruitedBy: components["schemas"]["LaborParty"];
-            /** @description «الحالة». */
+            /** @description «الحالة» على هذا الطلب. */
             status: components["schemas"]["CandidateStatus"];
             /** @description سبب الرفض أو الاستبعاد أو الإلغاء. */
             statusReason: string | null;
@@ -7623,7 +7806,7 @@ export interface components {
             statusChangedAt: string | null;
             /**
              * Format: int32
-             * @description العامل المسجَّل من المرشح.
+             * @description العامل المسجَّل من المرشح بهذا الترشيح.
              */
             employeeId: null | number;
             /**
@@ -7634,17 +7817,24 @@ export interface components {
             interview: null | components["schemas"]["CandidateStepItem"];
             generalManager: null | components["schemas"]["CandidateStepItem"];
             /**
-             * @description سبب منع المستخدم، وهو المخوَّل بإجراء المقابلات للمسار، من مقابلة هذا المرشح المنتظر للمقابلة (مبدأ المُنشئ والمُعتمِد)، أو null إن جاز له أو
-             *     لم ينطبق ذلك.
+             * @description سبب منع المستخدم، وهو المخوَّل بإجراء المقابلات للمسار، من مقابلة هذا المرشح المنتظر للمقابلة على طلب معتمد (قواعد السلسلة)، أو null إن جاز
+             *     له أو لم ينطبق ذلك.
              */
             interviewRefusal: string | null;
             /**
-             * @description سبب منع المستخدم، وهو صاحب صلاحية المدير العام، من البتّ في هذا المرشح المنتظر لقراره (مبدأ المُنشئ والمُعتمِد)، أو null إن جاز له أو لم
+             * @description سبب منع المستخدم، وهو صاحب صلاحية المدير العام، من البتّ في هذا المرشح المنتظر لقراره (قابله هو، القرار TL-21)، أو null إن جاز له أو لم
              *     ينطبق ذلك.
              */
             decisionRefusal: string | null;
-            /** @description يجوز للمستخدم إلغاء المرشح (لم يُسجَّل بعد). */
+            /** @description يجوز للمستخدم إلغاء هذا الترشيح الجاري (فيعود المرشح إلى القائمة). */
             canCancel: boolean;
+            /**
+             * Format: int32
+             * @description معرّف الترشيح.
+             */
+            nominationId: number;
+            /** @description «رقم الهاتف». */
+            phone: string | null;
         };
         /** @description مرشحو طلب احتياج مع عدده وما يجوز للمستخدم الحالي فعله (SRS FR-05…FR-08). */
         RequestCandidates: {
@@ -7665,17 +7855,17 @@ export interface components {
             approvedCount: number;
             /** @description حالة الطلب. */
             status: components["schemas"]["StaffingRequestStatus"];
-            /** @description الطلب معتمد وغير مستوفى: يجوز إضافة المرشحين واعتمادهم. */
+            /** @description الطلب معتمد وغير مستوفى: تُجرى مقابلات مرشحيه ويُعتمدون. */
             acceptsCandidates: boolean;
-            /** @description يجوز للمستخدم إضافة مرشح الآن. */
+            /** @description يجوز للمستخدم ترشيح مرشحين من القائمة أو إضافة مرشح جديد الآن (الطلب لم يُرفض ولم يُغلق ولم يكتمل عدده، القرار TL-N13). */
             canAdd: boolean;
-            /** @description يجوز للمستخدم تسجيل المقابلات لمسار الطلب (وتبقى السلسلة هي التي تقرر لكل مرشح). */
+            /** @description يجوز للمستخدم تسجيل المقابلات لمسار الطلب والطلب معتمد (وتبقى السلسلة هي التي تقرر لكل مرشح). */
             canInterview: boolean;
             /** @description يملك المستخدم صلاحية المدير العام (وتبقى السلسلة هي التي تقرر لكل مرشح). */
             canDecide: boolean;
             /** @description المعيار الذي يُعرض عند تسجيل المقابلة (إعداد). */
             interviewCriterion: string | null;
-            /** @description المرشحون: من لا تزال إجراءاتهم جارية أولًا، ثم المسجَّلون، ثم المنتهية حالاتهم. */
+            /** @description الترشيحات: الجارية أولًا، ثم المسجَّلة، ثم المنتهية. */
             candidates: components["schemas"]["RequestCandidateItem"][];
         };
         /** @description طلب: استلام الجواز بعد السفر. */
@@ -7997,13 +8187,8 @@ export interface components {
             count: number;
             /** @description «السبب». */
             reason: components["schemas"]["StaffingReason"];
-            /**
-             * Format: int32
-             * @description «العامل المغادر»: رقم الموظف.
-             */
-            leavingEmployeeNumber: null | number;
-            /** @description «العامل المغادر»: الاسم. */
-            leavingEmployeeName: string | null;
+            /** @description «العمال المغادرون» في طلب الإحلال بحسب رقم الموظف (القرار TL-N8)؛ وفارغة لطلب الاحتياج. */
+            leavers: components["schemas"]["StaffingRequestLeaverItem"][];
             /**
              * Format: date
              * @description «تاريخ البدء المطلوب».
@@ -8037,7 +8222,7 @@ export interface components {
             canDecideAsGeneralManager: boolean;
             /** @description يجوز للمستخدم إغلاق الطلب المعتمد. */
             canClose: boolean;
-            /** @description سبب منع المستخدم، وهو صاحب صلاحية الجهة التي تنتظر خطوتها، من البتّ (مبدأ المُنشئ والمُعتمِد)، أو null. */
+            /** @description سبب منع المستخدم، وهو صاحب صلاحية الجهة التي تنتظر خطوتها، من البتّ (بتّ في خطوة أخرى من الجولة، القرار TL-21)، أو null. */
             blockedReason: string | null;
             /**
              * Format: int16
@@ -8113,11 +8298,8 @@ export interface components {
              */
             count?: null | number;
             reason?: null | components["schemas"]["StaffingReason"];
-            /**
-             * Format: int32
-             * @description «العامل المغادر» (طلبات الإحلال فقط).
-             */
-            leavingEmployeeId?: null | number;
+            /** @description «العمال المغادرون» (طلبات الإحلال فقط): عامل مختلف لكل مطلوب، فعددهم هو «العدد» (القرار TL-N8). */
+            leavingEmployeeIds?: null | number[];
             /**
              * Format: date
              * @description «تاريخ البدء المطلوب».
@@ -8127,6 +8309,10 @@ export interface components {
             justification?: string | null;
             /** @description «اسم مقدم الطلب من الموقع» عند إدخال الطلب نيابةً عن الموقع (القرار TL-4). */
             requestedBy?: string | null;
+            /** @description «المرشحون» المتاحون من القائمة يُرشَّحون على الطلب عند تقديمه (اختياري، لصاحب «المرشحون»، القرار TL-N13). */
+            candidateIds?: null | number[];
+            /** @description «مرشحون جدد» يُسجَّلون في القائمة ويُرشَّحون على الطلب في المعاملة نفسها (اختياري، لصاحب «المرشحون»، القرار TL-N13). */
+            newCandidates?: null | components["schemas"]["CandidateInput"][];
         };
         /** @enum {unknown} */
         StaffingRequestStatus: "PendingOperations" | "PendingGeneralManager" | "Approved" | "Rejected" | "Closed" | "Filled" | null;
@@ -8157,7 +8343,7 @@ export interface components {
         StartApprovalPartyItem: {
             /** @description الجهة. */
             party: components["schemas"]["LaborParty"];
-            /** @description سبب منعه من البتّ فيه الآن (ليس دوره، أو مبدأ المُنشئ والمُعتمِد، القرار TL-21)؛ null إن جاز له. */
+            /** @description سبب منعه من البتّ فيه الآن (ليس دوره، أو بتّ في خطوة أخرى من الجولة، القرار TL-21)؛ null إن جاز له. */
             refusal: string | null;
         };
         /** @description جولة من سلسلة اعتماد المباشرة: تقديم واحد ينتهي بآخر اعتماد أو بإعادة للتصحيح. */
@@ -8289,7 +8475,7 @@ export interface components {
         TerminationActions: {
             /** @description البتّ نيابةً عن إدارة العمليات (صلاحيتها، والمسار كاملًا، وموافقة السلسلة). */
             canDecide: boolean;
-            /** @description سبب عدم جواز بتّ مستخدم يملك صلاحية إدارة العمليات فيه (القرار TL-21)، أو `null`. */
+            /** @description سبب عدم جواز بتّ مستخدم يملك صلاحية إدارة العمليات فيه (القرار TL-21: لا يبتّ في خطوتين من جولة واحدة)، أو `null`. */
             decisionRefusal: string | null;
             /** @description يسحب الطلب المفتوح. */
             canCancel: boolean;
@@ -8299,10 +8485,8 @@ export interface components {
             canManageClearance: boolean;
             /** @description تسجيل التسوية (الجهة المالية). */
             canRecordSettlement: boolean;
-            /** @description اعتماد التسوية المسجَّلة (من المالية، لا من مسجّلها). */
+            /** @description اعتماد التسوية المسجَّلة (من المالية، ومنهم من سجّلها، القرار TL-N11). */
             canApproveSettlement: boolean;
-            /** @description سبب عدم جواز اعتماد مستخدم من المالية له (لأنه هو من سجّله)، أو `null`. */
-            settlementRefusal: string | null;
             /** @description تسليم الجواز المحفوظ عند الخروج. */
             canHandPassport: boolean;
             /** @description البتّ في إحلال. */
@@ -9017,12 +9201,17 @@ export interface components {
             canRecordInformed: boolean;
             /** @description يتولى المستخدم خطوة الموارد البشرية من المقترح الذي ينتظرها (انظر SalaryDecisionRefusal). */
             canDecideSalary: boolean;
-            /** @description سبب منع المستخدم من البتّ في الاقتراح (مبدأ المُنشئ والمُعتمِد، القرار TL-21)؛ null إن جاز له. */
+            /** @description سبب منع المستخدم من البتّ في الاقتراح (بتّ في خطوة أخرى من الجولة، القرار TL-21)؛ null إن جاز له. */
             salaryDecisionRefusal: string | null;
             /** @description يجوز للمستخدم مراجعة المقترح الذي أعادته الموارد البشرية. */
             canReviseSalary: boolean;
             /** @description يجوز للمستخدم سحب المقترح المفتوح. */
             canCancelSalary: boolean;
+            decisionFile: null | components["schemas"]["TransferDecisionFileItem"];
+            /** @description يجوز للمستخدم إرفاق قرار النقل أو استبداله أو حذفه الآن. */
+            canChangeDecisionFile: boolean;
+            /** @description سبب عدم جواز تغيير قرار النقل الآن لمن يدير النقل (بتّت فيه جهة، أو انتهت اعتماداته)؛ null إن جاز. */
+            decisionFileRefusal: string | null;
         };
         /**
          * @description «التنفيذ» لنقل معتمد (TL-F08 C، SRS FR-41، FR-42): الموقع الجديد المعتمد، وتاريخ النقل الفعلي، وهل يتغير المرتب — ثم المرتب والعلاوة وتاريخ
@@ -9140,7 +9329,7 @@ export interface components {
         TransferPartyItem: {
             /** @description الجهة. */
             party: components["schemas"]["LaborParty"];
-            /** @description سبب منعه من البتّ فيه الآن (غير مفتوح، أو مبدأ المُنشئ والمُعتمِد، القرار TL-21)؛ null إن جاز له. */
+            /** @description سبب منعه من البتّ فيه الآن (غير مفتوح، أو بتّ في خطوة أخرى من الجولة، القرار TL-21)؛ null إن جاز له. */
             refusal: string | null;
         };
         /**
@@ -9510,6 +9699,361 @@ export interface components {
          * @enum {unknown}
          */
         CandidateDocumentKind: "Passport" | "HealthCertificate";
+        /** @enum {unknown} */
+        PermissionEffect: "Grant" | "Deny" | null;
+        /** @description طلب: استبدال الصلاحيات المباشرة لمستخدم بالمجموعتين كاملتين (القرار TL-N9). */
+        SetUserPermissionsRequest: {
+            /** @description رموز الصلاحيات الممنوحة له مباشرة فوق أدواره. */
+            granted: string[];
+            /** @description رموز الصلاحيات الممنوعة عنه مباشرة؛ والمنع يغلب كل منح. */
+            denied: string[];
+        };
+        /** @description تغيير واحد لسعة موقع (القرار TL-N7). */
+        SiteCapacityChangeItem: {
+            /**
+             * Format: int32
+             * @description المعرّف (وبه يُفتح المرفق).
+             */
+            id: number;
+            /**
+             * Format: int32
+             * @description الموقع.
+             */
+            workSiteId: number;
+            /**
+             * Format: int32
+             * @description السعة قبل التغيير؛ و`null` بلا حد.
+             */
+            previousCapacity: null | number;
+            /**
+             * Format: int32
+             * @description السعة بعد التغيير؛ و`null` بلا حد.
+             */
+            newCapacity: null | number;
+            /**
+             * Format: date-time
+             * @description وقت التغيير (بالتوقيت المحلي).
+             */
+            changedAt: string | null;
+            /**
+             * Format: int32
+             * @description المستخدم الذي غيّرها.
+             */
+            changedByUserId: number;
+            /** @description اسمه. */
+            changedBy: string | null;
+            /** @description اسم المرفق، أو `null` إن لم يُرفق ملف. */
+            fileName: string | null;
+            /**
+             * Format: int32
+             * @description حجم المرفق بالبايت.
+             */
+            fileSize: null | number;
+        };
+        /** @description موقع نشط بسعته وإشغاله وإحداثياته وآخر تغيير لسعته (القرار TL-N7). */
+        SiteCapacityItem: {
+            /**
+             * Format: int32
+             * @description الموقع.
+             */
+            workSiteId: number;
+            /**
+             * Format: int32
+             * @description «الرقم».
+             */
+            number: number;
+            /** @description «الاسم». */
+            name: string | null;
+            /**
+             * Format: int32
+             * @description السعة؛ و`null` بلا حد.
+             */
+            capacity: null | number;
+            /**
+             * Format: int32
+             * @description الإشغال: عماله المؤقتون ذوو الملفات المفتوحة.
+             */
+            occupancy: number;
+            /**
+             * Format: int32
+             * @description الأماكن الشاغرة؛ و`null` بلا حد.
+             */
+            freePlaces: null | number;
+            /**
+             * Format: int32
+             * @description عدد العمال فوق السعة بعد خفضها تحت الإشغال (لا يُنقل أحد، ويُرفض كل وضع جديد حتى ينزل الإشغال تحتها).
+             */
+            overCapacity: number;
+            /**
+             * Format: double
+             * @description خط العرض.
+             */
+            latitude: null | number;
+            /**
+             * Format: double
+             * @description خط الطول.
+             */
+            longitude: null | number;
+            /**
+             * Format: byte
+             * @description رمز التزامن للموقع (يُرسل اختياريًا مع تغيير السعة).
+             */
+            rowVersion: string;
+            lastChange: null | components["schemas"]["SiteCapacityChangeItem"];
+        };
+        /** @description عامل مغادر في طلب إحلال (القرار TL-N8). */
+        StaffingRequestLeaverItem: {
+            /**
+             * Format: int32
+             * @description معرّف الموظف.
+             */
+            employeeId: number;
+            /**
+             * Format: int32
+             * @description «رقم الموظف».
+             */
+            employeeNumber: number;
+            /** @description «الاسم». */
+            name: string | null;
+        };
+        /** @description صلاحية واحدة في شاشة صلاحيات المستخدم: من أين تأتيه وهل يملكها. */
+        UserPermissionItem: {
+            /** @description رمز الصلاحية. */
+            code: string | null;
+            /** @description الاسم بالعربية. */
+            name: string | null;
+            /** @description الوصف بالعربية. */
+            description: string | null;
+            /** @description رمز الوحدة الوظيفية. */
+            module: string | null;
+            /** @description اسم الوحدة بالعربية. */
+            moduleName: string | null;
+            /** @description صلاحية حساسة. */
+            isSensitive: boolean;
+            /** @description أسماء أدوار المستخدم التي تمنحها؛ ودور المدير الأعلى يمنح كل صلاحية. */
+            roles: string[];
+            direct: null | components["schemas"]["PermissionEffect"];
+            /** @description يملكها فعلاً (المنع يغلب كل منح). */
+            isEffective: boolean;
+        };
+        /** @description شاشة صلاحيات مستخدم (القرار TL-N9). */
+        UserPermissionsResponse: {
+            /**
+             * Format: int32
+             * @description معرّف المستخدم.
+             */
+            userId: number;
+            /** @description مدير أعلى: يملك كل صلاحية ولا تنطبق عليه الصلاحيات المباشرة. */
+            isSuperAdmin: boolean;
+            /** @description كل صلاحية قابلة للمنح، بترتيب مصفوفة الأدوار (الوحدة ثم ترتيب العرض). */
+            permissions: components["schemas"]["UserPermissionItem"][];
+        };
+        /** @description بطاقة المرشح في «قائمة المرشحين» (القرار TL-N13): بياناته ونسخه وترشيحاته وما يجوز للمستخدم الحالي فعله. */
+        CandidateDetails: {
+            /**
+             * Format: int32
+             * @description المعرّف.
+             */
+            id: number;
+            /** @description «الاسم». */
+            name: string | null;
+            /**
+             * Format: int32
+             * @description «الجنسية».
+             */
+            nationalityId: number;
+            /** @description اسمها. */
+            nationalityName: string | null;
+            /** @description «رشّحه». */
+            nominatedBy: string | null;
+            /** @description «جهة الاستقطاب». */
+            recruitedBy: components["schemas"]["LaborParty"];
+            /** @description «رقم الهاتف». */
+            phone: string | null;
+            /**
+             * Format: int32
+             * @description «المهنة» التي يُرشَّح لها.
+             */
+            jobId: null | number;
+            /** @description اسمها. */
+            jobName: string | null;
+            /** @description «ملاحظات». */
+            notes: string | null;
+            /** @description موضعه في القائمة. */
+            poolStatus: components["schemas"]["CandidatePoolStatus"];
+            /**
+             * Format: date-time
+             * @description وقت سحبه من القائمة.
+             */
+            withdrawnAt: string | null;
+            /** @description سبب سحبه. */
+            withdrawalReason: string | null;
+            /**
+             * Format: int32
+             * @description العامل المسجَّل منه.
+             */
+            employeeId: null | number;
+            /**
+             * Format: int32
+             * @description رقم الموظف الخاص به.
+             */
+            employeeNumber: null | number;
+            /**
+             * Format: date-time
+             * @description وقت تسجيله في القائمة.
+             */
+            createdAt: string | null;
+            /** @description الاسم الكامل للمستخدم الذي سجّله. */
+            createdBy: string | null;
+            /**
+             * Format: byte
+             * @description إصدار الصف (يُرسل مع التعديل).
+             */
+            rowVersion: string;
+            /** @description نسختا الجواز والشهادة الصحية المرفقتان (تُفتحان لصاحب «تسجيل العمال»). */
+            documents: components["schemas"]["CandidateDocumentItem"][];
+            /** @description ترشيحاته على طلبات ضمن نطاق المستخدم، الأحدث أولًا. */
+            nominations: components["schemas"]["CandidateNominationItem"][];
+            /** @description يجوز للمستخدم تعديل بياناته. */
+            canEdit: boolean;
+            /** @description يجوز للمستخدم سحبه من القائمة (بلا ترشيح جارٍ). */
+            canWithdraw: boolean;
+            /** @description يجوز للمستخدم إعادته إلى القائمة. */
+            canRestore: boolean;
+            /** @description يجوز للمستخدم ترشيحه على طلب الآن (متاح). */
+            canNominate: boolean;
+        };
+        /** @description نسخة مرفقة بالمرشح؛ وتُفتح من `GET candidates/{id}/documents/{kind}`. */
+        CandidateDocumentItem: {
+            /** @description الجواز أو الشهادة الصحية. */
+            kind: components["schemas"]["CandidateDocumentKind"];
+            /** @description اسم الملف كما رُفع. */
+            fileName: string | null;
+            /**
+             * Format: int32
+             * @description حجمه بالبايت.
+             */
+            size: number;
+            /**
+             * Format: date-time
+             * @description وقت إرفاقه.
+             */
+            attachedAt: string | null;
+        };
+        /** @description بيانات مرشح كما يُدخلها المستخدم في «قائمة المرشحين» (القرار TL-N13). */
+        CandidateInput: {
+            /** @description «الاسم» (يصبح اسم الموظف عند التسجيل). */
+            name?: string | null;
+            /**
+             * Format: int32
+             * @description «الجنسية».
+             */
+            nationalityId?: null | number;
+            /** @description «رشّحه»: العامل الحالي أو أحد المعارف ممن رشّح المرشح. */
+            nominatedBy?: string | null;
+            recruitedBy?: null | components["schemas"]["LaborParty"];
+            /** @description «رقم الهاتف» (اختياري؛ ويُقترح رقمًا للموظف عند تسجيله). */
+            phone?: string | null;
+            /**
+             * Format: int32
+             * @description «المهنة» التي يُرشَّح لها (اختيارية؛ تُصفّى بها القائمة عند الترشيح على طلب).
+             */
+            jobId?: null | number;
+            /** @description «ملاحظات» (اختيارية). */
+            notes?: string | null;
+        };
+        /** @description ترشيح من ترشيحات المرشح على طلب احتياج (القرار TL-N13). */
+        CandidateNominationItem: {
+            /**
+             * Format: int32
+             * @description معرّف الترشيح.
+             */
+            nominationId: number;
+            /**
+             * Format: int32
+             * @description «الرقم المرجعي» للطلب.
+             */
+            requestNumber: number;
+            /** @description «المسار». */
+            trackName: string | null;
+            /** @description «الموقع». */
+            workSiteName: string | null;
+            /** @description «المهنة» في الطلب. */
+            jobName: string | null;
+            /** @description «الحالة» على الطلب. */
+            status: components["schemas"]["CandidateStatus"];
+            /** @description سبب عدم القبول أو الاستبعاد أو الإلغاء. */
+            statusReason: string | null;
+            /**
+             * Format: date-time
+             * @description وقت آخر تغيير للحالة.
+             */
+            statusChangedAt: string | null;
+            /**
+             * Format: date-time
+             * @description وقت الترشيح.
+             */
+            nominatedAt: string | null;
+            interview: null | components["schemas"]["CandidateStepItem"];
+            generalManager: null | components["schemas"]["CandidateStepItem"];
+        };
+        /**
+         * @description موضع المرشح في «قائمة المرشحين» (القرار TL-N13)، مشتقًّا من بياناته وترشيحاته لا مخزَّنًا.
+         * @enum {unknown}
+         */
+        CandidatePoolStatus: "Available" | "Nominated" | "Registered" | "Withdrawn";
+        /** @description مرشحون من «قائمة المرشحين» يُرشَّحون على طلب احتياج (القرار TL-N13). */
+        NominateCandidatesRequest: {
+            /** @description معرّفات المرشحين المتاحين. */
+            candidateIds?: number[];
+        };
+        /** @description «قرار النقل» المرفق بالطلب (القرار TL-N12)؛ ويُفتح من `GET transfers/{id}/decision-file`. */
+        TransferDecisionFileItem: {
+            /** @description اسم الملف كما رُفع. */
+            fileName: string | null;
+            /**
+             * Format: int32
+             * @description حجمه بالبايت.
+             */
+            size: number;
+            /**
+             * Format: date-time
+             * @description وقت إرفاقه.
+             */
+            attachedAt: string | null;
+        };
+        /** @description بيانات المرشح المصحَّحة (القرار TL-N13). */
+        UpdateCandidateRequest: {
+            /**
+             * Format: byte
+             * @description إصدار الصف كما قُرئ مع المرشح (رمز التزامن).
+             */
+            rowVersion?: string;
+            /** @description «الاسم» (يصبح اسم الموظف عند التسجيل). */
+            name?: string | null;
+            /**
+             * Format: int32
+             * @description «الجنسية».
+             */
+            nationalityId?: null | number;
+            /** @description «رشّحه»: العامل الحالي أو أحد المعارف ممن رشّح المرشح. */
+            nominatedBy?: string | null;
+            recruitedBy?: null | components["schemas"]["LaborParty"];
+            /** @description «رقم الهاتف» (اختياري؛ ويُقترح رقمًا للموظف عند تسجيله). */
+            phone?: string | null;
+            /**
+             * Format: int32
+             * @description «المهنة» التي يُرشَّح لها (اختيارية؛ تُصفّى بها القائمة عند الترشيح على طلب).
+             */
+            jobId?: null | number;
+            /** @description «ملاحظات» (اختيارية). */
+            notes?: string | null;
+        };
+        /** @description سحب مرشح من «قائمة المرشحين» (القرار TL-N13). */
+        WithdrawCandidateRequest: {
+            /** @description «سبب السحب» (مطلوب). */
+            reason?: string | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -20797,13 +21341,19 @@ export interface operations {
     ListCandidates: {
         parameters: {
             query?: {
-                /** @description البحث بالاسم: يجب أن تظهر كل كلمة في الاسم. */
+                /** @description البحث بالاسم (يجب أن تظهر كل كلمة في الاسم) أو برقم الهاتف. */
                 Search?: string;
-                /** @description «الحالة». */
+                /** @description موضعه في القائمة؛ CandidatePoolStatus.Available لاختيار مرشحين لطلب. */
+                PoolStatus?: components["schemas"]["CandidatePoolStatus"];
+                /** @description «الحالة» على آخر ترشيح له (متى كان طلبه ضمن النطاق). */
                 Status?: components["schemas"]["CandidateStatus"];
-                /** @description «المسار» الخاص بالطلب. */
+                /** @description «المهنة» التي يُرشَّح لها. */
+                JobId?: number;
+                /** @description «الجنسية». */
+                NationalityId?: number;
+                /** @description «المسار» الخاص بطلب آخر ترشيح له (ضمن النطاق). */
                 TrackId?: number;
-                /** @description «الرقم المرجعي» للطلب. */
+                /** @description «الرقم المرجعي» لطلب ضمن النطاق رُشِّح عليه (في أي وقت). */
                 RequestNumber?: number;
                 /** @description الصفحة (تبدأ من 1). */
                 Page?: number;
@@ -21056,6 +21606,84 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RequestCandidates"];
                 };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    NominateCandidates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestNumber: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NominateCandidatesRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Bad Request */
             400: {
@@ -21880,7 +22508,7 @@ export interface operations {
                 From?: string;
                 /** @description اليوم الأخير (شاملًا). */
                 To?: string;
-                /** @description نص في رمز الإجراء أو الكيان أو الملخص. */
+                /** @description نص في رمز الإجراء أو الكيان أو الملخص أو اسم المنفِّذ. */
                 Search?: string;
                 /** @description تصفية حسب النتيجة. */
                 Outcome?: components["schemas"]["AuditOutcome"];
@@ -24011,6 +24639,1008 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetUserPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPermissionsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SetUserPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetUserPermissionsRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OpenSiteCapacityFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                changeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListSiteCapacityChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workSiteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCapacityChangeItem"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListSiteCapacities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCapacityItem"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ChangeSiteCapacity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workSiteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    capacity?: string | null;
+                } & {
+                    rowVersion?: string | null;
+                } & {
+                    file?: components["schemas"]["IFormFile"];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteCapacityItem"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OpenTransferDecisionFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transferId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AttachTransferDecisionFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transferId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    file?: components["schemas"]["IFormFile"];
+                };
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RemoveTransferDecisionFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transferId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetCandidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidateId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateDetails"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    UpdateCandidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidateId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCandidateRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RestoreCandidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidateId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    WithdrawCandidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                candidateId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawCandidateRequest"];
+            };
+        };
         responses: {
             /** @description No Content */
             204: {

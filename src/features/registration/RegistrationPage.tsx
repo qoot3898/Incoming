@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/common/PageHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { ErrorState, LoadingState, EmptyState } from '@/components/common/States';
 import { SectionCard } from '@/components/common/SectionCard';
+import { SiteSuggestionsList } from '@/components/common/SiteSuggestionsList';
 import { LocalDataGrid } from '@/components/tables/ServerDataGrid';
 import { col } from '@/components/tables/columns';
 import { useEnumOptions } from '@/hooks/useEnumLabel';
@@ -283,6 +284,7 @@ function BatchNotices({ invalidCount, serverError, duplicateWarning }: NoticePro
             <div key={m}>{m}</div>
           ))}
           {duplicateWarning && <div>{t('registration.duplicateHint')}</div>}
+          {serverError.error.code === API_ERROR_CODES.siteCapacityExceeded && <SiteSuggestionsList suggestions={serverError.error.suggestions ?? []} />}
         </Alert>
       )}
     </Stack>

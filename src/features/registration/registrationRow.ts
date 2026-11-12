@@ -68,7 +68,8 @@ export function defaultsFor(q: QueueItem, o: Options): RegistrationRow {
     birthPlaceId: birth ? String(birth) : '',
     nationalNumber: '',
     idCardNumber: '',
-    phoneNumber: '',
+    // TL-N13: the candidate's phone from the list is suggested as the employee's number; it stays editable.
+    phoneNumber: q.phone ?? '',
     passportNumber: '',
     passportIssueDate: '',
     passportExpiryDate: '',

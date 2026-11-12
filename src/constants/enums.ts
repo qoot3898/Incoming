@@ -4,6 +4,8 @@ export const ENUMS = {
   StaffingRequestStatus: ['PendingOperations', 'PendingGeneralManager', 'Approved', 'Rejected', 'Closed', 'Filled'],
   StaffingReason: ['CurrentNeed', 'Replacement', 'NewSite'],
   CandidateStatus: ['Interview', 'PendingGeneralManager', 'Approved', 'NotAccepted', 'NotApproved', 'Registered', 'Cancelled'],
+  /** TL-N13: where a candidate stands in the candidate list (derived by the API from his data and nominations). */
+  CandidatePoolStatus: ['Available', 'Nominated', 'Registered', 'Withdrawn'],
   LaborParty: ['Site', 'Supervisor', 'Operations', 'GeneralManager', 'LaborSection', 'LaborManager', 'HumanResources', 'EntryRegistrar', 'Payroll', 'Finance', 'Worker'],
   Gender: ['Male', 'Female'],
   MaritalStatus: ['Single', 'Married', 'MarriedWithDependants', 'Widowed', 'Divorced'],

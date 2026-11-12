@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { missingScans, rowIssues, splitServerErrors, toInput, type RegistrationRow } from './registrationRow';
+import { defaultsFor, missingScans, rowIssues, splitServerErrors, toInput, type RegistrationRow } from './registrationRow';
 
 const TODAY = '2026-11-09';
 const base: RegistrationRow = {
@@ -80,5 +80,19 @@ describe('registration row rules (TL-N2, TL-N4)', () => {
     const { rows, rest } = splitServerErrors({ 'workers[1].passportNumber': ['Duplicate'], 'workers[0]': ['Candidate taken'], confirmDuplicates: ['Confirm'] });
     expect(rows).toEqual({ 1: { passportNumber: 'Duplicate' }, 0: { _row: 'Candidate taken' } });
     expect(rest).toEqual(['Confirm']);
+  });
+});
+
+describe('defaults from the candidate list (TL-N13)', () => {
+  const options = { defaultDepartments: [], managementDepartments: [], defaultBirthPlaces: [] } as unknown as Parameters<typeof defaultsFor>[1];
+  const item = (phone: string | null) =>
+    ({ candidateId: 41, requestNumber: 7, name: 'Adam', nationalityId: 3, managementId: 1, jobId: 2, phone, passportScanAttached: false, healthCertificateScanAttached: false }) as unknown as Parameters<typeof defaultsFor>[0];
+
+  it("suggests the candidate's phone as the employee's number", () => {
+    expect(defaultsFor(item('0912345678'), options).phoneNumber).toBe('0912345678');
+  });
+
+  it('leaves the number empty when the candidate has none', () => {
+    expect(defaultsFor(item(null), options).phoneNumber).toBe('');
   });
 });

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Box, Grid2 as Grid, Stack, Tab, Tabs } from '@mui/material';
+import { Box, Grid2 as Grid, Link, Stack, Tab, Tabs } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { Link as RouterLink, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { staffingApi, staffingKeys } from './api';
 import { CandidatesPanel } from './CandidatesPanel';
@@ -52,10 +52,26 @@ export default function StaffingDetailsPage() {
             <Tab label={t('staffing.tabs.details')} />
             <Tab label={`${t('staffing.tabs.candidates')} (${d.approvedCount}/${d.count})`} />
           </Tabs>
-          {tab === 0 ? <DetailsTab d={d} /> : <CandidatesPanel requestNumber={d.number} />}
+          {tab === 0 ? <DetailsTab d={d} /> : <CandidatesPanel requestNumber={d.number} jobName={d.jobName} />}
         </Box>
       )}
     </QueryBoundary>
+  );
+}
+
+/** TL-N8: every leaving worker of a replacement request, by employee number (empty for a need request). */
+function Leavers({ leavers }: { leavers: Details['leavers'] }) {
+  if (!leavers || leavers.length === 0) return '—';
+  return (
+    <Stack component="ul" spacing={0.25} sx={{ m: 0, p: 0, listStyle: 'none' }}>
+      {leavers.map((l) => (
+        <li key={l.employeeId}>
+          <Link component={RouterLink} to={`/workers/${l.employeeId}`} underline="hover">
+            {l.employeeNumber} — {l.name}
+          </Link>
+        </li>
+      ))}
+    </Stack>
   );
 }
 
@@ -76,8 +92,9 @@ function DetailsTab({ d }: { d: Details }) {
                 { label: t('staffing.countApproved'), value: `${d.approvedCount} / ${d.count}` },
                 { label: t('staffing.reason'), value: label('StaffingReason', d.reason) },
                 {
-                  label: t('staffing.leavingWorker'),
-                  value: d.leavingEmployeeNumber ? `${d.leavingEmployeeNumber} — ${d.leavingEmployeeName ?? ''}` : '—',
+                  label: t('staffing.leavingWorkers'),
+                  value: <Leavers leavers={d.leavers} />,
+                  span: 2,
                   hidden: d.reason !== 'Replacement',
                 },
                 { label: t('staffing.requiredStartDate'), value: formatDate(d.requiredStartDate) },

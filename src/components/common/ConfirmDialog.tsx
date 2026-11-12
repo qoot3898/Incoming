@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
+import { Alert, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 
 interface Props {
@@ -9,11 +9,13 @@ interface Props {
   confirmLabel?: string;
   destructive?: boolean;
   loading?: boolean;
+  /** Why the action was refused; shown in the dialog (which stays open) so the reason can be read. */
+  error?: string | null;
   onConfirm: () => void;
   onClose: () => void;
 }
 
-export function ConfirmDialog({ open, title, message, confirmLabel, destructive, loading, onConfirm, onClose }: Props) {
+export function ConfirmDialog({ open, title, message, confirmLabel, destructive, loading, error, onConfirm, onClose }: Props) {
   const { t } = useTranslation();
   const titleId = useId();
   return (
@@ -21,6 +23,11 @@ export function ConfirmDialog({ open, title, message, confirmLabel, destructive,
       <DialogTitle id={titleId}>{title}</DialogTitle>
       <DialogContent>
         <DialogContentText>{message}</DialogContentText>
+        {error && (
+          <Alert severity="error" sx={{ mt: 2 }} role="alert">
+            {error}
+          </Alert>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={loading} color="inherit">

@@ -157,6 +157,7 @@ function IssueDialog({ worker, onClose }: { worker: QItem; onClose: () => void }
         { name: 'issuedOn', kind: 'date', label: t('permits.issuedOn'), required: true },
       ]}
       defaultValues={{ workSiteId: d?.currentSite?.id ?? worker.workSiteId, issuedOn: todayIso() }}
+      siteField="workSiteId"
       submitLabel={t('permits.issue')}
       onSubmit={(v) => issue.mutateAsync(v)}
     />

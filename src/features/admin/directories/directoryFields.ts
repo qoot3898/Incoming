@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 import type { FieldConfig } from '@/components/forms/FormDialog';
 import type { DirectoryRules } from '@/constants/directories';
+import { COORDINATE_MAX_LENGTH, coordinateProblems, isCoordinateKind, normalizeCoordinate } from './coordinates';
 import type { Schemas, S } from '@/types/api';
 
 export type Entry = S<'DirectoryEntryItem'>;
@@ -38,6 +39,8 @@ function extraField(f: ExtraField, locked: ReadonlySet<string>, ctx: Context): F
     };
   }
   if (f.kind === 'Text') return { name, label, kind: 'text', maxLength: f.maxLength || undefined, disabled, half: true };
+  // Coordinates are text in Latin digits (up to six decimals); their range and pairing are checked by `entryProblems`.
+  if (isCoordinateKind(f.kind)) return { name, label, kind: 'text', maxLength: COORDINATE_MAX_LENGTH, disabled, half: true, helperText: ctx.t(`directories.coordinateHint.${f.kind}`) };
   return { name, label, kind: 'number', min: 0, disabled, half: true };
 }
 
@@ -64,11 +67,23 @@ export function entryFields(listing: Listing, ctx: Context): FieldConfig<EntryVa
   ];
 }
 
-/** Every extra field is sent on update: a missing optional field (e.g. `name-en`) is cleared by the API. */
+/**
+ * Every extra field is sent on update: a missing optional field (e.g. `name-en`) is cleared by the API.
+ * Coordinates go out as plain Latin-digit text (`"32.887209"`).
+ */
 export function extraValues(listing: Listing, v: EntryValues): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   listing.fields.forEach((f) => {
-    if (f.key) out[f.key] = v[f.key];
+    if (!f.key) return;
+    const value = v[f.key];
+    out[f.key] = isCoordinateKind(f.kind) && typeof value === 'string' ? normalizeCoordinate(value) || null : value;
   });
   return out;
+}
+
+/** Cross-field rules of an entry dialog (TL-N7 coordinates): field key → message, or `null` when fine. */
+export function entryProblems(listing: Listing, v: EntryValues, t: TFunction): Record<string, string> | null {
+  const problems = coordinateProblems(listing.fields, v);
+  const entries = Object.entries(problems).map(([key, problem]) => [key, t(`directories.coordinateProblems.${problem}`)] as const);
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
 }

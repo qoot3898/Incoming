@@ -5,7 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { transfersApi, transfersKeys } from './api';
+import { DECISION_FILE_ACCEPT, transfersApi, transfersKeys } from './api';
+import { FileInput } from '@/components/files/FileInput';
 import { WorkerPicker } from '@/components/forms/WorkerPicker';
 import { RefusalHint } from '@/components/common/RefusalHint';
 import { FormSelectField, FormTextField } from '@/components/forms/fields';
@@ -27,7 +28,13 @@ interface Props {
   transferId?: number;
   initial?: Partial<{ initiatedBy: string; proposedSiteId: number; reason: string; requestedDate: string }>;
   submitLabel: string;
-  onSubmit: (body: S<'TransferRequestInput'>) => Promise<unknown>;
+  /** `decisionFile` is the optional transfer decision PDF (TL-N12); always null unless `withDecisionFile`. */
+  onSubmit: (body: S<'TransferRequestInput'>, decisionFile: File | null) => Promise<unknown>;
+  /**
+   * Offer the optional transfer decision (PDF) on a new request (TL-N12). It is attached by a separate request
+   * once the transfer is submitted; a request being corrected changes it on its details page instead.
+   */
+  withDecisionFile?: boolean;
   onCancel?: () => void;
   /** Ask before leaving the page with unsaved input (full-page form only). */
   guardUnsaved?: boolean;
@@ -50,11 +57,12 @@ function toDefaults(initial: Props['initial']) {
 }
 
 /** Transfer request form (TL-F08 A) used for new requests and re-submission. */
-export function TransferForm({ worker, onWorkerChange, transferId, initial, submitLabel, onSubmit, onCancel, guardUnsaved }: Props) {
+export function TransferForm({ worker, onWorkerChange, transferId, initial, submitLabel, onSubmit, withDecisionFile, onCancel, guardUnsaved }: Props) {
   const { t } = useTranslation();
   const enumOptions = useEnumOptions();
   const [attempted, setAttempted] = useState(false);
   const [workerServerError, setWorkerServerError] = useState<string | null>(null);
+  const [decisionFile, setDecisionFile] = useState<File | null>(null);
   const options = useQuery({
     queryKey: [...transfersKeys.all, 'options', worker?.employeeId, transferId],
     queryFn: () => transfersApi.options(worker!.employeeId, transferId),
@@ -93,13 +101,24 @@ export function TransferForm({ worker, onWorkerChange, transferId, initial, subm
   const siteHint = !worker ? t('forms.chooseWorkerFirst') : o && !o.otherSitesAllowed ? t('transfers.trackSitesOnly') : undefined;
   const workerError = workerServerError ?? (attempted && !worker ? t('validation.required') : undefined);
 
+  // A suggested site of a capacity rejection (TL-N7) fills the site field when it is an allowed option.
+  const pickSite = (siteId: number) => {
+    if (siteOptions.some((s) => s.value === siteId && !s.disabled)) {
+      setValue('proposedSiteId', String(siteId), { shouldDirty: true, shouldValidate: true });
+      clearServerError();
+    }
+  };
+
   const submit = (e: FormEvent) => {
     setAttempted(true);
     return handleSubmit(async (v) => {
       if (!worker) return;
       clearServerError();
       try {
-        await onSubmit({ employeeId: worker.employeeId, initiatedBy: v.initiatedBy as S<'TransferInitiator'>, proposedSiteId: Number(v.proposedSiteId), reason: v.reason, requestedDate: v.requestedDate });
+        await onSubmit(
+          { employeeId: worker.employeeId, initiatedBy: v.initiatedBy as S<'TransferInitiator'>, proposedSiteId: Number(v.proposedSiteId), reason: v.reason, requestedDate: v.requestedDate },
+          withDecisionFile ? decisionFile : null,
+        );
       } catch (err) {
         await handleServerError(err);
       }
@@ -109,7 +128,7 @@ export function TransferForm({ worker, onWorkerChange, transferId, initial, subm
   return (
     <form onSubmit={submit} noValidate>
       <Stack spacing={3}>
-        <FormErrorAlert value={serverError} />
+        <FormErrorAlert value={serverError} onPickSite={pickSite} />
         <FormSection title={t('forms.sections.worker')} columns={1}>
           <WorkerPicker value={worker} onChange={changeWorker} required disabled={!onWorkerChange} error={workerError} />
           <CurrentPlacement options={o} />
@@ -131,6 +150,18 @@ export function TransferForm({ worker, onWorkerChange, transferId, initial, subm
           <FullRow>
             <FormTextField control={control} name="reason" label={t('common.reason')} required multiline minRows={3} />
           </FullRow>
+          {withDecisionFile && (
+            <FullRow>
+              <FileInput
+                label={t('transfers.decisionFile.fileLabel')}
+                value={decisionFile}
+                onChange={setDecisionFile}
+                accept={DECISION_FILE_ACCEPT}
+                disabled={formState.isSubmitting}
+                helperText={t('transfers.decisionFile.fileHint')}
+              />
+            </FullRow>
+          )}
         </FormSection>
         <FormActions submitLabel={submitLabel} submitting={formState.isSubmitting} disabled={!!o?.refusal} onCancel={onCancel} />
       </Stack>

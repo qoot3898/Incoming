@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AxiosError, CanceledError, AxiosHeaders } from 'axios';
-import { applyServerErrors, toApiError, type ApiError } from './errors';
+import { API_ERROR_CODES, applyServerErrors, parseSuggestions, toApiError, toApiErrorSync, type ApiError } from './errors';
 
 function axiosError(status: number, data: unknown) {
   const config = { headers: new AxiosHeaders() };
@@ -31,5 +31,31 @@ describe('server error handling', () => {
   it('keeps the stable error code and correlation id (RFC 9457)', async () => {
     const err = await toApiError(axiosError(409, { title: 'Conflict', code: 'CONCURRENCY_CONFLICT', correlationId: 'abc-1' }), 'fallback');
     expect(err).toMatchObject({ status: 409, code: 'CONCURRENCY_CONFLICT', correlationId: 'abc-1' });
+  });
+
+  it('keeps the proposed sites of a capacity rejection (TL-N7)', async () => {
+    const body = {
+      title: 'full',
+      detail: 'The site cannot take 2 more.',
+      code: 'SITE_CAPACITY_EXCEEDED',
+      suggestions: [
+        { workSiteId: 14, number: 120, name: 'Port kitchen', shortage: 3, freePlaces: null, distanceKm: 12.4 },
+        { workSiteId: 9, number: 104, name: 'Karimiya store', shortage: null, freePlaces: 6, distanceKm: 7.9 },
+      ],
+    };
+    const err = await toApiError(axiosError(409, body), 'fallback');
+    expect(err.code).toBe(API_ERROR_CODES.siteCapacityExceeded);
+    expect(err.suggestions).toHaveLength(2);
+    expect(err.suggestions?.[0]).toEqual({ workSiteId: 14, number: 120, name: 'Port kitchen', shortage: 3, freePlaces: null, distanceKm: 12.4 });
+    expect(toApiErrorSync(axiosError(409, body), 'fallback').suggestions).toHaveLength(2);
+  });
+
+  it('accepts a capacity rejection without suggestions and ignores malformed ones', async () => {
+    const empty = await toApiError(axiosError(409, { title: 'full', code: 'SITE_CAPACITY_EXCEEDED', suggestions: [] }), 'fallback');
+    expect(empty.suggestions).toEqual([]);
+    expect((await toApiError(axiosError(422, { title: 'no' }), 'fallback')).suggestions).toBeUndefined();
+    expect(parseSuggestions([null, 'x', { name: 'no id' }, { workSiteId: 5, name: 'Site' }])).toEqual([
+      { workSiteId: 5, number: 5, name: 'Site', shortage: null, freePlaces: null, distanceKm: null },
+    ]);
   });
 });

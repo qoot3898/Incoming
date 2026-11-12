@@ -8,7 +8,7 @@ type Tone = 'success' | 'warning' | 'error' | 'info' | 'neutral' | 'primary';
 const TONES: Record<string, Tone> = {
   Approved: 'success', Active: 'success', Valid: 'success', Confirmed: 'success', Completed: 'success', Present: 'success',
   Accepted: 'success', Satisfactory: 'success', Acknowledged: 'success', Executed: 'success', Applied: 'success',
-  Received: 'success', Done: 'success', Filled: 'success', Registered: 'primary', Excused: 'success', Success: 'success', Kept: 'primary',
+  Received: 'success', Done: 'success', Filled: 'success', Available: 'success', Nominated: 'info', Registered: 'primary', Excused: 'success', Success: 'success', Kept: 'primary',
   Rejected: 'error', NotApproved: 'error', NotAccepted: 'error', Unsatisfactory: 'error', Failed: 'error', Failure: 'error',
   Denied: 'error', Overdue: 'error', Dismissal: 'error', Suspended: 'error', AbsentWithoutPermission: 'error', Missing: 'error',
   Returned: 'warning', Due: 'warning', New: 'warning', Required: 'warning', Onboarding: 'info', Open: 'info', Interview: 'info', Reported: 'info', Collecting: 'info',

@@ -20,12 +20,18 @@ export function useScopeOptions(trackId?: number | string | null) {
     const tId = trackId === '' || trackId === null || trackId === undefined ? undefined : Number(trackId);
     const siteMap = new Map<number, Named>();
     (d?.trackSites ?? []).filter((s) => tId === undefined || s.trackId === tId).forEach((s) => siteMap.set(s.id, s));
+    // Option labels read `5 — Cook` (number and name), so a job known only by its name (a request's `jobName`) is looked up here.
+    const jobIds = new Map<string, number>();
+    (d?.jobs ?? []).forEach((j) => {
+      if (j.name && !jobIds.has(j.name)) jobIds.set(j.name, j.id);
+    });
     return {
       loading: q.isLoading,
       tracks: toOptions(d?.tracks),
       sites: toOptions([...siteMap.values()]),
       allWorkSites: toOptions(d?.workSites),
       jobs: toOptions(d?.jobs),
+      jobIdByName: (name: string | null | undefined) => (name ? (jobIds.get(name) ?? null) : null),
       nationalities: toOptions(d?.nationalities),
       managements: toOptions(d?.managements),
       scopeEmpty: d?.scopeEmpty ?? false,

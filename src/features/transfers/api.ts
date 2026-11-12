@@ -1,4 +1,4 @@
-import { api } from '@/services/api/client';
+import { api, type TransferOptions } from '@/services/api/client';
 import type { Paged, Q, S } from '@/types/api';
 
 export const transfersKeys = {
@@ -17,4 +17,15 @@ export const transfersApi = {
   cancel: (id: number, body: S<'CancelTransferRequest'>) => api.post(`/transfers/${id}/cancel`, body),
   execute: (id: number, body: S<'TransferExecutionInput'>) => api.post<number>(`/transfers/${id}/execute`, body),
   supervisorsInformed: (id: number, body: S<'RecordSupervisorsInformedRequest'>) => api.post(`/transfers/${id}/supervisors-informed`, body),
+  /**
+   * TL-N12 (2026-11-12): the optional transfer decision (one PDF, multipart field `file`) is attached after the
+   * request is submitted; a second file replaces the first. Changeable while the request is Returned or no party
+   * has decided in the current round (`canChangeDecisionFile`).
+   */
+  attachDecisionFile: (id: number, file: File, transfer?: TransferOptions) => api.putForm(`/transfers/${id}/decision-file`, { file }, transfer),
+  openDecisionFile: (id: number) => api.blob('get', `/transfers/${id}/decision-file`),
+  removeDecisionFile: (id: number) => api.delete(`/transfers/${id}/decision-file`),
 };
+
+/** The transfer decision is a single PDF (frontend-guide §13). */
+export const DECISION_FILE_ACCEPT = 'application/pdf';

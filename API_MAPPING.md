@@ -6,11 +6,11 @@ Conventions observed in the spec:
 
 - Lists return `PagedResult<T>` = `{ items, total, page, pageSize }` with `Page` / `PageSize` query params (server-side pagination).
 - Create endpoints return `201 { id }`; actions return `204`.
-- Errors: RFC 9457 ProblemDetails — `title`, `detail`, stable `code`, `correlationId`; field errors in `errors` keyed by request property (`Workers[0].PassportNumber`). The client keeps `code` on `ApiError` (`API_ERROR_CODES`). `403 ASSIGNMENT_APPROVAL_REQUIRED` / `PASSWORD_CHANGE_REQUIRED` on any request re-reads `auth/me` and the route guard opens the matching screen.
+- Errors: RFC 9457 ProblemDetails — `title`, `detail`, stable `code`, `correlationId`; field errors in `errors` keyed by request property (`Workers[0].PassportNumber`). The client keeps `code` on `ApiError` (`API_ERROR_CODES`). `403 ASSIGNMENT_APPROVAL_REQUIRED` / `PASSWORD_CHANGE_REQUIRED` on any request re-reads `auth/me` and the route guard opens the matching screen; a plain `403 FORBIDDEN` re-reads it too (at most once per 30 s), because direct grants and denials (TL-N9) apply on the user's next request. `409 SITE_CAPACITY_EXCEEDED` carries `suggestions[]` (TL-N7), kept on `ApiError.suggestions`; `403 SELF_PRIVILEGE_CHANGE` / `PERMISSION_NOT_HELD` come from `PUT /users/{id}/permissions`.
 - Enum values in requests may also be sent as numbers (needed for configurable list items such as a punishment type `60`).
 - Enums are serialized as strings (e.g. `LaborStatus = Registered | Onboarding | Active | Suspended | Terminated | Closed`).
 - File endpoints (`print`, `export`, attachments) return binary; frontend downloads them as Blob.
-- Multipart endpoints (passport, documents, survey review, acknowledgement, handover, attachments) accept `scan` file + fields.
+- Multipart endpoints (passport, documents, survey review, acknowledgement, handover, attachments, site-capacity change) accept a `scan` / `file` + fields; empty values are not sent (`api.postForm` / `api.putForm`).
 
 TypeScript types are generated from the spec into `src/types/api.generated.ts` (`npm run gen:api`).
 
@@ -26,7 +26,7 @@ Screen(s): /workers, /workers/:id
 
 ## المستخدمون
 
-Screen(s): /admin/users, /admin/users/:id
+Screen(s): /admin/users, /admin/users/:id, /admin/users/:id/permissions
 
 | Method | Endpoint | Purpose | operationId |
 |---|---|---|---|
@@ -43,6 +43,8 @@ Screen(s): /admin/users, /admin/users/:id
 | GET | `/api/v1/users/{userId}/assignment/file` | فتح ملف تكليف مستخدم (PDF، يُسجَّل كل فتح) | OpenAssignment |
 | POST | `/api/v1/users/{userId}/assignment/decision` | اعتماد ملف التكليف أو إعادته (`rowVersion` من الصف؛ 409 عند الاستبدال) | DecideAssignment |
 | POST | `/api/v1/users/{userId}/force-sign-out` | إنهاء جلسات مستخدم | ForceSignOut |
+| GET | `/api/v1/users/{userId}/permissions` | صلاحيات المستخدم: من الأدوار، مباشرة (`Grant`/`Deny`) وهل يملكها — /admin/users/:id/permissions (TL-N9) | GetUserPermissions |
+| PUT | `/api/v1/users/{userId}/permissions` | استبدال الصلاحيات المباشرة بالقائمتين `granted` و`denied` كاملتين (204؛ `Users.ManagePermissions`) | SetUserPermissions |
 
 ## النقل
 
@@ -59,6 +61,9 @@ Screen(s): /transfers, /transfers/new, /transfers/:id
 | POST | `/api/v1/transfers/{transferId}/execute` | تنفيذ النقل | ExecuteTransfer |
 | POST | `/api/v1/transfers/{transferId}/decision` | قرار جهة اعتماد في النقل | DecideTransfer |
 | POST | `/api/v1/transfers/{transferId}/cancel` | إلغاء طلب نقل | CancelTransfer |
+| GET | `/api/v1/transfers/{transferId}/decision-file` | فتح قرار النقل | OpenTransferDecisionFile |
+| PUT | `/api/v1/transfers/{transferId}/decision-file` | إرفاق قرار النقل (PDF) أو استبداله | AttachTransferDecisionFile |
+| DELETE | `/api/v1/transfers/{transferId}/decision-file` | حذف قرار النقل المرفق | RemoveTransferDecisionFile |
 
 ## إنهاء الخدمة
 
@@ -257,7 +262,7 @@ Screen(s): /leaves, /leaves/new, /leaves/:id, worker leaves tab
 
 ## إعدادات العمالة المؤقتة
 
-Screen(s): /admin/labor-settings (Tracks & sites, User scopes)
+Screen(s): /admin/labor-settings (Tracks & sites, User scopes), /admin/site-capacities (TL-N7)
 
 | Method | Endpoint | Purpose | operationId |
 |---|---|---|---|
@@ -270,6 +275,10 @@ Screen(s): /admin/labor-settings (Tracks & sites, User scopes)
 | POST | `/api/v1/labor-settings/user-scopes` | إضافة نطاق لمستخدم | AddLaborUserScope |
 | GET | `/api/v1/labor-settings/tracks/{trackId}/sites` | مواقع المسار | ListLaborTrackSites |
 | GET | `/api/v1/labor-settings/options` | خيارات إعدادات العمالة المؤقتة | GetLaborSettingsOptions |
+| GET | `/api/v1/labor-settings/site-capacities` | سعة المواقع النشطة: السعة، الإشغال، الأماكن الشاغرة، فوق السعة، الإحداثيات، `rowVersion`، آخر تغيير (TL-N7) | ListSiteCapacities |
+| PUT | `/api/v1/labor-settings/site-capacities/{workSiteId}` | تغيير السعة (`multipart`: `capacity` فارغة = بلا حد، `rowVersion`، `file` PDF؛ `ManageSiteCapacity`؛ 409 `CONCURRENCY_CONFLICT`) | ChangeSiteCapacity |
+| GET | `/api/v1/labor-settings/site-capacities/{workSiteId}/changes` | سجل تغييرات سعة موقع، الأحدث أولاً | ListSiteCapacityChanges |
+| GET | `/api/v1/labor-settings/site-capacities/changes/{changeId}/file` | فتح قرار تغيير السعة (PDF، يُسجَّل كل فتح؛ `ManageSiteCapacity`) | OpenSiteCapacityFile |
 
 ## التكامل
 
@@ -336,16 +345,21 @@ Screen(s): /admin/directories/:slug
 
 ## المرشحون
 
-Screen(s): /candidates, staffing request → Candidates tab
+Screen(s): /candidates, /candidates/:candidateId, staffing request → Candidates tab, /staffing-requests/new (candidates section)
 
 | Method | Endpoint | Purpose | operationId |
 |---|---|---|---|
 | GET | `/api/v1/candidates` | قائمة المرشحين | ListCandidates |
-| POST | `/api/v1/candidates` | إضافة مرشح على طلب احتياج | AddCandidate |
+| POST | `/api/v1/candidates` | إضافة مرشح إلى قائمة المرشحين | AddCandidate |
+| GET | `/api/v1/candidates/{candidateId}` | بطاقة مرشح | GetCandidate |
+| PUT | `/api/v1/candidates/{candidateId}` | تعديل بيانات مرشح | UpdateCandidate |
+| POST | `/api/v1/candidates/{candidateId}/withdraw` | سحب مرشح من قائمة المرشحين | WithdrawCandidate |
+| POST | `/api/v1/candidates/{candidateId}/restore` | إعادة مرشح مسحوب إلى قائمة المرشحين | RestoreCandidate |
 | POST | `/api/v1/candidates/{candidateId}/interview` | تسجيل نتيجة مقابلة المرشح | InterviewCandidate |
 | GET | `/api/v1/staffing-requests/{requestNumber}/candidates` | مرشحو طلب الاحتياج | GetRequestCandidates |
+| POST | `/api/v1/staffing-requests/{requestNumber}/candidates` | ترشيح مرشحين من القائمة على طلب احتياج | NominateCandidates |
 | POST | `/api/v1/candidates/decisions` | قرار المدير العام في أسماء المرشحين | DecideCandidates |
-| POST | `/api/v1/candidates/{candidateId}/cancel` | إلغاء مرشح | CancelCandidate |
+| POST | `/api/v1/candidates/{candidateId}/cancel` | إلغاء ترشيح مرشح | CancelCandidate |
 
 ## النسخ الاحتياطي
 
@@ -437,3 +451,35 @@ Screen(s): /complaint (public, no sign-in), /complaints, /complaints/:id — per
 | `GET /directories/{slug}/{id}` | single entry (fresh `rowVersion` before editing) | /admin/directories/:slug |
 | `GET /audit` | filters `ActorUserId`, `ActionCodes[]`, `Module`, `EntityType`, `EntityId`, `IpAddress`, `CorrelationId`, `IncludeChanges`; rows `actorUserId`, `actorUserName`, `userAgent`, `correlationId`, `changes` (TL-N6) | /admin/audit |
 | `GET /audit/options` | filter lists (actions, modules, entity types, actors) | /admin/audit |
+
+## Changes of 2026-11-11 to existing endpoints
+
+| Endpoint | Change | Screen |
+|---|---|---|
+| `POST /staffing-requests` | `leavingEmployeeId` removed → `leavingEmployeeIds[]` (replacement only: one different leaving worker per requested place, so as many as `count`; `errors.LeavingEmployeeIds`); `409 SITE_CAPACITY_EXCEEDED` when `count` exceeds the site's free places (TL-N8, TL-N7) | /staffing-requests/new |
+| `GET /staffing-requests/{number}` | `leavingEmployeeNumber` / `leavingEmployeeName` removed → `leavers[] { employeeId, employeeNumber, name }` (empty for a need request) (TL-N8) | /staffing-requests/:number |
+| `POST /registration/workers`, `POST /workers/{id}/entry-permits`, `POST /transfers`, `PUT /transfers/{id}`, `POST /transfers/{id}/execute`, `POST /migration/current-workers`, `POST /terminations/{id}/replacement-request` | `409 SITE_CAPACITY_EXCEEDED` with up to 5 `suggestions[] { workSiteId, number, name, shortage, freePlaces, distanceKm }`; the action is never retried automatically (TL-N7) | registration, permit dialog, transfer form / execution, migration tab, termination replacement request |
+| `GET /directories/work-sites` | extra fields `latitude` / `longitude` typed `Latitude` / `Longitude` (`DirectoryFieldKind`): -90…90 / -180…180, ≤ 6 decimals, Latin digits, both or neither (TL-N7) | /admin/directories/work-sites |
+| `DELETE /workers/{id}/onboarding/start-report`, `POST /workers/{id}/onboarding/close-not-started` | `422 BUSINESS_RULE_VIOLATED` while the worker has a termination request in progress; the message names the request (TL-N10) | onboarding record (withdraw dialog keeps the refusal visible; close dialog shows it in its alert) |
+| `GET /auth/me` | `permissions` now include direct grants minus direct denials (TL-N9) | session, menus, buttons |
+| `GET /penalties` | `PenaltySource` is never `null` | /penalties |
+| `AttendanceSheetCell` | `effective` is optional | attendance sheet |
+
+## Changes of 2026-11-12 to existing endpoints
+
+| Endpoint | Change | Screen |
+|---|---|---|
+| `GET /candidates` | row reshaped (TL-N13): the candidate is a person of the candidate list, not "a candidate on a request" — `requestNumber`, `trackName`, `workSiteName`, `jobName`, `status`, `statusReason` describe his latest nomination and are `null` when he was never nominated or the request is outside the user's scope; new `phone`, `candidateJobName`, `poolStatus` (`CandidatePoolStatus`: `Available`, `Nominated`, `Registered`, `Withdrawn`), `nominationCount`; new filters `PoolStatus`, `JobId`, `NationalityId`; `Search` also matches the phone number. Whoever holds `ManageCandidates` sees the whole list, others only candidates nominated on a request within their scope | /candidates |
+| `POST /candidates` | `requestNumber` is optional (without it the candidate only joins the list); new `phone`, `jobId`, `notes` | /candidates, request → Candidates tab ("New candidate") |
+| `GET /staffing-requests/{n}/candidates` | `canAdd` now means "may nominate now" (from submission until rejected / closed / filled), `canInterview` also requires an approved request, `acceptsCandidates` unchanged; every item adds `nominationId` and `phone`; `id` stays the candidate id | request → Candidates tab |
+| `POST /candidates/{id}/cancel` | cancels the running nomination only and returns the candidate to the list with his data and copies (`409 INVALID_STATE_TRANSITION` without one) | request → Candidates tab ("Cancel nomination") |
+| `POST /staffing-requests` | optional `candidateIds[]` (available candidates of the list) and `newCandidates[]` (`CandidateInput`), both for `ManageCandidates` holders (`403` otherwise); saved with the request in one transaction; reasons in `errors.CandidateIds` and `errors["NewCandidates[i].Field"]` | /staffing-requests/new |
+| `GET /registration/queue` | each item carries the candidate's `phone`, suggested as the employee's phone number | /registration |
+| `GET /transfers/{id}` | `decisionFile { fileName, size, attachedAt }`, `canChangeDecisionFile`, `decisionFileRefusal` (TL-N12) | /transfers/:id |
+| `GET /inbox/tasks` → `notifications` | fingerprint notices (TL-N12) link to `transfers/{id}` — relative, without a leading slash; `resolveLink` anchors it before matching the known routes | notification menu, /tasks |
+| `GET /terminations/{id}` | `actions.settlementRefusal` removed; `canApproveSettlement` is true for whoever recorded the settlement too (TL-N11) | /terminations/:id |
+| decision endpoints of every workflow | the rule "a user does not approve what he entered himself" is gone (TL-N11); `canDecide`, `parties[].refusal`, `interviewRefusal`, `decisionRefusal`, `reviewRefusal` only keep the "one user cannot decide two steps of the same chain" refusal. The screens never decided this themselves, so they follow the API flags unchanged | all details pages, /tasks |
+
+New endpoints: `GET|PUT|DELETE /transfers/{id}/decision-file` (multipart field `file`, PDF; `400 errors.File`, `404`, `422` once a party has decided in the round, `409` on a simultaneous decision),
+`GET|PUT /candidates/{id}`, `POST /candidates/{id}/withdraw`, `POST /candidates/{id}/restore`, `POST /staffing-requests/{number}/candidates`.
+New permissions: `TemporaryLabor.FingerprintNotices` (default role `LaborFingerprintSupervisor`, no screen of its own); `TemporaryLabor.ManageCandidates` gains the list and the nomination actions.
