@@ -53,6 +53,12 @@ export const ACTION_PERMISSIONS = {
   createEvaluation: [`${TL}.ManageEvaluations`],
   createTermination: [`${TL}.ManageTerminations`],
   correctIdentity: [`${TL}.ManageEmployeeData`],
+  /**
+   * TL-N14: renew a worker's health certificate (`POST /workers/{id}/health-certificates`). The API does not publish
+   * the permission of this endpoint; it is offered to whoever records the worker's documents (the onboarding
+   * permission) and the API stays the judge (a 403 is shown as such).
+   */
+  renewHealthCertificate: [`${TL}.ManageOnboarding`],
 } as const satisfies Record<string, readonly string[]>;
 
 export const NAV_PERMISSIONS: Record<string, readonly string[]> = {

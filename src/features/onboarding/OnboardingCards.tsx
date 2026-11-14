@@ -25,7 +25,7 @@ import { useOnboardingInvalidation } from './invalidation';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { onboardingApi, onboardingKeys } from './api';
-import { workersApi, workersKeys } from '@/features/workers/api';
+import { workersApi } from '@/features/workers/api';
 import { payrollApi } from '@/features/payroll/api';
 import { SectionCard } from '@/components/common/SectionCard';
 import { InfoGrid } from '@/components/common/InfoGrid';
@@ -44,19 +44,18 @@ import { ENUMS } from '@/constants/enums';
 import { formatDate, formatDateTime, formatMoney, todayIso } from '@/utils/format';
 import type { LaborParty, S } from '@/types/api';
 import type { UploadVars } from '@/services/api/client';
+import { healthCertificateValidation, type HealthCertificateValues } from '@/features/workers/healthCertificate';
 
 type Rec = S<'OnboardingRecord'>;
 
-interface DocumentForm {
+interface DocumentForm extends HealthCertificateValues {
   kind: string | null;
-  receivedOn: string | null;
-  issuedOn: string | null;
-  expiresOn: string | null;
-  notes: string | null;
-  scan: File | null;
 }
 
-/** TL-N4: a health certificate carries its issue and expiry dates; other documents carry none. */
+/**
+ * TL-N4 / TL-N14: a health certificate carries its issue and expiry dates and is received through its own
+ * endpoint (`POST /workers/{id}/health-certificates`); the other documents carry no dates.
+ */
 const isHealthCertificate = (v: Record<string, unknown>) => v.kind === 'HealthCertificate';
 
 
@@ -72,6 +71,9 @@ export function StartRecordCard({ r }: { r: Rec }) {
           { label: t('fields.origin'), value: label('LaborFileOrigin', r.origin) },
           { label: t('fields.nationality'), value: r.nationalityName },
           { label: t('fields.passportNumber'), value: r.passportNumber },
+          { label: t('fields.passportIssueDate'), value: formatDate(r.passportIssueDate), hidden: !r.passportIssueDate },
+          { label: t('fields.passportExpiryDate'), value: formatDate(r.passportExpiryDate), hidden: !r.passportExpiryDate },
+          { label: t('onboarding.passportCopy'), value: r.hasPassportCopy ? t('common.yes') : t('common.no'), hidden: r.libyan && !r.hasPassportCopy },
           { label: t('fields.nationalNumber'), value: r.nationalNumber },
           { label: t('fields.healthCertificateExpiry'), value: formatDate(r.healthCertificateExpiry) },
           { label: t('onboarding.reportedStartDate'), value: formatDate(o?.reportedStartDate) },
@@ -99,6 +101,7 @@ export function ChecklistCard({ r }: { r: Rec }) {
   const enumOptions = useEnumOptions();
   const invalidate = useOnboardingInvalidation();
   const receive = useApiMutation(({ values, transfer }: UploadVars) => onboardingApi.receiveDocument(r.employeeId, values, transfer), { invalidate, rethrow: true });
+  const receiveCertificate = useApiMutation(({ values, transfer }: UploadVars) => workersApi.renewHealthCertificate(r.employeeId, values, transfer), { invalidate, rethrow: true });
   const remove = useApiMutation(onboardingApi.removeDocument, { invalidate });
   const [toRemove, setToRemove] = useState<number | null>(null);
 
@@ -120,14 +123,12 @@ export function ChecklistCard({ r }: { r: Rec }) {
               { name: 'scan', kind: 'file', label: t('attachments.scan') },
             ]}
             defaultValues={{ receivedOn: todayIso() }}
-            validate={(v) => {
-              if (v.kind !== 'HealthCertificate' || !v.issuedOn) return null;
-              // The issue date is neither after the receipt nor after the expiry.
-              if (v.receivedOn && v.issuedOn > v.receivedOn) return { issuedOn: t('onboarding.issuedAfterReceipt') };
-              if (v.expiresOn && v.expiresOn <= v.issuedOn) return { expiresOn: t('validation.expiryAfterIssue') };
-              return null;
-            }}
-            onSubmit={(values, transfer) => receive.mutateAsync({ values: { ...values }, transfer })}
+            validate={(v) => (v.kind === 'HealthCertificate' ? healthCertificateValidation(v, t) : null)}
+            onSubmit={({ kind, issuedOn, expiresOn, ...rest }, transfer) =>
+              kind === 'HealthCertificate'
+                ? receiveCertificate.mutateAsync({ values: { ...rest, issuedOn, expiresOn }, transfer })
+                : receive.mutateAsync({ values: { kind, ...rest }, transfer })
+            }
           />
         )
       }
@@ -255,26 +256,26 @@ export function PassportCard({ r }: { r: Rec }) {
 }
 
 /**
- * Passport taken into custody (FR-24). Recorded passport dates (TL-N4) live on the worker file: custody
- * fills them when empty (then both are required) and refuses different ones (then they are shown read-only).
+ * Passport taken into custody (FR-24). Recorded passport data (TL-N4) lives on the worker file and comes with the
+ * record: custody fills the dates when empty (then both are required) and refuses different ones (then they are
+ * shown read-only). TL-N14: a passport copy already on the file (from registration) makes the scan optional, and a
+ * recorded number or dates are not asked for again.
  */
 function ReceivePassportButton({ r }: { r: Rec }) {
   const { t } = useTranslation();
   const invalidate = useOnboardingInvalidation();
   const receive = useApiMutation(({ values, transfer }: UploadVars) => onboardingApi.receivePassport(r.employeeId, values, transfer), { invalidate, rethrow: true });
-  const worker = useQuery({ queryKey: workersKeys.detail(r.employeeId), queryFn: () => workersApi.get(r.employeeId), staleTime: 60_000 });
-  const recordedIssue = worker.data?.passportIssueDate ?? null;
-  const recordedExpiry = worker.data?.passportExpiryDate ?? null;
+  const recordedIssue = r.passportIssueDate ?? null;
+  const recordedExpiry = r.passportExpiryDate ?? null;
   const datesRequired = !r.libyan && !(recordedIssue && recordedExpiry);
   const recordedHint = (recorded: string | null) => (recorded ? t('onboarding.recordedDate') : undefined);
   return (
     <ActionFormButton<Record<string, unknown>>
       label={t('onboarding.receivePassport')}
       size="small"
-      disabled={worker.isLoading}
       description={r.libyan ? t('onboarding.libyanPassportHint') : undefined}
       fields={[
-        { name: 'passportNumber', kind: 'text', label: t('fields.passportNumber'), half: true, maxLength: 50 },
+        { name: 'passportNumber', kind: 'text', label: t('fields.passportNumber'), half: true, maxLength: 50, required: !r.libyan && !r.passportNumber },
         { name: 'location', kind: 'text', label: t('onboarding.passportLocation'), half: true, maxLength: 200 },
         { name: 'issuedOn', kind: 'date', label: t('fields.passportIssueDate'), half: true, required: datesRequired, max: todayIso(), disabled: !!recordedIssue, helperText: recordedHint(recordedIssue) },
         { name: 'expiresOn', kind: 'date', label: t('fields.passportExpiryDate'), half: true, required: datesRequired, disabled: !!recordedExpiry, helperText: recordedHint(recordedExpiry) },
@@ -282,7 +283,7 @@ function ReceivePassportButton({ r }: { r: Rec }) {
         { name: 'handedBy', kind: 'text', label: t('onboarding.handedBy'), half: true, maxLength: 200 },
         { name: 'receivedBy', kind: 'text', label: t('onboarding.receivedBy'), half: true, maxLength: 200 },
         { name: 'notes', kind: 'textarea', label: t('common.notes'), maxLength: 500 },
-        { name: 'scan', kind: 'file', label: t('attachments.scan') },
+        { name: 'scan', kind: 'file', label: t('attachments.scan'), required: !r.libyan && !r.hasPassportCopy, helperText: r.hasPassportCopy ? t('onboarding.passportCopyOnFile') : undefined },
       ]}
       defaultValues={{ passportNumber: r.passportNumber, receivedOn: todayIso(), handedBy: r.name, issuedOn: recordedIssue, expiresOn: recordedExpiry }}
       validate={(v) => {
@@ -466,6 +467,12 @@ export function SalaryCard({ employeeId }: { employeeId: number }) {
                 { label: t('salary.effectiveDate'), value: formatDate(open.effectiveDate) },
               ]}
             />
+            {/* TL-N15: the onboarding salary has no HR step of its own; it is decided with the final start approval. */}
+            {open.reason === 'Onboarding' && open.status === 'PendingHumanResources' && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                {t('salary.decidedWithStart')}
+              </Typography>
+            )}
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5 }}>
               {d.canDecide && (
                 <>

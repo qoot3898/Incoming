@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workers/{employeeId}/health-certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** تجديد الشهادة الصحية للعامل */
+        post: operations["RenewHealthCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workers/{employeeId}": {
         parameters: {
             query?: never;
@@ -2168,23 +2185,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/candidates/decisions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** قرار المدير العام في أسماء المرشحين */
-        post: operations["DecideCandidates"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/candidates/{candidateId}/cancel": {
         parameters: {
             query?: never;
@@ -2348,6 +2348,23 @@ export interface paths {
         };
         /** تفاصيل قيد تدقيق */
         get: operations["GetAuditLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** تصدير حركة المستخدمين على النظام إلى Excel */
+        get: operations["ExportAudit"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3532,6 +3549,11 @@ export interface components {
          * @enum {unknown}
          */
         AuditOutcome: "Success" | "Failure" | "Denied";
+        /**
+         * @description ترتيب «حركة المستخدمين على النظام».
+         * @enum {unknown}
+         */
+        AuditSort: "Newest" | "Oldest" | "Actor" | "Action";
         /** @description طلب: إلغاء مرشح. */
         CancelCandidateRequest: {
             /** @description «سبب الإلغاء» (مطلوب). */
@@ -3619,8 +3641,8 @@ export interface components {
             createdAt: string | null;
         };
         /** @enum {unknown} */
-        CandidateStatus: "Interview" | "PendingGeneralManager" | "Approved" | "NotAccepted" | "NotApproved" | "Registered" | "Cancelled" | null;
-        /** @description خطوة واحدة من سلسلة المرشح: المقابلة أو قرار المدير العام. */
+        CandidateStatus: "Interview" | "Approved" | "NotAccepted" | "NotApproved" | "Registered" | "Cancelled" | null;
+        /** @description خطوة واحدة من سلسلة المرشح: المقابلة، أو قرار المدير العام في ترشيح سبق إلغاء اعتماده (القرار TL-N15). */
         CandidateStepItem: {
             /** @description القرار («بانتظار القرار» أثناء الانتظار). */
             decision: components["schemas"]["ApprovalDecision"];
@@ -3904,25 +3926,6 @@ export interface components {
              * @description رمز التزامن للملف كما عُرض على المراجع (من «ملفات التكليف»)؛ فلا يُعتمد ملف استُبدل بعد عرضه.
              */
             rowVersion?: string;
-        };
-        /**
-         * @description قرار المدير العام في مرشحي طلب احتياج واحد (SRS FR-07): اعتماد الأسماء المحددة و/أو استبعاد غيرها — باعتماد الجميع أو استبعاد بعضهم أو رفض
-         *     القائمة (استبعاد الجميع).
-         */
-        DecideCandidatesRequest: {
-            /**
-             * Format: int32
-             * @description «الرقم المرجعي» لطلب الاحتياج.
-             */
-            requestNumber?: number;
-            /** @description المرشحون المعتمدون: يشغل كل منهم موضعًا واحدًا من عدد الطلب. */
-            approveIds?: number[];
-            /** @description المرشحون المستبعدون (مع string? DecideCandidatesRequest.Reason). */
-            excludeIds?: number[];
-            /** @description «سبب الاستثناء» (مطلوب عند الاستبعاد). */
-            reason?: string | null;
-            /** @description ملاحظة اختيارية على الاعتماد. */
-            note?: string | null;
         };
         /** @description طلب: قرار الحاجة إلى بديل. */
         DecideReplacementRequest: {
@@ -4776,7 +4779,7 @@ export interface components {
          * @description ما يتعلق به الإجراء المنتظر في «مهامي» (وهو يحدد أيقونة البند).
          * @enum {unknown}
          */
-        LaborActionKind: "Interview" | "CandidateApproval" | "StartApproval" | "SalaryApproval" | "Registration" | "EntryPermit" | "StartRecord" | "StartCorrection" | "SalaryCorrection" | "NoticeDelivery" | "DocumentsOverdue" | "DocumentsDueSoon" | "NoticeConfirmation" | "AttendanceSubmission" | "AttendanceReview" | "AttendanceReceipt" | "AbsenceIncident" | "LeaveApproval" | "LeaveCorrection" | "LeaveReturn" | "TransferApproval" | "TransferCorrection" | "TransferExecution" | "EvaluationDue" | "EvaluationReview" | "PenaltyDecision" | "PenaltyAcknowledgement" | "PenaltyApplication" | "TerminationApproval" | "TerminationExecution" | "TerminationClosing" | "Settlement";
+        LaborActionKind: "Interview" | "StartApproval" | "SalaryApproval" | "Registration" | "EntryPermit" | "StartRecord" | "StartCorrection" | "SalaryCorrection" | "NoticeDelivery" | "DocumentsOverdue" | "DocumentsDueSoon" | "NoticeConfirmation" | "AttendanceSubmission" | "AttendanceReview" | "AttendanceReceipt" | "AbsenceIncident" | "LeaveApproval" | "LeaveCorrection" | "LeaveReturn" | "TransferApproval" | "TransferCorrection" | "TransferExecution" | "EvaluationDue" | "EvaluationReview" | "PenaltyDecision" | "PenaltyAcknowledgement" | "PenaltyApplication" | "TerminationApproval" | "TerminationExecution" | "TerminationClosing" | "Settlement";
         /**
          * @description ما يعرضه مرفق العامل (SRS FR-63؛ النسخ الممسوحة لقائمة التحقق ولنموذج المباشرة الموقَّع).
          * @enum {unknown}
@@ -6441,6 +6444,18 @@ export interface components {
             canCorrectDate: boolean;
             /** @description يجوز للمستخدم إغلاق العامل المسجَّل بوصفه «لم يباشر» (القرار TL-16). */
             canCloseNotStarted: boolean;
+            /**
+             * Format: date
+             * @description «تاريخ إصدار الجواز» في سجل الموظف.
+             */
+            passportIssueDate: null | string;
+            /**
+             * Format: date
+             * @description «تاريخ انتهاء الجواز» في سجل الموظف.
+             */
+            passportExpiryDate: null | string;
+            /** @description في ملف العامل نسخة جواز (من التسجيل عادةً): فلا تُطلب في حفظ الجواز، كما لا يُطلب فيه رقم أو تاريخان مسجلان (القرار TL-N14). */
+            hasPassportCopy: boolean;
         };
         /** @description «المرتب والعلاوة» الخاصان بسجل مباشرة العامل، وما يجوز للمستخدم الحالي فعله بهما. */
         OnboardingSalaryDetails: {
@@ -6462,9 +6477,12 @@ export interface components {
             canPropose: boolean;
             /** @description يجوز للمستخدم مراجعة المقترح المفتوح (أُعيد إليه). */
             canRevise: boolean;
-            /** @description يجوز للمستخدم سحب المقترح المفتوح. */
+            /** @description يجوز للمستخدم سحب المقترح المفتوح (ولا يُسحب مرتب المباشرة ما دام سجلها في سلسلة الاعتماد، القرار TL-N15). */
             canCancel: boolean;
-            /** @description يتولى المستخدم خطوة الموارد البشرية، والمقترح المفتوح ينتظرها (انظر DecisionRefusal). */
+            /**
+             * @description يتولى المستخدم خطوة الموارد البشرية في مرتب بعد نقل ينتظرها (انظر DecisionRefusal)؛ أما مرتب المباشرة فيُبتّ فيه مع اعتمادها
+             *     النهائي، فلا يكون له هذا أبدًا (القرار TL-N15).
+             */
             canDecide: boolean;
         };
         /**
@@ -7693,7 +7711,7 @@ export interface components {
             /** @description مكان ميلاد موظفي كل جنسية. */
             defaultBirthPlaces: components["schemas"]["RegistrationBirthPlaceDefault"][];
         };
-        /** @description مرشح اعتمده المدير العام، ينتظر أن تسجّله جهة الدخول في مساره (SRS FR-09). */
+        /** @description مرشح معتمد، ينتظر أن تسجّله جهة الدخول في مساره (SRS FR-09). */
         RegistrationQueueItem: {
             /**
              * Format: int32
@@ -7737,7 +7755,7 @@ export interface components {
             jobId: number;
             /**
              * Format: date-time
-             * @description وقت اعتماد المدير العام للاسم (بالتوقيت المحلي).
+             * @description وقت اعتماد المرشح (بالتوقيت المحلي): قبوله في المقابلة (القرار TL-N15)، أو قرار المدير العام قبل إلغائه.
              */
             approvedAt: string | null;
             /** @description أُرفقت نسخة جوازه (مطلوبة لغير الليبي قبل تسجيله). */
@@ -7784,7 +7802,7 @@ export interface components {
         RequestCandidateItem: {
             /**
              * Format: int32
-             * @description معرّف المرشح في القائمة (وبه تُستدعى المقابلة والقرار والإلغاء على ترشيحه الجاري).
+             * @description معرّف المرشح في القائمة (وبه تُستدعى المقابلة والإلغاء على ترشيحه الجاري).
              */
             id: number;
             /** @description «الاسم». */
@@ -7821,11 +7839,6 @@ export interface components {
              *     له أو لم ينطبق ذلك.
              */
             interviewRefusal: string | null;
-            /**
-             * @description سبب منع المستخدم، وهو صاحب صلاحية المدير العام، من البتّ في هذا المرشح المنتظر لقراره (قابله هو، القرار TL-21)، أو null إن جاز له أو لم
-             *     ينطبق ذلك.
-             */
-            decisionRefusal: string | null;
             /** @description يجوز للمستخدم إلغاء هذا الترشيح الجاري (فيعود المرشح إلى القائمة). */
             canCancel: boolean;
             /**
@@ -7850,7 +7863,7 @@ export interface components {
             count: number;
             /**
              * Format: int16
-             * @description «المعتمد»: المرشحون الذين اعتمدهم المدير العام ولم يُلغَوا بعد ذلك.
+             * @description «المعتمد»: المرشحون الذين قُبلوا في المقابلة ولم يُلغَوا بعد ذلك (القرار TL-N15).
              */
             approvedCount: number;
             /** @description حالة الطلب. */
@@ -7861,8 +7874,6 @@ export interface components {
             canAdd: boolean;
             /** @description يجوز للمستخدم تسجيل المقابلات لمسار الطلب والطلب معتمد (وتبقى السلسلة هي التي تقرر لكل مرشح). */
             canInterview: boolean;
-            /** @description يملك المستخدم صلاحية المدير العام (وتبقى السلسلة هي التي تقرر لكل مرشح). */
-            canDecide: boolean;
             /** @description المعيار الذي يُعرض عند تسجيل المقابلة (إعداد). */
             interviewCriterion: string | null;
             /** @description الترشيحات: الجارية أولًا، ثم المسجَّلة، ثم المنتهية. */
@@ -8160,7 +8171,7 @@ export interface components {
              * @description «الرقم المرجعي».
              */
             number?: number;
-            /** @description الجهة صاحبة القرار: العمليات أو المدير العام. */
+            /** @description الجهة صاحبة القرار: إدارة العمليات، وهي السلسلة كلها (القرار TL-N15). */
             party?: components["schemas"]["LaborParty"];
             /** @description القيمة true للاعتماد وfalse للرفض. */
             approve?: boolean;
@@ -8218,15 +8229,13 @@ export interface components {
             approvals: components["schemas"]["StaffingApprovalItem"][];
             /** @description يجوز للمستخدم اتخاذ القرار الآن عن إدارة العمليات. */
             canDecideAsOperations: boolean;
-            /** @description يجوز للمستخدم اتخاذ القرار الآن عن المدير العام. */
-            canDecideAsGeneralManager: boolean;
             /** @description يجوز للمستخدم إغلاق الطلب المعتمد. */
             canClose: boolean;
             /** @description سبب منع المستخدم، وهو صاحب صلاحية الجهة التي تنتظر خطوتها، من البتّ (بتّ في خطوة أخرى من الجولة، القرار TL-21)، أو null. */
             blockedReason: string | null;
             /**
              * Format: int16
-             * @description «المعتمد»: المرشحون الذين اعتمدهم المدير العام ولم يُلغَوا بعد ذلك (SRS FR-08).
+             * @description «المعتمد»: المرشحون الذين قُبلوا في المقابلة ولم يُلغَوا بعد ذلك (SRS FR-08، القرار TL-N15).
              */
             approvedCount: number;
             /**
@@ -8315,7 +8324,7 @@ export interface components {
             newCandidates?: null | components["schemas"]["CandidateInput"][];
         };
         /** @enum {unknown} */
-        StaffingRequestStatus: "PendingOperations" | "PendingGeneralManager" | "Approved" | "Rejected" | "Closed" | "Filled" | null;
+        StaffingRequestStatus: "PendingOperations" | "Approved" | "Rejected" | "Closed" | "Filled" | null;
         /** @description «اعتماد المباشرة» لعامل (SRS FR-22، AC-22) وما يجوز للمستخدم الحالي فعله به. */
         StartApprovalDetails: {
             status: null | components["schemas"]["OnboardingStatus"];
@@ -10108,6 +10117,97 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PagedResultOfLaborWorkerListItem"];
                 };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RenewHealthCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employeeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: date */
+                    receivedOn: string;
+                } & {
+                    /** Format: date */
+                    issuedOn: string;
+                } & {
+                    /** Format: date */
+                    expiresOn: string;
+                } & {
+                    notes?: string | null;
+                } & {
+                    scan?: components["schemas"]["IFormFile"];
+                };
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Bad Request */
             400: {
@@ -17490,12 +17590,6 @@ export interface operations {
                     /** Format: date */
                     receivedOn: string;
                 } & {
-                    /** Format: date */
-                    issuedOn?: string;
-                } & {
-                    /** Format: date */
-                    expiresOn?: string;
-                } & {
                     notes?: string | null;
                 } & {
                     scan?: components["schemas"]["IFormFile"];
@@ -21741,82 +21835,6 @@ export interface operations {
             };
         };
     };
-    DecideCandidates: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DecideCandidatesRequest"];
-            };
-        };
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Not Found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Unprocessable Entity */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-        };
-    };
     CancelCandidate: {
         parameters: {
             query?: never;
@@ -22532,6 +22550,12 @@ export interface operations {
                 CorrelationId?: string;
                 /** @description إرفاق القيم السابقة والجديدة مع كل صف (وإلا تُقرأ من تفاصيل القيد). */
                 IncludeChanges?: boolean;
+                /** @description ساعة البداية في اليوم الأول، مثل `09:00` (تحتاج From). */
+                FromTime?: string;
+                /** @description الدقيقة الأخيرة في اليوم الأخير شاملةً، مثل `11:30` (تحتاج To). */
+                ToTime?: string;
+                /** @description الترتيب: الأحدث أولًا (الافتراضي)، أو الأقدم، أو حسب المنفِّذ، أو حسب الإجراء. */
+                Sort?: components["schemas"]["AuditSort"];
             };
             header?: never;
             path?: never;
@@ -22622,6 +22646,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ExportAudit: {
+        parameters: {
+            query?: {
+                /** @description اليوم الأول (شاملًا). */
+                From?: string;
+                /** @description اليوم الأخير (شاملًا). */
+                To?: string;
+                /** @description نص في رمز الإجراء أو الكيان أو الملخص أو اسم المنفِّذ. */
+                Search?: string;
+                /** @description تصفية حسب النتيجة. */
+                Outcome?: components["schemas"]["AuditOutcome"];
+                /** @description حركة مستخدم واحد: ما نفّذه هو (ومنه محاولات دخوله الفاشلة). */
+                ActorUserId?: number;
+                /** @description رموز إجراءات بعينها (تتكرر في الاستعلام، مثل `actionCodes=Auth.LoginSucceeded&amp;actionCodes=Auth.Logout`). */
+                ActionCodes?: unknown[];
+                /** @description وحدة الإجراء: الجزء قبل النقطة في رمزه، مثل `Auth` أو `User` أو `TemporaryLabor` أو اسم كيان. */
+                Module?: string;
+                /** @description نوع الكيان الذي وقع عليه الإجراء، مثل `User` أو `LaborPenalty`. */
+                EntityType?: string;
+                /** @description معرّف الكيان (مع EntityType عادةً): كل ما جرى على سجل واحد. */
+                EntityId?: string;
+                /** @description عنوان IP للعميل أو بدايته (مثل `10.0.` لشبكة). */
+                IpAddress?: string;
+                /** @description رقم متابعة طلب واحد: كل ما سجّله ذلك الطلب. */
+                CorrelationId?: string;
+                /** @description ساعة البداية في اليوم الأول، مثل `09:00` (تحتاج From). */
+                FromTime?: string;
+                /** @description الدقيقة الأخيرة في اليوم الأخير شاملةً، مثل `11:30` (تحتاج To). */
+                ToTime?: string;
+                /** @description الترتيب: الأحدث أولًا (الافتراضي)، أو الأقدم، أو حسب المنفِّذ، أو حسب الإجراء. */
+                Sort?: components["schemas"]["AuditSort"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                 };
             };
             /** @description Bad Request */

@@ -110,7 +110,11 @@
     "sameRequest": "Entries of this request",
     "history": "History",
     "showRaw": "Show raw data",
-    "hideRaw": "Hide raw data"
+    "hideRaw": "Hide raw data",
+    "fromTime": "From time",
+    "toTime": "To time",
+    "sort": "Sort",
+    "exportExcel": "Export Excel"
   },
   "auth": {
     "changePassword": "Change password",
@@ -151,27 +155,19 @@
   "candidates": {
     "accepted": "Accepted",
     "add": "Add candidate",
-    "approveAll": "Approve all",
     "approvedAt": "Approved at",
     "cancel": "Cancel nomination",
-    "excludeReason": "Exclusion reason",
-    "excludeReasonHint": "Required when excluding any name (excluded: {{count}})",
-    "excludeReasonRequired": "Give a reason for the names not selected",
     "experienceNotes": "Experience notes",
-    "gmDecision": "General Manager decision",
-    "gmDecisionHint": "Select the approved names; unselected names are excluded. Clearing all rejects the list.",
+    "gmDecision": "GM decision (earlier)",
     "interview": "Interview",
     "interviewCriterion": "Interview criterion",
     "interviewResult": "Interview result",
-    "noPendingDecision": "No candidates awaiting the GM decision",
     "nominatedBy": "Nominated by",
     "none": "No candidates yet",
     "notAccepted": "Not accepted",
     "notAccepting": "The request does not take candidates now (rejected, closed or filled).",
     "recordInterview": "Record interview",
     "recruitedBy": "Recruited by",
-    "rejectList": "Reject the list",
-    "saveDecision": "Save decision ({{approved}} approved, {{excluded}} excluded)",
     "listTitle": "Candidate list",
     "poolStatus": "Status in the list",
     "phone": "Phone number",
@@ -228,7 +224,8 @@
       "newTitle": "New candidate {{n}}",
       "removeNew": "Remove the new candidate",
       "title": "Candidates"
-    }
+    },
+    "acceptApproves": "Accepting the candidate in the interview approves him; he moves on to registration."
   },
   "common": {
     "all": "All",
@@ -388,7 +385,6 @@
       "Interview": "Interview",
       "NotAccepted": "Not accepted",
       "NotApproved": "Not approved",
-      "PendingGeneralManager": "Pending GM",
       "Registered": "Registered"
     },
     "ChecklistItem": {
@@ -462,7 +458,6 @@
       "AttendanceReceipt": "Attendance receipt",
       "AttendanceReview": "Attendance review",
       "AttendanceSubmission": "Attendance submission",
-      "CandidateApproval": "Candidate approval",
       "DocumentsDueSoon": "Documents due soon",
       "DocumentsOverdue": "Overdue documents",
       "EntryPermit": "Distribution & permit",
@@ -707,7 +702,6 @@
       "Approved": "Approved",
       "Closed": "Closed",
       "Filled": "Filled",
-      "PendingGeneralManager": "Pending GM",
       "PendingOperations": "Pending operations",
       "Rejected": "Rejected"
     },
@@ -796,6 +790,12 @@
       "Nominated": "Nominated on a request",
       "Registered": "Registered as a worker",
       "Withdrawn": "Withdrawn from the list"
+    },
+    "AuditSort": {
+      "Newest": "Newest first",
+      "Oldest": "Oldest first",
+      "Actor": "By user",
+      "Action": "By action"
     }
   },
   "errors": {
@@ -1140,7 +1140,11 @@
     "withdrawReport": "Withdraw report",
     "issuedOn": "Issue date",
     "issuedAfterReceipt": "The issue date cannot be after the receipt date",
-    "recordedDate": "Recorded on the worker file"
+    "recordedDate": "Recorded on the worker file",
+    "renewHealthCertificate": "Renew health certificate",
+    "healthCertificateRenewed": "The new health certificate was recorded.",
+    "passportCopy": "Passport copy on file",
+    "passportCopyOnFile": "A passport copy is on the worker's file, so no new scan is needed."
   },
   "payroll": {
     "confirmReceipt": "Confirm receipt",
@@ -1349,7 +1353,8 @@
     "reason": "Reason",
     "revise": "Revise",
     "salary": "Salary",
-    "title": "Salary & allowance"
+    "title": "Salary & allowance",
+    "decidedWithStart": "The onboarding salary is decided with the final start approval."
   },
   "settings": {
     "updatedAt": "Updated {{date}}"

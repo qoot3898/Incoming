@@ -13,6 +13,8 @@ interface Base<F> {
   wide?: boolean;
   /** Not rendered and not counted (e.g. a filter that only applies to another tab). */
   hidden?: boolean;
+  /** Dependent filters reset together with this one (e.g. track → work site, day → hour of that day). */
+  clears?: FilterKey<F>[];
 }
 
 export type FilterDef<F> = Base<F> &
@@ -23,10 +25,10 @@ export type FilterDef<F> = Base<F> &
         options: Option[];
         /** Label of the "no filter" option; `false` when the select always has a value. */
         emptyLabel?: string | false;
-        /** Dependent filters reset together with this one (e.g. track → work site). */
-        clears?: FilterKey<F>[];
       }
     | { kind: 'date'; withTime?: boolean }
+    /** A time of day (`HH:mm`), e.g. the audit's first hour of its first day. */
+    | { kind: 'time' }
     | { kind: 'switch' }
     /** Several values in one URL param joined by `MULTI_SEPARATOR` (e.g. audit action codes). */
     | { kind: 'multiselect'; options: GroupedOption[] }

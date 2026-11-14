@@ -17,7 +17,7 @@ import { ApprovalRounds, type ApprovalRound } from '@/components/workflow/Approv
 import { useEnumLabel } from '@/hooks/useEnumLabel';
 import { useApiMutation } from '@/hooks/useApiMutation';
 import { formatDate, formatDateTime } from '@/utils/format';
-import type { LaborParty, S } from '@/types/api';
+import type { S } from '@/types/api';
 
 type Details = S<'StaffingRequestDetails'>;
 
@@ -119,36 +119,34 @@ function DetailsTab({ d }: { d: Details }) {
   );
 }
 
+/** TL-N15: Operations is the whole approval chain of a staffing request; its decision approves or rejects it. */
 function Actions({ d }: { d: Details }) {
   const { t } = useTranslation();
   const invalidate = [staffingKeys.all];
-  const decide = useApiMutation((v: { party: LaborParty; approve: boolean; note: string | null }) => staffingApi.decide(d.number, { number: d.number, ...v }), { invalidate, rethrow: true });
+  const decide = useApiMutation((v: { approve: boolean; note: string | null }) => staffingApi.decide(d.number, { number: d.number, party: 'Operations', ...v }), { invalidate, rethrow: true });
   const close = useApiMutation((v: S<'CloseStaffingRequestRequest'>) => staffingApi.close(d.number, v), { invalidate, rethrow: true });
-
-  const decisionButtons = (party: LaborParty) => (
-    <>
-      <ActionFormButton<{ note: string | null }>
-        label={t('workflow.approveAs', { party: t(`enums.LaborParty.${party}`) })}
-        variant="contained"
-        color="success"
-        fields={[{ name: 'note', kind: 'textarea', label: t('workflow.note'), maxLength: 500 }]}
-        onSubmit={(v) => decide.mutateAsync({ party, approve: true, note: v.note })}
-      />
-      <ActionFormButton<{ note: string | null }>
-        label={t('workflow.reject')}
-        color="error"
-        description={t('staffing.rejectHint')}
-        destructive
-        fields={[{ name: 'note', kind: 'textarea', label: t('workflow.rejectReason'), required: true, maxLength: 500 }]}
-        onSubmit={(v) => decide.mutateAsync({ party, approve: false, note: v.note })}
-      />
-    </>
-  );
 
   return (
     <>
-      {d.canDecideAsOperations && decisionButtons('Operations')}
-      {d.canDecideAsGeneralManager && decisionButtons('GeneralManager')}
+      {d.canDecideAsOperations && (
+        <>
+          <ActionFormButton<{ note: string | null }>
+            label={t('workflow.approveAs', { party: t('enums.LaborParty.Operations') })}
+            variant="contained"
+            color="success"
+            fields={[{ name: 'note', kind: 'textarea', label: t('workflow.note'), maxLength: 500 }]}
+            onSubmit={(v) => decide.mutateAsync({ approve: true, note: v.note })}
+          />
+          <ActionFormButton<{ note: string | null }>
+            label={t('workflow.reject')}
+            color="error"
+            description={t('staffing.rejectHint')}
+            destructive
+            fields={[{ name: 'note', kind: 'textarea', label: t('workflow.rejectReason'), required: true, maxLength: 500 }]}
+            onSubmit={(v) => decide.mutateAsync({ approve: false, note: v.note })}
+          />
+        </>
+      )}
       {d.canClose && (
         <ActionFormButton<S<'CloseStaffingRequestRequest'>>
           label={t('staffing.close')}

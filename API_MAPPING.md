@@ -21,6 +21,7 @@ Screen(s): /workers, /workers/:id
 | Method | Endpoint | Purpose | operationId |
 |---|---|---|---|
 | GET | `/api/v1/workers` | البحث في العمال | SearchLaborWorkers |
+| POST | `/api/v1/workers/{employeeId}/health-certificates` | تجديد الشهادة الصحية للعامل | RenewHealthCertificate |
 | GET | `/api/v1/workers/{employeeId}` | ملف العامل | GetLaborWorker |
 | GET | `/api/v1/workers/by-number/{employeeNumber}` | إيجاد عامل برقمه الوظيفي | FindLaborWorker |
 
@@ -358,7 +359,6 @@ Screen(s): /candidates, /candidates/:candidateId, staffing request → Candidate
 | POST | `/api/v1/candidates/{candidateId}/interview` | تسجيل نتيجة مقابلة المرشح | InterviewCandidate |
 | GET | `/api/v1/staffing-requests/{requestNumber}/candidates` | مرشحو طلب الاحتياج | GetRequestCandidates |
 | POST | `/api/v1/staffing-requests/{requestNumber}/candidates` | ترشيح مرشحين من القائمة على طلب احتياج | NominateCandidates |
-| POST | `/api/v1/candidates/decisions` | قرار المدير العام في أسماء المرشحين | DecideCandidates |
 | POST | `/api/v1/candidates/{candidateId}/cancel` | إلغاء ترشيح مرشح | CancelCandidate |
 
 ## النسخ الاحتياطي
@@ -391,6 +391,7 @@ Screen(s): /admin/audit
 |---|---|---|---|
 | GET | `/api/v1/audit` | البحث في سجل التدقيق | SearchAudit |
 | GET | `/api/v1/audit/{id}` | تفاصيل قيد تدقيق | GetAuditLog |
+| GET | `/api/v1/audit/export` | تصدير حركة المستخدمين على النظام إلى Excel | ExportAudit |
 
 ## الحضور
 
@@ -441,7 +442,7 @@ Screen(s): /complaint (public, no sign-in), /complaints, /complaints/:id — per
 | `POST /registration/workers` | `passportIssueDate`, `passportExpiryDate`, `passportWaived`, `passportWaiverReason`, `healthCertificateIssueDate` (required), expiry required; phone optional (TL-N2/N4) | /registration |
 | `GET /workers/{employeeId}` | `passportIssueDate`, `passportExpiryDate`, `healthCertificateIssueDate`, `passportWaiverReason` | /workers/:id |
 | `PUT /employees/{employeeId}/identity` | `passportIssueDate`, `passportExpiryDate` (always sent back) | /workers/:id → edit identity |
-| `POST /workers/{employeeId}/documents` | `issuedOn` (health certificate, with `expiresOn`) | onboarding checklist |
+| `POST /workers/{employeeId}/documents` | `issuedOn` (health certificate, with `expiresOn`) — superseded on 2026-11-14: certificates go to `POST /workers/{id}/health-certificates` | onboarding checklist |
 | `POST /workers/{employeeId}/passport` | `issuedOn`, `expiresOn` (required when none recorded; must match recorded) | onboarding passport custody |
 | `POST /migration/current-workers` | optional passport and health-certificate dates per row | — (API only) |
 | `POST /penalties` | `issuedBy`, `issuedOn` (TL-N5) | /penalties/new |
@@ -483,3 +484,19 @@ Screen(s): /complaint (public, no sign-in), /complaints, /complaints/:id — per
 New endpoints: `GET|PUT|DELETE /transfers/{id}/decision-file` (multipart field `file`, PDF; `400 errors.File`, `404`, `422` once a party has decided in the round, `409` on a simultaneous decision),
 `GET|PUT /candidates/{id}`, `POST /candidates/{id}/withdraw`, `POST /candidates/{id}/restore`, `POST /staffing-requests/{number}/candidates`.
 New permissions: `TemporaryLabor.FingerprintNotices` (default role `LaborFingerprintSupervisor`, no screen of its own); `TemporaryLabor.ManageCandidates` gains the list and the nomination actions.
+
+## Changes of 2026-11-14 to existing endpoints
+
+Read from the live API (`/openapi/v1.json`, 170 paths / 200 operations / 360 schemas, canonical hash identical to `openapi/openapi.json`); not yet in `frontend-guide 3.md`.
+
+| Endpoint | Change | Screen |
+|---|---|---|
+| `POST /staffing-requests/{n}/decision` | TL-N15: Operations is the whole chain (`party` = `Operations`); `StaffingRequestStatus.PendingGeneralManager` and `canDecideAsGeneralManager` removed | /staffing-requests/:number |
+| `POST /candidates/decisions` | **removed** (TL-N15): acceptance in the interview approves the candidate (`Interview` → `Approved`); `CandidateStatus.PendingGeneralManager`, `RequestCandidates.canDecide`, `RequestCandidateItem.decisionRefusal`, task kind `CandidateApproval` removed; `generalManager` stays only on nominations decided before | request → Candidates tab, candidate card, /tasks |
+| `GET /workers/{id}/onboarding-salary` | TL-N15: the onboarding salary is decided with the final start approval (`canDecide` never true for it; it cannot be withdrawn while the record is in the approval chain); a salary after a transfer keeps its HR step | onboarding record → salary |
+| `GET /workers/{id}/onboarding` | TL-N14: `passportIssueDate`, `passportExpiryDate`, `hasPassportCopy` | onboarding record (start record, passport custody) |
+| `POST /workers/{id}/passport` | TL-N14: no scan needed when the file already has a passport copy; a recorded number / dates are not asked again | onboarding record → passport custody |
+| `POST /workers/{id}/documents` | `issuedOn` / `expiresOn` removed; a health certificate goes to the new endpoint below | onboarding record → checklist |
+| `GET /audit` | new `FromTime` / `ToTime` (`HH:mm`, need `From` / `To`) and `Sort` (`AuditSort`: `Newest` default, `Oldest`, `Actor`, `Action`) | /admin/audit |
+
+New endpoints: `POST /workers/{employeeId}/health-certificates` (multipart `receivedOn`, `issuedOn`, `expiresOn` required, `notes`, `scan`; renewal adds a new document — onboarding checklist and worker file → "Renew health certificate"), `GET /audit/export` (same filters as the search, Excel — /admin/audit → "Export Excel").

@@ -1,9 +1,11 @@
 /** Enum value lists (mirrors the OpenAPI document; used for selects and filters). */
 export const ENUMS = {
   LaborStatus: ['Registered', 'Onboarding', 'Active', 'Suspended', 'Terminated', 'Closed'],
-  StaffingRequestStatus: ['PendingOperations', 'PendingGeneralManager', 'Approved', 'Rejected', 'Closed', 'Filled'],
+  /** TL-N15: Operations is the whole approval chain of a request (the General Manager step is gone). */
+  StaffingRequestStatus: ['PendingOperations', 'Approved', 'Rejected', 'Closed', 'Filled'],
   StaffingReason: ['CurrentNeed', 'Replacement', 'NewSite'],
-  CandidateStatus: ['Interview', 'PendingGeneralManager', 'Approved', 'NotAccepted', 'NotApproved', 'Registered', 'Cancelled'],
+  /** TL-N15: acceptance in the interview approves the candidate; `NotApproved` remains on nominations decided before. */
+  CandidateStatus: ['Interview', 'Approved', 'NotAccepted', 'NotApproved', 'Registered', 'Cancelled'],
   /** TL-N13: where a candidate stands in the candidate list (derived by the API from his data and nominations). */
   CandidatePoolStatus: ['Available', 'Nominated', 'Registered', 'Withdrawn'],
   LaborParty: ['Site', 'Supervisor', 'Operations', 'GeneralManager', 'LaborSection', 'LaborManager', 'HumanResources', 'EntryRegistrar', 'Payroll', 'Finance', 'Worker'],
@@ -48,6 +50,8 @@ export const ENUMS = {
   LaborFormCode: ['F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F07', 'F08', 'F09', 'F10', 'F11', 'R01', 'R02'],
   UserStatusFilter: ['All', 'Active', 'Inactive', 'Locked'],
   AuditOutcome: ['Success', 'Failure', 'Denied'],
+  /** Order of the audit search and its export; `Newest` is the API default. */
+  AuditSort: ['Newest', 'Oldest', 'Actor', 'Action'],
   ComplaintStatus: ['New', 'Reviewed'],
   AssignmentState: ['NotRequired', 'Required', 'PendingReview', 'Returned', 'Approved'],
   IntegrationEventState: ['Pending', 'Acknowledged', 'Failed'],

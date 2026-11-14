@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Box, Chip, Stack, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Chip, Stack, Tooltip, Typography } from '@mui/material';
+import GridOnOutlinedIcon from '@mui/icons-material/GridOnOutlined';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { GridColDef } from '@mui/x-data-grid';
@@ -9,31 +10,21 @@ import { parseAuditChanges } from './auditChanges';
 import { PageHeader } from '@/components/common/PageHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { FilterPanel } from '@/components/tables/FilterPanel';
-import { clearFilters, isFiltered, splitMulti, type FilterDef } from '@/components/tables/filters';
+import { clearFilters, isFiltered, type FilterDef } from '@/components/tables/filters';
 import { ServerDataGrid } from '@/components/tables/ServerDataGrid';
 import { col } from '@/components/tables/columns';
 import { useListState, type FilterValue } from '@/hooks/useListState';
 import { useEnumOptions } from '@/hooks/useEnumLabel';
+import { AUDIT_DEFAULTS as DEFAULTS, AUDIT_SORTS as SORTS, exportParams, searchParams, type AuditFilters as Filters } from './auditParams';
 import { ENUMS } from '@/constants/enums';
-import type { Q, S } from '@/types/api';
+import { useSnackbar } from '@/app/providers/snackbarContext';
+import { saveBlob } from '@/services/api/download';
+import { errorMessage, toApiError } from '@/services/api/errors';
+import { todayIso } from '@/utils/format';
+import type { S } from '@/types/api';
 
 type Row = S<'AuditLogItem'>;
 
-const DEFAULTS = {
-  Search: '',
-  ActorUserId: '',
-  ActionCodes: '',
-  Module: '',
-  EntityType: '',
-  EntityId: '',
-  Outcome: '',
-  IpAddress: '',
-  CorrelationId: '',
-  From: '',
-  To: '',
-  IncludeChanges: false,
-};
-type Filters = typeof DEFAULTS;
 
 /** One-click views from frontend-guide §7 (sign-ins, failed sign-ins, refused access). */
 const PRESETS: { key: string; patch: Partial<Filters> }[] = [
@@ -48,14 +39,15 @@ export default function AuditPage() {
   const enumOptions = useEnumOptions();
   const list = useListState(DEFAULTS);
   const options = useQuery({ queryKey: adminKeys.auditOptions, queryFn: auditApi.options, staleTime: 5 * 60_000 });
-  const params = useMemo(() => {
-    const { ActionCodes, IncludeChanges, ...rest } = list.params;
-    return { ...rest, ActionCodes: splitMulti(ActionCodes), IncludeChanges: IncludeChanges || undefined } as unknown as Q<'SearchAudit'>;
-  }, [list.params]);
+  const params = useMemo(() => searchParams(list.params), [list.params]);
   const query = useQuery({ queryKey: adminKeys.auditList(params), queryFn: ({ signal }) => auditApi.search(params, signal), placeholderData: keepPreviousData });
   const [selected, setSelected] = useState<Row | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const { notify } = useSnackbar();
 
   const o = options.data;
+  const hasFrom = !!list.filters.From;
+  const hasTo = !!list.filters.To;
   const filters = useMemo<FilterDef<Filters>[]>(() => {
     const actors = (o?.actors ?? []).map((a) => ({
       value: a.id,
@@ -73,11 +65,15 @@ export default function AuditPage() {
       { key: 'EntityId', kind: 'search', label: t('audit.entityId') },
       { key: 'IpAddress', kind: 'search', label: t('audit.ipPrefix') },
       { key: 'CorrelationId', kind: 'search', label: t('audit.correlationId') },
-      { key: 'From', kind: 'date', label: t('common.from') },
-      { key: 'To', kind: 'date', label: t('common.to') },
+      // An hour narrows the first / last day, so it is offered (and sent) only with that day.
+      { key: 'From', kind: 'date', label: t('common.from'), clears: ['FromTime'] },
+      { key: 'FromTime', kind: 'time', label: t('audit.fromTime'), hidden: !hasFrom },
+      { key: 'To', kind: 'date', label: t('common.to'), clears: ['ToTime'] },
+      { key: 'ToTime', kind: 'time', label: t('audit.toTime'), hidden: !hasTo },
+      { key: 'Sort', kind: 'select', label: t('audit.sort'), options: enumOptions('AuditSort', SORTS), emptyLabel: t('enums.AuditSort.Newest') },
       { key: 'IncludeChanges', kind: 'switch', label: t('audit.includeChanges') },
     ];
-  }, [o, t, enumOptions]);
+  }, [o, t, enumOptions, hasFrom, hasTo]);
 
   const applyPreset = (patch: Partial<Filters>) => {
     // A preset replaces the panel's filters (keeps the page size) in one history entry.
@@ -133,9 +129,28 @@ export default function AuditPage() {
     [t],
   );
 
+  const exportExcel = async () => {
+    setExporting(true);
+    try {
+      const { blob, fileName } = await auditApi.export(exportParams(list.params));
+      saveBlob(blob, fileName ?? `audit-${todayIso()}.xlsx`);
+    } catch (e) {
+      notify(errorMessage(await toApiError(e, t('errors.fileFailed'))), 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <PageContainer>
-      <PageHeader title={t('nav.items.audit')} />
+      <PageHeader
+        title={t('nav.items.audit')}
+        actions={
+          <Button variant="outlined" startIcon={<GridOnOutlinedIcon />} onClick={exportExcel} disabled={exporting}>
+            {t('audit.exportExcel')}
+          </Button>
+        }
+      />
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }} role="group" aria-label={t('audit.presets')}>
         {PRESETS.map((p) => {
           const active = presetActive(p.patch);

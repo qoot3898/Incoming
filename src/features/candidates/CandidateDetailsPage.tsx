@@ -216,6 +216,8 @@ const stepText = (step: Nomination['interview'], decision: (v: string) => string
 function NominationsSection({ d }: { d: Details }) {
   const { t } = useTranslation();
   const label = useEnumLabel();
+  // TL-N15: a General Manager decision only exists on nominations decided before that step was removed.
+  const showGeneralManager = d.nominations.some((n) => n.generalManager);
   const columns = useMemo<GridColDef<Nomination>[]>(
     () => [
       {
@@ -239,15 +241,19 @@ function NominationsSection({ d }: { d: Details }) {
         width: 190,
         valueGetter: (_: unknown, r: Nomination) => stepText(r.interview, (v) => label('ApprovalDecision', v)),
       },
-      {
-        field: 'generalManager',
-        headerName: t('candidates.gmDecision'),
-        width: 190,
-        valueGetter: (_: unknown, r: Nomination) => stepText(r.generalManager, (v) => label('ApprovalDecision', v)),
-      },
+      ...(showGeneralManager
+        ? [
+            {
+              field: 'generalManager',
+              headerName: t('candidates.gmDecision'),
+              width: 190,
+              valueGetter: (_: unknown, r: Nomination) => stepText(r.generalManager, (v) => label('ApprovalDecision', v)),
+            } satisfies GridColDef<Nomination>,
+          ]
+        : []),
       col.dateTime<Nomination>('nominatedAt', t('candidates.card.nominatedAt')),
     ],
-    [label, t],
+    [label, t, showGeneralManager],
   );
   return (
     <SectionCard title={`${t('candidates.card.nominations')} (${d.nominations.length})`} noPadding>

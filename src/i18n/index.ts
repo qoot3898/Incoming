@@ -20,6 +20,7 @@ const lazyLocales: BackendModule = {
   },
 };
 
+/** Also read by the inline script in index.html (direction before first paint): rename both together. */
 export const LANG_KEY = 'qoot.labor.lang';
 export const SUPPORTED_LANGUAGES = ['ar', 'en'] as const;
 export type AppLanguage = (typeof SUPPORTED_LANGUAGES)[number];

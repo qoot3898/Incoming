@@ -21,12 +21,12 @@ const options = vi.hoisted(() => ({
 vi.mock('@/features/shared/options', () => ({ useScopeOptions: () => options }));
 vi.mock('./api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api')>();
-  return { ...actual, candidatesApi: { forRequest: vi.fn(), list: vi.fn(), add: vi.fn(), nominate: vi.fn(), cancel: vi.fn(), interview: vi.fn(), decide: vi.fn() } };
+  return { ...actual, candidatesApi: { forRequest: vi.fn(), list: vi.fn(), add: vi.fn(), nominate: vi.fn(), cancel: vi.fn(), interview: vi.fn() } };
 });
 
 const adam = { id: 41, name: 'آدم عيسى', nationalityName: 'تشاد', phone: null } as PoolCandidate;
 const requestCandidates = (over: Partial<S<'RequestCandidates'>>) =>
-  ({ number: 15, count: 2, approvedCount: 0, status: 'PendingOperations', acceptsCandidates: false, canAdd: true, canInterview: false, canDecide: false, interviewCriterion: null, candidates: [], ...over }) as S<'RequestCandidates'>;
+  ({ number: 15, count: 2, approvedCount: 0, status: 'PendingOperations', acceptsCandidates: false, canAdd: true, canInterview: false, interviewCriterion: null, candidates: [], ...over }) as S<'RequestCandidates'>;
 const show = (rc: S<'RequestCandidates'>) => {
   vi.mocked(candidatesApi.forRequest).mockResolvedValue(rc);
   vi.mocked(candidatesApi.list).mockResolvedValue({ items: [adam], total: 1, page: 1, pageSize: 20 } as never);
@@ -95,5 +95,21 @@ describe('nominations on a request (TL-N13)', () => {
     await waitFor(() => expect(candidatesApi.add).toHaveBeenCalledTimes(1));
     // Entered for the request's job by default, and tied to this request so he is nominated at once.
     expect(vi.mocked(candidatesApi.add).mock.calls[0][0]).toMatchObject({ requestNumber: 15, name: 'سالم علي', nationalityId: 2, jobId: 5 });
+  });
+
+  it('records the interview as the whole chain (TL-N15): no General Manager decision, acceptance approves', async () => {
+    const step = { decision: 'Approved', decidedBy: 'م. علي', decidedAt: '2026-11-01T10:00:00.000', note: null };
+    const candidate = (over: Partial<S<'RequestCandidateItem'>>) =>
+      ({ id: 41, nominationId: 7, name: 'آدم عيسى', nationalityName: 'تشاد', nominatedBy: null, recruitedBy: 'LaborSection', phone: null, status: 'Interview', statusReason: null, statusChangedAt: '2026-11-12T10:00:00.000', employeeId: null, employeeNumber: null, interview: null, generalManager: null, interviewRefusal: null, canCancel: false, ...over }) as S<'RequestCandidateItem'>;
+    const view = show(requestCandidates({ status: 'Approved', acceptsCandidates: true, canInterview: true, candidates: [candidate({})] }));
+    fireEvent.click(await screen.findByRole('button', { name: 'تسجيل المقابلة' }));
+    expect(await screen.findByText('قبول المرشح في المقابلة يعتمده، فينتقل إلى التسجيل.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /قرار المدير العام/ })).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'قرار المدير العام (سابقًا)' })).toBeNull();
+    view.unmount();
+
+    // A nomination decided before TL-N15 keeps showing its General Manager decision.
+    show(requestCandidates({ status: 'Approved', acceptsCandidates: true, candidates: [candidate({ id: 42, status: 'Approved', interview: step, generalManager: step } as never)] }));
+    expect(await screen.findByRole('columnheader', { name: 'قرار المدير العام (سابقًا)' })).toBeTruthy();
   });
 });

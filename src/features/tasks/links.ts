@@ -5,7 +5,6 @@ type Kind = S<'LaborActionKind'>;
 /** Frontend list route for each task kind (used when the backend link is not a usable path). */
 export const ACTION_ROUTES: Record<Kind, string> = {
   Interview: '/candidates?Status=Interview',
-  CandidateApproval: '/candidates?Status=PendingGeneralManager',
   StartApproval: '/onboarding?Stage=PendingApproval',
   SalaryApproval: '/onboarding?Stage=Collecting',
   Registration: '/registration',

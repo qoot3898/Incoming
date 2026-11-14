@@ -14,6 +14,9 @@ export const workersApi = {
   byNumber: (employeeNumber: number) => api.get<S<'LaborWorkerSummary'>>(`/workers/by-number/${employeeNumber}`),
   updateIdentity: (employeeId: number, body: S<'UpdateEmployeeIdentityRequest'>) => api.put(`/employees/${employeeId}/identity`, body),
   attachments: (employeeId: number) => api.get<S<'WorkerAttachmentItem'>[]>(`/workers/${employeeId}/attachments`),
+  /** TL-N14: receives (or renews) the worker's health certificate as a new document; `scan` is optional. */
+  renewHealthCertificate: (employeeId: number, values: Record<string, unknown>, transfer?: TransferOptions) =>
+    api.postForm(`/workers/${employeeId}/health-certificates`, values, transfer),
   attachForm: (employeeId: number, values: { kind: string; recordReference?: string | null; scan: File | null }, transfer?: TransferOptions) =>
     api.postForm<S<'IdResponse'>>(`/workers/${employeeId}/attachments`, values, transfer),
 };

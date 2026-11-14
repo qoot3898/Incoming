@@ -31,7 +31,8 @@ export function FilterPanel<F extends FilterDefaults>({ list, filters, children 
 
   const patchFor = (def: FilterDef<F>, value: FilterValue): Partial<F> => {
     const patch: Record<string, FilterValue> = { [def.key]: value };
-    if (def.kind === 'select') def.clears?.forEach((k) => (patch[k] = ''));
+    // Clearing a filter clears its dependants; a select also resets them on any change (track → work site).
+    if (def.kind === 'select' || value === '') def.clears?.forEach((k) => (patch[k] = ''));
     return patch as Partial<F>;
   };
 
@@ -62,7 +63,7 @@ export function FilterPanel<F extends FilterDefaults>({ list, filters, children 
         label: text ? `${def.chipLabel ?? def.label}: ${text}` : (def.chipLabel ?? def.label),
         onDelete: () => {
           const patch: Record<string, undefined> = { [def.key]: undefined };
-          if (def.kind === 'select') def.clears?.forEach((k) => (patch[k] = undefined));
+          def.clears?.forEach((k) => (patch[k] = undefined));
           setFilters(patch as Partial<F>);
         },
       };
@@ -86,13 +87,14 @@ export function FilterPanel<F extends FilterDefaults>({ list, filters, children 
               />
             );
           case 'date':
+          case 'time':
             return (
               <SearchField
                 key={def.key}
                 label={def.label}
-                type={def.withTime ? 'datetime-local' : 'date'}
+                type={def.kind === 'time' ? 'time' : def.withTime ? 'datetime-local' : 'date'}
                 value={String(value)}
-                onCommit={(v) => setFilter(def.key, v as F[typeof def.key])}
+                onCommit={(v) => setFilters(patchFor(def, v))}
                 sx={sx}
               />
             );

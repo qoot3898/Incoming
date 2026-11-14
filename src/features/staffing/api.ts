@@ -39,7 +39,6 @@ export const candidatesApi = {
   /** Nominates available candidates of the list on a request (one running nomination per candidate). */
   nominate: (requestNumber: number, body: S<'NominateCandidatesRequest'>) => api.post(`/staffing-requests/${requestNumber}/candidates`, body),
   interview: (id: number, body: S<'InterviewCandidateRequest'>) => api.post(`/candidates/${id}/interview`, body),
-  decide: (body: S<'DecideCandidatesRequest'>) => api.post('/candidates/decisions', body),
   /** Cancels his running nomination; he goes back to the list with his data and scans (TL-N13). */
   cancel: (id: number, body: S<'CancelCandidateRequest'>) => api.post(`/candidates/${id}/cancel`, body),
 };

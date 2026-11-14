@@ -27,6 +27,8 @@ import { formatDate, formatMoney, formatBytes, formatDateTime, todayIso } from '
 import { penaltiesApi, penaltiesKeys } from '@/features/penalties/api';
 import { usePenaltyDecisionTypes } from '@/features/penalties/decisionTypes';
 import { identityPassportIssues, type IdentityIssue } from './identityRules';
+import { useHealthCertificateForm, type HealthCertificateValues } from './healthCertificate';
+import { onboardingKeys } from '@/features/onboarding/api';
 import { useTabParam } from '@/hooks/useTabParam';
 import type { S } from '@/types/api';
 import type { UploadVars } from '@/services/api/client';
@@ -122,7 +124,9 @@ function Overview({ w }: { w: Worker }) {
   const { t } = useTranslation();
   const label = useEnumLabel();
   const [editOpen, setEditOpen] = useState(false);
-  const canCorrect = useAuth().can(ACTION_PERMISSIONS.correctIdentity);
+  const { can } = useAuth();
+  const canCorrect = can(ACTION_PERMISSIONS.correctIdentity);
+  const canRenewCertificate = can(ACTION_PERMISSIONS.renewHealthCertificate) && !w.serviceEnded;
   const yes = t('common.yes');
   const no = t('common.no');
   return (
@@ -132,10 +136,15 @@ function Overview({ w }: { w: Worker }) {
           <SectionCard
             title={t('workers.identity')}
             action={
-              canCorrect && (
-                <Button size="small" startIcon={<EditOutlinedIcon />} onClick={() => setEditOpen(true)}>
-                  {t('workers.editIdentity')}
-                </Button>
+              (canCorrect || canRenewCertificate) && (
+                <Stack direction="row" spacing={1}>
+                  {canRenewCertificate && <RenewHealthCertificateButton employeeId={w.employeeId} />}
+                  {canCorrect && (
+                    <Button size="small" startIcon={<EditOutlinedIcon />} onClick={() => setEditOpen(true)}>
+                      {t('workers.editIdentity')}
+                    </Button>
+                  )}
+                </Stack>
               )
             }
           >
@@ -517,5 +526,27 @@ function Attachments({ employeeId }: { employeeId: number }) {
         />
       )}
     </Stack>
+  );
+}
+
+/** TL-N14: a renewed health certificate is received as a new document; the worker file then shows its dates. */
+function RenewHealthCertificateButton({ employeeId }: { employeeId: number }) {
+  const { t } = useTranslation();
+  const { fields, validate } = useHealthCertificateForm();
+  const renew = useApiMutation(({ values, transfer }: UploadVars) => workersApi.renewHealthCertificate(employeeId, values, transfer), {
+    invalidate: [workersKeys.all, onboardingKeys.record(employeeId)],
+    rethrow: true,
+    success: t('onboarding.healthCertificateRenewed'),
+  });
+  return (
+    <ActionFormButton<HealthCertificateValues>
+      label={t('onboarding.renewHealthCertificate')}
+      size="small"
+      startIcon={<UploadFileOutlinedIcon />}
+      fields={fields}
+      defaultValues={{ receivedOn: todayIso() }}
+      validate={validate}
+      onSubmit={(values, transfer) => renew.mutateAsync({ values: { ...values }, transfer })}
+    />
   );
 }

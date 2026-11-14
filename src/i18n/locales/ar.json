@@ -110,7 +110,11 @@
     "sameRequest": "قيود الطلب نفسه",
     "history": "السجل التاريخي",
     "showRaw": "عرض البيانات الخام",
-    "hideRaw": "إخفاء البيانات الخام"
+    "hideRaw": "إخفاء البيانات الخام",
+    "fromTime": "من الساعة",
+    "toTime": "إلى الساعة",
+    "sort": "الترتيب",
+    "exportExcel": "تصدير Excel"
   },
   "auth": {
     "changePassword": "تغيير كلمة المرور",
@@ -151,27 +155,19 @@
   "candidates": {
     "accepted": "مقبول",
     "add": "إضافة مرشح",
-    "approveAll": "اعتماد الجميع",
     "approvedAt": "تاريخ الاعتماد",
     "cancel": "إلغاء الترشيح",
-    "excludeReason": "سبب الاستبعاد",
-    "excludeReasonHint": "مطلوب عند استبعاد أي اسم (المستبعدون: {{count}})",
-    "excludeReasonRequired": "اذكر سبب استبعاد الأسماء غير المحددة",
     "experienceNotes": "ملاحظات الخبرة",
-    "gmDecision": "قرار المدير العام",
-    "gmDecisionHint": "حدد الأسماء المعتمدة؛ يُستبعد غير المحدد. إلغاء تحديد الجميع يعني رفض القائمة.",
+    "gmDecision": "قرار المدير العام (سابقًا)",
     "interview": "المقابلة",
     "interviewCriterion": "معيار المقابلة",
     "interviewResult": "نتيجة المقابلة",
-    "noPendingDecision": "لا يوجد مرشحون بانتظار قرار المدير العام",
     "nominatedBy": "رشّحه",
     "none": "لا يوجد مرشحون بعد",
     "notAccepted": "غير مقبول",
     "notAccepting": "لا يقبل الطلب مرشحين الآن (رُفض أو أُغلق أو اكتمل عدده).",
     "recordInterview": "تسجيل المقابلة",
     "recruitedBy": "جهة الاستقطاب",
-    "rejectList": "رفض القائمة",
-    "saveDecision": "حفظ القرار (معتمد {{approved}}، مستبعد {{excluded}})",
     "listTitle": "قائمة المرشحين",
     "poolStatus": "موضعه في القائمة",
     "phone": "رقم الهاتف",
@@ -228,7 +224,8 @@
       "newTitle": "مرشح جديد {{n}}",
       "removeNew": "حذف المرشح الجديد",
       "title": "المرشحون"
-    }
+    },
+    "acceptApproves": "قبول المرشح في المقابلة يعتمده، فينتقل إلى التسجيل."
   },
   "common": {
     "all": "الكل",
@@ -388,7 +385,6 @@
       "Interview": "بانتظار المقابلة",
       "NotAccepted": "غير مقبول",
       "NotApproved": "غير معتمد",
-      "PendingGeneralManager": "بانتظار المدير العام",
       "Registered": "مسجَّل"
     },
     "ChecklistItem": {
@@ -462,7 +458,6 @@
       "AttendanceReceipt": "استلام كشف الحضور",
       "AttendanceReview": "مراجعة كشف الحضور",
       "AttendanceSubmission": "تسليم كشف الحضور",
-      "CandidateApproval": "اعتماد المرشحين",
       "DocumentsDueSoon": "مستندات قريبة الاستحقاق",
       "DocumentsOverdue": "مستندات متأخرة",
       "EntryPermit": "التوزيع وإذن الدخول",
@@ -707,7 +702,6 @@
       "Approved": "معتمد",
       "Closed": "مغلق",
       "Filled": "مكتمل العدد",
-      "PendingGeneralManager": "لدى المدير العام",
       "PendingOperations": "لدى إدارة العمليات",
       "Rejected": "مرفوض"
     },
@@ -796,6 +790,12 @@
       "Nominated": "مرشح على طلب",
       "Registered": "مسجل عاملاً",
       "Withdrawn": "مسحوب من القائمة"
+    },
+    "AuditSort": {
+      "Newest": "الأحدث أولًا",
+      "Oldest": "الأقدم أولًا",
+      "Actor": "حسب المستخدم",
+      "Action": "حسب الإجراء"
     }
   },
   "errors": {
@@ -1140,7 +1140,11 @@
     "withdrawReport": "سحب البلاغ",
     "issuedOn": "تاريخ الإصدار",
     "issuedAfterReceipt": "لا يكون تاريخ الإصدار بعد تاريخ الاستلام",
-    "recordedDate": "مسجل في ملف العامل"
+    "recordedDate": "مسجل في ملف العامل",
+    "renewHealthCertificate": "تجديد الشهادة الصحية",
+    "healthCertificateRenewed": "سُجّلت الشهادة الصحية الجديدة.",
+    "passportCopy": "نسخة الجواز في الملف",
+    "passportCopyOnFile": "في ملف العامل نسخة جواز؛ فلا يلزم إرفاق نسخة جديدة."
   },
   "payroll": {
     "confirmReceipt": "تأكيد الاستلام",
@@ -1349,7 +1353,8 @@
     "reason": "السبب",
     "revise": "تعديل",
     "salary": "المرتب",
-    "title": "المرتب والعلاوة"
+    "title": "المرتب والعلاوة",
+    "decidedWithStart": "يُبتّ في مرتب المباشرة مع الاعتماد النهائي للمباشرة."
   },
   "settings": {
     "updatedAt": "آخر تعديل {{date}}"

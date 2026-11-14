@@ -73,7 +73,7 @@ export function SearchField({ value, onCommit, delay = 350, type, slotProps, ...
       onKeyDown={onKeyDown}
       slotProps={{
         ...slotProps,
-        inputLabel: type === 'date' || type === 'datetime-local' ? { shrink: true } : slotProps?.inputLabel,
+        inputLabel: type === 'date' || type === 'datetime-local' || type === 'time' ? { shrink: true } : slotProps?.inputLabel,
         input: clear ? { endAdornment: clear } : slotProps?.input,
       }}
     />

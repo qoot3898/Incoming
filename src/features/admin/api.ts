@@ -104,6 +104,8 @@ export const auditApi = {
   get: (id: number) => api.get<unknown>(`/audit/${id}`),
   /** Filter values: semantic actions (by module), modules, entity types and actors (TL-N6). */
   options: () => api.get<S<'AuditOptions'>>('/audit/options'),
+  /** The same search as an Excel workbook (all matching rows, no paging). */
+  export: (q: Q<'ExportAudit'>) => api.blob('get', '/audit/export', undefined, q),
 };
 
 export const integrationApi = {

@@ -227,6 +227,150 @@
         }
       }
     },
+    "/api/v1/workers/{employeeId}/health-certificates": {
+      "post": {
+        "tags": [
+          "العمال"
+        ],
+        "summary": "تجديد الشهادة الصحية للعامل",
+        "operationId": "RenewHealthCertificate",
+        "parameters": [
+          {
+            "name": "employeeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "receivedOn",
+                  "issuedOn",
+                  "expiresOn"
+                ],
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "receivedOn": {
+                        "type": "string",
+                        "format": "date"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "issuedOn": {
+                        "type": "string",
+                        "format": "date"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "expiresOn": {
+                        "type": "string",
+                        "format": "date"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "notes": {}
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "scan": {
+                        "$ref": "#/components/schemas/IFormFile"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workers/{employeeId}": {
       "get": {
         "tags": [
@@ -9642,24 +9786,6 @@
                   {
                     "type": "object",
                     "properties": {
-                      "issuedOn": {
-                        "type": "string",
-                        "format": "date"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "expiresOn": {
-                        "type": "string",
-                        "format": "date"
-                      }
-                    }
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
                       "notes": {}
                     }
                   },
@@ -15176,90 +15302,6 @@
         }
       }
     },
-    "/api/v1/candidates/decisions": {
-      "post": {
-        "tags": [
-          "المرشحون"
-        ],
-        "summary": "قرار المدير العام في أسماء المرشحين",
-        "operationId": "DecideCandidates",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DecideCandidatesRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable Entity",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/candidates/{candidateId}/cancel": {
       "post": {
         "tags": [
@@ -16156,6 +16198,33 @@
               "type": "boolean",
               "default": false
             }
+          },
+          {
+            "name": "FromTime",
+            "in": "query",
+            "description": "ساعة البداية في اليوم الأول، مثل `09:00` (تحتاج From).",
+            "schema": {
+              "type": "string",
+              "format": "time"
+            }
+          },
+          {
+            "name": "ToTime",
+            "in": "query",
+            "description": "الدقيقة الأخيرة في اليوم الأخير شاملةً، مثل `11:30` (تحتاج To).",
+            "schema": {
+              "type": "string",
+              "format": "time"
+            }
+          },
+          {
+            "name": "Sort",
+            "in": "query",
+            "description": "الترتيب: الأحدث أولًا (الافتراضي)، أو الأقدم، أو حسب المنفِّذ، أو حسب الإجراء.",
+            "schema": {
+              "default": "Newest",
+              "$ref": "#/components/schemas/AuditSort"
+            }
           }
         ],
         "responses": {
@@ -16257,6 +16326,200 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/export": {
+      "get": {
+        "tags": [
+          "سجل التدقيق"
+        ],
+        "summary": "تصدير حركة المستخدمين على النظام إلى Excel",
+        "operationId": "ExportAudit",
+        "parameters": [
+          {
+            "name": "From",
+            "in": "query",
+            "description": "اليوم الأول (شاملًا).",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "To",
+            "in": "query",
+            "description": "اليوم الأخير (شاملًا).",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "Search",
+            "in": "query",
+            "description": "نص في رمز الإجراء أو الكيان أو الملخص أو اسم المنفِّذ.",
+            "schema": {}
+          },
+          {
+            "name": "Outcome",
+            "in": "query",
+            "description": "تصفية حسب النتيجة.",
+            "schema": {
+              "$ref": "#/components/schemas/AuditOutcome"
+            }
+          },
+          {
+            "name": "ActorUserId",
+            "in": "query",
+            "description": "حركة مستخدم واحد: ما نفّذه هو (ومنه محاولات دخوله الفاشلة).",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "ActionCodes",
+            "in": "query",
+            "description": "رموز إجراءات بعينها (تتكرر في الاستعلام، مثل `actionCodes=Auth.LoginSucceeded&amp;actionCodes=Auth.Logout`).",
+            "schema": {
+              "type": "array"
+            }
+          },
+          {
+            "name": "Module",
+            "in": "query",
+            "description": "وحدة الإجراء: الجزء قبل النقطة في رمزه، مثل `Auth` أو `User` أو `TemporaryLabor` أو اسم كيان.",
+            "schema": {}
+          },
+          {
+            "name": "EntityType",
+            "in": "query",
+            "description": "نوع الكيان الذي وقع عليه الإجراء، مثل `User` أو `LaborPenalty`.",
+            "schema": {}
+          },
+          {
+            "name": "EntityId",
+            "in": "query",
+            "description": "معرّف الكيان (مع EntityType عادةً): كل ما جرى على سجل واحد.",
+            "schema": {}
+          },
+          {
+            "name": "IpAddress",
+            "in": "query",
+            "description": "عنوان IP للعميل أو بدايته (مثل `10.0.` لشبكة).",
+            "schema": {}
+          },
+          {
+            "name": "CorrelationId",
+            "in": "query",
+            "description": "رقم متابعة طلب واحد: كل ما سجّله ذلك الطلب.",
+            "schema": {}
+          },
+          {
+            "name": "FromTime",
+            "in": "query",
+            "description": "ساعة البداية في اليوم الأول، مثل `09:00` (تحتاج From).",
+            "schema": {
+              "type": "string",
+              "format": "time"
+            }
+          },
+          {
+            "name": "ToTime",
+            "in": "query",
+            "description": "الدقيقة الأخيرة في اليوم الأخير شاملةً، مثل `11:30` (تحتاج To).",
+            "schema": {
+              "type": "string",
+              "format": "time"
+            }
+          },
+          {
+            "name": "Sort",
+            "in": "query",
+            "description": "الترتيب: الأحدث أولًا (الافتراضي)، أو الأقدم، أو حسب المنفِّذ، أو حسب الإجراء.",
+            "schema": {
+              "default": "Newest",
+              "$ref": "#/components/schemas/AuditSort"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
               }
             }
           },
@@ -21533,6 +21796,15 @@
         ],
         "description": "نتيجة عملية خاضعة للتدقيق."
       },
+      "AuditSort": {
+        "enum": [
+          "Newest",
+          "Oldest",
+          "Actor",
+          "Action"
+        ],
+        "description": "ترتيب «حركة المستخدمين على النظام»."
+      },
       "CancelCandidateRequest": {
         "type": "object",
         "properties": {
@@ -21710,7 +21982,6 @@
       "CandidateStatus": {
         "enum": [
           "Interview",
-          "PendingGeneralManager",
           "Approved",
           "NotAccepted",
           "NotApproved",
@@ -21743,7 +22014,7 @@
             "description": "«ملاحظات الخبرة»، وهي السبب أو الملاحظة."
           }
         },
-        "description": "خطوة واحدة من سلسلة المرشح: المقابلة أو قرار المدير العام."
+        "description": "خطوة واحدة من سلسلة المرشح: المقابلة، أو قرار المدير العام في ترشيح سبق إلغاء اعتماده (القرار TL-N15)."
       },
       "ChangePasswordRequest": {
         "type": "object",
@@ -22243,51 +22514,6 @@
           }
         },
         "description": "طلب: قرار المراجع في ملف تكليف."
-      },
-      "DecideCandidatesRequest": {
-        "type": "object",
-        "properties": {
-          "requestNumber": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "description": "«الرقم المرجعي» لطلب الاحتياج.",
-            "format": "int32"
-          },
-          "approveIds": {
-            "type": "array",
-            "items": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            },
-            "description": "المرشحون المعتمدون: يشغل كل منهم موضعًا واحدًا من عدد الطلب."
-          },
-          "excludeIds": {
-            "type": "array",
-            "items": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            },
-            "description": "المرشحون المستبعدون (مع string? DecideCandidatesRequest.Reason)."
-          },
-          "reason": {
-            "description": "«سبب الاستثناء» (مطلوب عند الاستبعاد)."
-          },
-          "note": {
-            "description": "ملاحظة اختيارية على الاعتماد."
-          }
-        },
-        "description": "قرار المدير العام في مرشحي طلب احتياج واحد (SRS FR-07): اعتماد الأسماء المحددة و/أو استبعاد غيرها — باعتماد الجميع أو استبعاد بعضهم أو رفض\r\nالقائمة (استبعاد الجميع)."
       },
       "DecideReplacementRequest": {
         "required": [
@@ -24061,7 +24287,6 @@
       "LaborActionKind": {
         "enum": [
           "Interview",
-          "CandidateApproval",
           "StartApproval",
           "SalaryApproval",
           "Registration",
@@ -27598,6 +27823,9 @@
           "documentsDueDate",
           "hrStartDate",
           "passportNumber",
+          "passportIssueDate",
+          "passportExpiryDate",
+          "hasPassportCopy",
           "nationalNumber",
           "healthCertificateExpiry",
           "serviceEnded",
@@ -27824,6 +28052,26 @@
           "canCloseNotStarted": {
             "type": "boolean",
             "description": "يجوز للمستخدم إغلاق العامل المسجَّل بوصفه «لم يباشر» (القرار TL-16)."
+          },
+          "passportIssueDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date",
+            "description": "«تاريخ إصدار الجواز» في سجل الموظف."
+          },
+          "passportExpiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date",
+            "description": "«تاريخ انتهاء الجواز» في سجل الموظف."
+          },
+          "hasPassportCopy": {
+            "type": "boolean",
+            "description": "في ملف العامل نسخة جواز (من التسجيل عادةً): فلا تُطلب في حفظ الجواز، كما لا يُطلب فيه رقم أو تاريخان مسجلان (القرار TL-N14)."
           }
         },
         "description": "«سجل الالتحاق» الخاص بعامل (العمليتان P04.1 وP04.2): العامل وبلاغ بدئه وسجل مباشرته، وقائمة التحقق كما هي اليوم مع المستندات المستلمة،\r\nوالجواز في العهدة، ومرحلة الاستبيان الأمني (دون نتيجته أبدًا، AC-18)، والنسخ الممسوحة ضوئيًا التي يجوز للمستخدم الحالي فتحها، وما يجوز له\r\nفعله الآن."
@@ -27892,11 +28140,11 @@
           },
           "canCancel": {
             "type": "boolean",
-            "description": "يجوز للمستخدم سحب المقترح المفتوح."
+            "description": "يجوز للمستخدم سحب المقترح المفتوح (ولا يُسحب مرتب المباشرة ما دام سجلها في سلسلة الاعتماد، القرار TL-N15)."
           },
           "canDecide": {
             "type": "boolean",
-            "description": "يتولى المستخدم خطوة الموارد البشرية، والمقترح المفتوح ينتظرها (انظر DecisionRefusal)."
+            "description": "يتولى المستخدم خطوة الموارد البشرية في مرتب بعد نقل ينتظرها (انظر DecisionRefusal)؛ أما مرتب المباشرة فيُبتّ فيه مع اعتمادها\r\nالنهائي، فلا يكون له هذا أبدًا (القرار TL-N15)."
           }
         },
         "description": "«المرتب والعلاوة» الخاصان بسجل مباشرة العامل، وما يجوز للمستخدم الحالي فعله بهما."
@@ -30655,7 +30903,7 @@
             "format": "int32"
           },
           "approvedAt": {
-            "description": "وقت اعتماد المدير العام للاسم (بالتوقيت المحلي).",
+            "description": "وقت اعتماد المرشح (بالتوقيت المحلي): قبوله في المقابلة (القرار TL-N15)، أو قرار المدير العام قبل إلغائه.",
             "format": "date-time"
           },
           "passportScanAttached": {
@@ -30670,7 +30918,7 @@
             "description": "«رقم الهاتف» المسجَّل للمرشح (يُقترح رقمًا للموظف، القرار TL-N13)."
           }
         },
-        "description": "مرشح اعتمده المدير العام، ينتظر أن تسجّله جهة الدخول في مساره (SRS FR-09)."
+        "description": "مرشح معتمد، ينتظر أن تسجّله جهة الدخول في مساره (SRS FR-09)."
       },
       "RelocatePassportRequest": {
         "type": "object",
@@ -30744,7 +30992,6 @@
           "interview",
           "generalManager",
           "interviewRefusal",
-          "decisionRefusal",
           "canCancel",
           "nominationId",
           "phone"
@@ -30757,7 +31004,7 @@
               "integer",
               "string"
             ],
-            "description": "معرّف المرشح في القائمة (وبه تُستدعى المقابلة والقرار والإلغاء على ترشيحه الجاري).",
+            "description": "معرّف المرشح في القائمة (وبه تُستدعى المقابلة والإلغاء على ترشيحه الجاري).",
             "format": "int32"
           },
           "name": {
@@ -30821,16 +31068,13 @@
                 "type": "null"
               },
               {
-                "description": "قرار المدير العام.",
+                "description": "قرار المدير العام في ترشيح سبق إلغاء اعتماده (القرار TL-N15)، و`null` لما بعده.",
                 "$ref": "#/components/schemas/CandidateStepItem"
               }
             ]
           },
           "interviewRefusal": {
             "description": "سبب منع المستخدم، وهو المخوَّل بإجراء المقابلات للمسار، من مقابلة هذا المرشح المنتظر للمقابلة على طلب معتمد (قواعد السلسلة)، أو null إن جاز\r\nله أو لم ينطبق ذلك."
-          },
-          "decisionRefusal": {
-            "description": "سبب منع المستخدم، وهو صاحب صلاحية المدير العام، من البتّ في هذا المرشح المنتظر لقراره (قابله هو، القرار TL-21)، أو null إن جاز له أو لم\r\nينطبق ذلك."
           },
           "canCancel": {
             "type": "boolean",
@@ -30860,7 +31104,6 @@
           "acceptsCandidates",
           "canAdd",
           "canInterview",
-          "canDecide",
           "interviewCriterion",
           "candidates"
         ],
@@ -30890,7 +31133,7 @@
               "integer",
               "string"
             ],
-            "description": "«المعتمد»: المرشحون الذين اعتمدهم المدير العام ولم يُلغَوا بعد ذلك.",
+            "description": "«المعتمد»: المرشحون الذين قُبلوا في المقابلة ولم يُلغَوا بعد ذلك (القرار TL-N15).",
             "format": "int16"
           },
           "status": {
@@ -30908,10 +31151,6 @@
           "canInterview": {
             "type": "boolean",
             "description": "يجوز للمستخدم تسجيل المقابلات لمسار الطلب والطلب معتمد (وتبقى السلسلة هي التي تقرر لكل مرشح)."
-          },
-          "canDecide": {
-            "type": "boolean",
-            "description": "يملك المستخدم صلاحية المدير العام (وتبقى السلسلة هي التي تقرر لكل مرشح)."
           },
           "interviewCriterion": {
             "description": "المعيار الذي يُعرض عند تسجيل المقابلة (إعداد)."
@@ -31529,7 +31768,7 @@
             "format": "int32"
           },
           "party": {
-            "description": "الجهة صاحبة القرار: العمليات أو المدير العام.",
+            "description": "الجهة صاحبة القرار: إدارة العمليات، وهي السلسلة كلها (القرار TL-N15).",
             "$ref": "#/components/schemas/LaborParty"
           },
           "approve": {
@@ -31561,7 +31800,6 @@
           "statusChangedAt",
           "approvals",
           "canDecideAsOperations",
-          "canDecideAsGeneralManager",
           "canClose",
           "blockedReason",
           "approvedCount",
@@ -31650,10 +31888,6 @@
             "type": "boolean",
             "description": "يجوز للمستخدم اتخاذ القرار الآن عن إدارة العمليات."
           },
-          "canDecideAsGeneralManager": {
-            "type": "boolean",
-            "description": "يجوز للمستخدم اتخاذ القرار الآن عن المدير العام."
-          },
           "canClose": {
             "type": "boolean",
             "description": "يجوز للمستخدم إغلاق الطلب المعتمد."
@@ -31667,7 +31901,7 @@
               "integer",
               "string"
             ],
-            "description": "«المعتمد»: المرشحون الذين اعتمدهم المدير العام ولم يُلغَوا بعد ذلك (SRS FR-08).",
+            "description": "«المعتمد»: المرشحون الذين قُبلوا في المقابلة ولم يُلغَوا بعد ذلك (SRS FR-08، القرار TL-N15).",
             "format": "int16"
           },
           "unregisteredCandidates": {
@@ -31870,7 +32104,6 @@
       "StaffingRequestStatus": {
         "enum": [
           "PendingOperations",
-          "PendingGeneralManager",
           "Approved",
           "Rejected",
           "Closed",
@@ -35449,7 +35682,7 @@
                 "type": "null"
               },
               {
-                "description": "قرار المدير العام.",
+                "description": "قرار المدير العام في ترشيح سبق إلغاء اعتماده (القرار TL-N15)، و`null` لما بعده.",
                 "$ref": "#/components/schemas/CandidateStepItem"
               }
             ]

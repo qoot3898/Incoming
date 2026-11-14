@@ -7,11 +7,13 @@ import { SearchField } from './SearchField';
 import type { FilterDef } from './filters';
 
 function Page() {
-  const list = useListState({ Tab: 'All', Search: '', TrackId: '', WorkSiteId: '' });
+  const list = useListState({ Tab: 'All', Search: '', TrackId: '', WorkSiteId: '', From: '', FromTime: '' });
   const filters: FilterDef<typeof list.filters>[] = [
     { key: 'Search', kind: 'search', label: 'Search' },
     { key: 'TrackId', kind: 'select', label: 'Track', options: [{ value: 1, label: 'Catering' }], clears: ['WorkSiteId'] },
     { key: 'WorkSiteId', kind: 'select', label: 'Site', options: [{ value: 11, label: 'Kitchen' }] },
+    { key: 'From', kind: 'date', label: 'From', clears: ['FromTime'] },
+    { key: 'FromTime', kind: 'time', label: 'From time', hidden: !list.filters.From },
   ];
   return <FilterPanel list={list} filters={filters} />;
 }
@@ -28,6 +30,15 @@ describe('FilterPanel', () => {
     const trackChip = screen.getByText('Track: Catering').closest('.MuiChip-root')!;
     fireEvent.click(trackChip.querySelector('.MuiChip-deleteIcon')!);
     expect(search()).toBe('');
+  });
+
+  it('removing a date also removes the hour that narrows it, and the hour field only shows with its date', () => {
+    const { search } = renderWithRouter(<Page />, '/x?From=2026-11-01&FromTime=09:00');
+    expect(screen.getByLabelText('From time')).toBeTruthy();
+    const fromChip = screen.getByText(/^From: /).closest('.MuiChip-root')!;
+    fireEvent.click(fromChip.querySelector('.MuiChip-deleteIcon')!);
+    expect(search()).toBe('');
+    expect(screen.queryByLabelText('From time')).toBeNull();
   });
 
   it('"Clear all" resets the filters but keeps the selected tab', () => {
